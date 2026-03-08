@@ -1,0 +1,12 @@
+---
+description: General coding standards applied to all files
+globs: *
+alwaysApply: true
+---
+
+# General Standards
+
+- Follow the project's existing patterns before introducing new ones.
+- Prefer composition over inheritance.
+- Keep modules loosely coupled with well-defined interfaces.
+- When in doubt, optimize for readability over cleverness.

@@ -1,0 +1,15 @@
+# Staging Documentation Directory
+
+This directory contains documentation files created during development that are not yet integrated into the main documentation structure.
+
+## Purpose
+- Draft documentation for features in development
+- Experimental documentation for new concepts
+- Temporary development notes and insights
+- Documentation that needs review before integration
+
+## Usage
+- Create new documentation files here during development
+- Use descriptive filenames that clearly indicate the feature or concept
+- Follow the reference-based approach (no code snippets, file references only)
+- Periodically these files will be reviewed and integrated into the main documentation structure
