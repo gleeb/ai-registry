@@ -1,0 +1,4 @@
+interface:
+  display_name: "Scaffold Project"
+  short_description: "Bootstrap new projects: React, React Native, Python, monorepo"
+  default_prompt: "Help me scaffold a new project"

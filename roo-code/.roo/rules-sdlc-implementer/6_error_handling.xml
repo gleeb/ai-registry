@@ -1,0 +1,40 @@
+<error_handling>
+  <scenario name="missing_context_or_rationale">
+    <trigger>Staging document or required rationale context is missing or insufficient.</trigger>
+    <required_actions>
+      <action>Pause implementation work.</action>
+      <action>Document the missing context in staging as a blocker.</action>
+      <action>Return to coordinator via completion with explicit unblock request.</action>
+    </required_actions>
+    <prohibited_actions>
+      <action>Do not guess architecture intent when rationale is absent.</action>
+    </prohibited_actions>
+  </scenario>
+
+  <scenario name="unresolved_implementation_blocker">
+    <trigger>Error or dependency issue cannot be resolved within assigned scope.</trigger>
+    <required_actions>
+      <action>Halt forward feature work for blocked path.</action>
+      <action>Record blocker details, impact, and attempted mitigations in staging.</action>
+      <action>Return to coordinator for escalation and supporting investigation dispatch.</action>
+    </required_actions>
+  </scenario>
+
+  <scenario name="scope_expansion_detected">
+    <trigger>Required change appears to exceed assigned issue boundaries.</trigger>
+    <required_actions>
+      <action>Stop at boundary and mark out-of-scope work explicitly.</action>
+      <action>Provide a minimal in-scope completion package and list follow-up scope.</action>
+      <action>Return to coordinator for scope decision.</action>
+    </required_actions>
+  </scenario>
+
+  <scenario name="verification_failure">
+    <trigger>Compile/test verification fails for implemented scope.</trigger>
+    <required_actions>
+      <action>Do not mark checklist item complete.</action>
+      <action>Document failure symptoms and repro context in staging.</action>
+      <action>Attempt in-scope fixes; if unresolved, return blocked status to coordinator.</action>
+    </required_actions>
+  </scenario>
+</error_handling>

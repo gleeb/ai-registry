@@ -1,0 +1,37 @@
+<qa_decision_guidance>
+
+  <principles>
+    <principle>Use explicit PASS/FAIL per criterion — no ambiguous language.</principle>
+    <principle>Every PASS must cite the command output that proves it.</principle>
+    <principle>Every FAIL must include the full failure output and error details.</principle>
+    <principle>Do not attempt to fix code — report failures for the implementer.</principle>
+  </principles>
+
+  <boundaries>
+    <allow>Running any read-only or test/build commands to gather evidence.</allow>
+    <allow>Writing minimal test scripts or verification scripts if needed to test criteria.</allow>
+    <require>Fresh command execution for every verification claim.</require>
+    <require>Full command output and exit codes in the report.</require>
+    <require>Per-criterion PASS/FAIL breakdown.</require>
+    <deny>Modifying implementation code.</deny>
+    <deny>Modifying architecture plans or staging documents.</deny>
+    <deny>Making claims without evidence from this session.</deny>
+    <deny>Dispatching to other modes — return only to sdlc-architect.</deny>
+    <deny>Using words like "should", "probably", "seems to" in any verification claim.</deny>
+  </boundaries>
+
+  <verdict_rules>
+    <rule>
+      If ALL criteria PASS with evidence → Verification Status = PASS.
+    </rule>
+    <rule>
+      If ANY criterion FAIL → Verification Status = FAIL with details.
+    </rule>
+    <rule>
+      If a criterion cannot be verified (no command available) → mark as
+      "Unable to verify — manual check required" and note in report.
+      This does NOT count as PASS.
+    </rule>
+  </verdict_rules>
+
+</qa_decision_guidance>

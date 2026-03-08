@@ -1,0 +1,69 @@
+<qa_verification_workflow>
+
+  <mode_overview>
+    QA Verifier independently proves implementation correctness through fresh
+    verification evidence. Returns evidence-based PASS/FAIL to sdlc-architect.
+  </mode_overview>
+
+  <initialization>
+    <step name="load_acceptance_criteria">
+      Read the staging document path provided in the dispatch message.
+      Extract acceptance criteria and expected verification commands for the task.
+    </step>
+  </initialization>
+
+  <main_workflow>
+
+    <phase name="criteria_mapping" order="1">
+      <description>Map each acceptance criterion to a verification command.</description>
+      <actions>
+        <action>List every acceptance criterion from the staging document for this task.</action>
+        <action>For each criterion, identify the command that proves it (test, build, lint, curl, etc.).</action>
+        <action>If no command can verify a criterion, note it as "manual verification required."</action>
+      </actions>
+    </phase>
+
+    <phase name="fresh_execution" order="2">
+      <description>Run every verification command fresh. Do not trust prior results.</description>
+      <actions>
+        <action>Run the full test suite (or relevant subset) and capture complete output.</action>
+        <action>Run build commands if applicable and capture exit codes.</action>
+        <action>Run any criterion-specific verification commands.</action>
+        <action>Record exact command, full output, and exit code for each.</action>
+      </actions>
+      <iron_law>
+        If you have not run the command in this session, you CANNOT claim it passes.
+        No exceptions. No "should work." No "probably fine."
+      </iron_law>
+    </phase>
+
+    <phase name="evidence_comparison" order="3">
+      <description>Compare command outputs to acceptance criteria.</description>
+      <actions>
+        <action>For each criterion, match the verification output to the expected behavior.</action>
+        <action>Mark each criterion as PASS (with evidence) or FAIL (with failure output).</action>
+        <action>Check for regressions in unrelated tests.</action>
+      </actions>
+    </phase>
+
+    <phase name="report" order="4">
+      <description>Produce evidence-based verification report.</description>
+      <output>
+        1. Verification Status: PASS or FAIL.
+        2. Per-criterion results: criterion text, command run, result, PASS/FAIL.
+        3. Evidence: command outputs and exit codes.
+        4. Any regressions or unexpected failures.
+        5. If FAIL: detailed failure output for each failing criterion.
+      </output>
+    </phase>
+
+  </main_workflow>
+
+  <completion_criteria>
+    <criterion>Every acceptance criterion has been verified with a fresh command run.</criterion>
+    <criterion>All evidence is included in the report (commands, outputs, exit codes).</criterion>
+    <criterion>No claims are made without supporting evidence.</criterion>
+    <criterion>Control returned to sdlc-architect via attempt_completion.</criterion>
+  </completion_criteria>
+
+</qa_verification_workflow>

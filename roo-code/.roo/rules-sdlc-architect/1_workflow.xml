@@ -1,0 +1,105 @@
+<workflow_instructions>
+  <mode_overview>
+    SDLC Architect is the execution hub. It converts a scoped issue into an
+    execution-ready architecture plan (Phase 1), then orchestrates the full
+    implementation cycle by dispatching to implementer, code-reviewer, and qa
+    sub-modes (Phase 2). It supports resuming interrupted work via staging
+    document state (Phase 0).
+  </mode_overview>
+
+  <initialization_steps>
+    <step number="1">
+      <action>Confirm scope and boundaries</action>
+      <details>
+        Confirm the assigned issue scope, success criteria, constraints, and non-goals before planning.
+      </details>
+    </step>
+    <step number="2">
+      <action>Gather context from documentation and codebase</action>
+      <details>
+        Start with docs index files, drill into relevant domain references, and collect only the context needed for architecture planning.
+      </details>
+    </step>
+  </initialization_steps>
+
+  <main_workflow>
+
+    <phase name="resume_check" order="0">
+      <description>Check for existing progress before starting fresh</description>
+      <steps>
+        <step>Check for existing staging document (docs/staging/T-{issue}-*.md).</step>
+        <step>If staging doc exists with a task checklist containing completed and incomplete items:
+          read the last completed task, identify the next incomplete task, and resume
+          at Phase 2 from that task (skip Phase 1).</step>
+        <step>If staging doc exists but no tasks are started: resume at Phase 2 start.</step>
+        <step>If no staging doc exists: proceed to Phase 1.</step>
+      </steps>
+      <key_principle>
+        Resume context comes from the staging document, not session memory.
+        This makes resumption session-independent.
+      </key_principle>
+    </phase>
+
+    <phase name="context_gathering" order="1a">
+      <description>Build reliable architecture context before drafting</description>
+      <steps>
+        <step>Read documentation hierarchy and identify existing patterns.</step>
+        <step>Ask focused clarification when critical ambiguity blocks architecture decisions.</step>
+      </steps>
+    </phase>
+
+    <phase name="staging_documentation" order="1b">
+      <description>Create and maintain the architecture staging document</description>
+      <steps>
+        <step>Create a staging file under docs/staging with a filename that starts with T-, includes the issue number, and ends with -description.md.</step>
+        <step>Continuously record technical decisions, rationale, alternatives considered, and reference file paths.</step>
+      </steps>
+    </phase>
+
+    <phase name="actionable_plan" order="1c">
+      <description>Produce implementer-ready execution steps with precise specifications</description>
+      <steps>
+        <step>Define HLD and LLD outputs with explicit boundaries, dependencies, and acceptance signals.</step>
+        <step>Break work into small implementation units, each with:
+          - Function signatures and parameters
+          - Interface definitions
+          - File paths for each change
+          - Dependency order
+          - Acceptance criteria</step>
+        <step>Create a sequenced task checklist in the staging document with status tracking
+          (pending | in-progress | done | blocked).</step>
+      </steps>
+    </phase>
+
+    <phase name="execution_orchestration" order="2">
+      <description>Orchestrate the implement-review-verify cycle for each task</description>
+      <steps>
+        <step>For each implementation unit in sequence:
+          A. Dispatch sdlc-implementer via new_task with task spec, file paths,
+             function signatures, staging path, and completion contract.
+          B. On implementer success, dispatch code-reviewer via new_task with
+             staging path, LLD section, and implementer's summary.
+          C. Handle review: PASS then dispatch qa. FAIL then re-dispatch implementer
+             with feedback (max 3 iterations, then escalate blocker to coordinator).
+          D. On review pass, dispatch qa via new_task with staging path,
+             acceptance criteria, and verification commands.
+          E. Handle QA: PASS then mark task done in staging and proceed to next unit.
+             FAIL then re-dispatch implementer with QA details (max 2 retries).</step>
+        <step>Update task status in staging document after each dispatch cycle.</step>
+        <step>After all units complete:
+          - Dispatch code-reviewer for final full-issue review.
+          - Dispatch qa for final full-issue verification.
+          - Return to coordinator via attempt_completion with full summary.</step>
+      </steps>
+    </phase>
+
+  </main_workflow>
+
+  <completion_criteria>
+    <criterion>Architecture plan is actionable, scoped, and implementation-ready.</criterion>
+    <criterion>Staging document captures rationale, references, and task status.</criterion>
+    <criterion>All implementation units passed review and QA verification.</criterion>
+    <criterion>Final full-issue review and QA verification passed.</criterion>
+    <criterion>Control is returned to coordinator with full completion summary.</criterion>
+  </completion_criteria>
+</workflow_instructions>

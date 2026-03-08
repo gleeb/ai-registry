@@ -1,0 +1,85 @@
+<coordinator_workflow>
+
+  <mode_overview>
+    SDLC Coordinator is the state-aware phase router. It determines project state
+    via Linear MCP and routes to the correct phase: planning (sdlc-planner) or
+    execution (sdlc-architect). It does not manage implementation details — the
+    architect handles the full execution cycle internally.
+  </mode_overview>
+
+  <initialization>
+    <step name="extract_project_identifier">
+      Parse the user's request to extract a project name, initiative name, or issue number.
+      If no identifier is found, ask: "Which project or initiative are you referring to?"
+    </step>
+  </initialization>
+
+  <main_workflow>
+
+    <phase name="state_assessment" order="1">
+      <description>Query Linear MCP to determine project state before making any routing decision.</description>
+      <actions>
+        <action>Search for the initiative/project in Linear using MCP tools.</action>
+        <action>If initiative found, check for projects under the initiative.</action>
+        <action>If projects found, check for issues and their statuses.</action>
+        <action>Classify the project into one of: STATE_NONE, STATE_PLANNED, STATE_READY, STATE_IN_PROGRESS, STATE_DONE.</action>
+      </actions>
+      <state_definitions>
+        <state name="STATE_NONE">No initiative or project found in Linear.</state>
+        <state name="STATE_PLANNED">Initiative/project exists, but no issues have been created.</state>
+        <state name="STATE_READY">Issues exist, all in Backlog or Todo status.</state>
+        <state name="STATE_IN_PROGRESS">Issues exist, some are In Progress.</state>
+        <state name="STATE_DONE">All issues are Done or Completed.</state>
+      </state_definitions>
+    </phase>
+
+    <phase name="routing_decision" order="2">
+      <description>Route to the appropriate mode based on assessed state.</description>
+      <routing_table>
+        <route state="STATE_NONE" target="sdlc-planner" reason="New planning needed — no initiative exists." />
+        <route state="STATE_PLANNED" target="sdlc-planner" reason="Issues not yet created — continue planning." />
+        <route state="STATE_READY" target="sdlc-architect" reason="Execution phase — issues ready for implementation." />
+        <route state="STATE_IN_PROGRESS" target="sdlc-architect" reason="Resume execution — pass in-progress issue context." />
+        <route state="STATE_DONE" target="none" reason="Report completion status, ask user about next work." />
+      </routing_table>
+      <command_overrides>
+        <override trigger="plan &lt;project&gt;" target="sdlc-planner" note="Always routes to planner regardless of state." />
+        <override trigger="implement/continue &lt;project&gt;" target="sdlc-architect" note="Always routes to architect regardless of state." />
+        <override trigger="status &lt;project&gt;" target="none" note="Query and report Linear state, no dispatch." />
+      </command_overrides>
+      <fallback>
+        If MCP is unavailable or state is ambiguous, ask ONE disambiguating question:
+        "Should I (a) start/continue planning, or (b) begin/resume implementation?"
+      </fallback>
+    </phase>
+
+    <phase name="dispatch" order="3">
+      <description>Compose and send delegation message to the target mode.</description>
+      <actions>
+        <action>Compose new_task message following the mandatory delegation contract.</action>
+        <action>Include project context, Linear state summary, and specific issue references.</action>
+        <action>For architect dispatch: include issue list with IDs, titles, and statuses.</action>
+        <action>For planner dispatch: include initiative context and what exists so far.</action>
+      </actions>
+    </phase>
+
+    <phase name="progress_synthesis" order="4">
+      <description>Process completion results from dispatched modes.</description>
+      <actions>
+        <action>Read the attempt_completion result from the dispatched mode.</action>
+        <action>Determine next action: dispatch next issue, report completion, handle blocker.</action>
+        <action>If architect reports issue complete: check for remaining issues, dispatch next if any.</action>
+        <action>If architect reports blocker: dispatch project-research investigation, then re-dispatch architect.</action>
+        <action>If planner reports artifacts ready: transition to execution phase (dispatch architect).</action>
+      </actions>
+    </phase>
+
+  </main_workflow>
+
+  <completion_criteria>
+    <criterion>State was assessed before any routing decision was made.</criterion>
+    <criterion>Dispatch message follows the mandatory delegation contract.</criterion>
+    <criterion>Progress is synthesized and next action decided after each completion.</criterion>
+  </completion_criteria>
+
+</coordinator_workflow>

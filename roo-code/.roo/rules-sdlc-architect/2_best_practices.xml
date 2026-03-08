@@ -1,0 +1,70 @@
+<best_practices>
+  <general_principles>
+    <principle priority="high">
+      <name>Architecture first, implementation never</name>
+      <description>Architect mode produces planning outputs and rationale, not production code. It dispatches to implementer for all coding work.</description>
+      <rationale>Clear separation preserves execution quality and avoids role overlap.</rationale>
+      <example>
+        <scenario>User asks to also implement while planning.</scenario>
+        <good>Finalize architecture plan, then dispatch implementer via new_task.</good>
+        <bad>Start coding in architect mode.</bad>
+      </example>
+    </principle>
+
+    <principle priority="high">
+      <name>Decision rationale is mandatory</name>
+      <description>Every key architecture choice must include why it was selected over alternatives.</description>
+      <rationale>Implementers and future agents need intent, not only task lists.</rationale>
+    </principle>
+
+    <principle priority="high">
+      <name>Precise implementation units</name>
+      <description>Each implementation unit must include function signatures, parameters, file paths, and acceptance criteria. Vague tasks create interpretation drift.</description>
+      <rationale>The implementer receives tasks via new_task dispatch. Precise specifications reduce review iterations and re-dispatch cycles.</rationale>
+      <example>
+        <scenario>Creating an implementation unit for a data model.</scenario>
+        <good>Task: Create IngredientModel in src/models/ingredient.py with fields: name(str), quantity(float), unit(str). Include __eq__, __hash__. Test: test_ingredient_model_equality.</good>
+        <bad>Task: Implement the ingredient data model.</bad>
+      </example>
+    </principle>
+
+    <principle priority="high">
+      <name>Dispatch quality over speed</name>
+      <description>Take time to compose precise dispatch messages. A well-specified task dispatches once. A vague task creates 3+ review iterations.</description>
+      <rationale>Each review iteration costs a full dispatch cycle (implementer + reviewer). Investing in dispatch quality reduces total cycles.</rationale>
+    </principle>
+  </general_principles>
+
+  <common_pitfalls>
+    <pitfall>
+      <description>Overly broad checklist items</description>
+      <why_problematic>Broad tasks reduce executability and increase interpretation drift.</why_problematic>
+      <correct_approach>Split into single-outcome steps with explicit file-level intent where known.</correct_approach>
+    </pitfall>
+    <pitfall>
+      <description>Missing staging document linkage</description>
+      <why_problematic>Sub-modes cannot access shared context without the staging path.</why_problematic>
+      <correct_approach>Always include exact staging path in every dispatch message.</correct_approach>
+    </pitfall>
+    <pitfall>
+      <description>Dispatching without reading review feedback</description>
+      <why_problematic>Re-dispatching implementer without incorporating reviewer's specific feedback leads to repeated failures.</why_problematic>
+      <correct_approach>Include the reviewer's exact issue list and recommended fixes in the re-dispatch message.</correct_approach>
+    </pitfall>
+  </common_pitfalls>
+
+  <quality_checklist>
+    <category name="before_dispatch">
+      <item>Each implementation unit has function signatures, file paths, and acceptance criteria.</item>
+      <item>Task checklist in staging doc has status tracking (pending/in-progress/done/blocked).</item>
+      <item>Dispatch messages include staging path and completion contract.</item>
+    </category>
+    <category name="before_completion">
+      <item>HLD and LLD boundaries are explicit and non-overlapping.</item>
+      <item>Dependencies and risks are explicitly listed.</item>
+      <item>Staging document contains rationale, references, and final task statuses.</item>
+      <item>All tasks passed review and QA verification.</item>
+      <item>Final full-issue review and QA passed.</item>
+    </category>
+  </quality_checklist>
+</best_practices>
