@@ -33,9 +33,13 @@ The **AI Registry** solves this by storing all agent configurations in a single 
 │                                                      │
 │  cursor/        roo-code/     claude/     codex/     │
 │  ├─ .cursorrules ├─ .roomodes  ├─ CLAUDE.md ├─ AGENTS.md
-│  └─ .cursor/     └─ .clinerules              │       │
-│     └─ rules/                  common/       │       │
-│                                └─ *.md       │       │
+│  └─ .cursor/     ├─ .clinerules              │       │
+│     └─ rules/    └─ skills/ → ../common-skills/      │
+│                                                      │
+│  common-skills/                                      │
+│  ├─ scaffold-project/                                │
+│  ├─ architect-execution-hub/                         │
+│  └─ ...                                              │
 │  scripts/                                            │
 │  └─ setup-links.sh                                   │
 └───────────────┬─────────────────────────────────────-┘
@@ -57,18 +61,27 @@ ai-registry/
 │       └── rules/
 │           └── general.mdc     # Rule files (.mdc) for Cursor
 │
-├── roo-code/                   # Roo-Code configurations
-│   ├── .roomodes               # Custom modes/agents (JSON)
-│   └── .clinerules             # Global rules for Roo-Code
+├── roo-code/                   # Roo-Code configurations (symlinked as .roo/)
+│   ├── .roomodes               # Custom modes/agents (YAML)
+│   ├── .clinerules             # Global rules for Roo-Code
+│   ├── mcp.json                # MCP server configurations
+│   ├── rules-sdlc-*/           # Per-mode instruction files (XML)
+│   └── skills/ → ../common-skills/  # Symlink to shared skills
+│
+├── common-skills/              # Shared skills (symlinked as .skills/ and via .roo/skills/)
+│   ├── architect-execution-hub/
+│   ├── code-review/
+│   ├── prd-linear-planning/
+│   ├── scaffold-project/
+│   ├── react-native/
+│   ├── verification-before-completion/
+│   └── universal-skills.md
 │
 ├── claude/                     # Claude Code (CLI) configurations
 │   └── CLAUDE.md               # Project context read at session start
 │
 ├── codex/                      # Codex / Windsurf configurations
 │   └── AGENTS.md               # Agent behavior instructions
-│
-├── common/                     # Shared skills & documentation
-│   └── universal-skills.md     # Cross-provider agent capabilities
 │
 ├── scripts/                    # Automation
 │   └── setup-links.sh          # Symlink installer
@@ -108,6 +121,8 @@ The script will create symlinks for:
 | `cursor/.cursor/rules/`       | `.cursor/rules/`     |
 | `roo-code/.roomodes`          | `.roomodes`          |
 | `roo-code/.clinerules`        | `.clinerules`        |
+| `roo-code/`                   | `.roo/`              |
+| `common-skills/`              | `.skills/`           |
 | `claude/CLAUDE.md`            | `CLAUDE.md`          |
 | `codex/AGENTS.md`             | `AGENTS.md`          |
 
@@ -134,6 +149,8 @@ cat >> ~/.gitignore_global << 'EOF'
 .cursor/rules
 .roomodes
 .clinerules
+.roo
+.skills
 CLAUDE.md
 AGENTS.md
 EOF
@@ -163,7 +180,7 @@ From this point forward, Git will ignore these files in **every** repository on 
 | Provider     | Config Files                         | Docs |
 | ------------ | ------------------------------------ | ---- |
 | **Cursor**   | `.cursorrules`, `.cursor/rules/*.mdc`| [Cursor Docs](https://docs.cursor.com) |
-| **Roo-Code** | `.roomodes`, `.clinerules`           | [Roo-Code Docs](https://docs.roocode.com) |
+| **Roo-Code** | `.roomodes`, `.clinerules`, `.roo/`, `.skills/` | [Roo-Code Docs](https://docs.roocode.com) |
 | **Claude Code** | `CLAUDE.md`                       | [Claude Code Docs](https://docs.anthropic.com/en/docs/claude-code) |
 | **Codex / Windsurf** | `AGENTS.md`                 | — |
 
@@ -173,8 +190,8 @@ From this point forward, Git will ignore these files in **every** repository on 
 
 ### Adding a New Skill
 
-1. Create a Markdown file in `common/` (e.g., `common/database-migrations.md`).
-2. Follow the structure in `common/universal-skills.md` — clear headings, numbered steps, actionable guidance.
+1. Create a skill folder in `common-skills/` with a `SKILL.md` entry point (e.g., `common-skills/database-migrations/SKILL.md`).
+2. Follow the structure of existing skills — clear headings, numbered steps, actionable guidance. Use `references/` subdirectories for templates.
 3. Reference the skill from relevant provider configs if agents should load it automatically.
 
 ### Adding a New Agent / Mode

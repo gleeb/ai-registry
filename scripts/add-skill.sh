@@ -20,11 +20,11 @@ set -euo pipefail
 #   windsurf  → .windsurf/skills/<skill>
 #   all       → symlinks into every provider directory above
 #
-# The skill must exist as a folder under common/ in the registry.
+# The skill must exist as a folder under common-skills/ in the registry.
 # =============================================================================
 
 REGISTRY_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SKILLS_DIR="$REGISTRY_DIR/common"
+SKILLS_DIR="$REGISTRY_DIR/common-skills"
 
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -37,7 +37,7 @@ usage() {
   echo "Usage: $(basename "$0") <skill-name> <project-path> <provider>"
   echo ""
   echo "Arguments:"
-  echo "  skill-name     Name of the skill folder under common/ (e.g. scaffold-project)"
+  echo "  skill-name     Name of the skill folder under common-skills/ (e.g. scaffold-project)"
   echo "  project-path   Path to the target project root (use . for current directory)"
   echo "  provider       One of: cursor, claude, codex, roo, windsurf, all"
   echo ""

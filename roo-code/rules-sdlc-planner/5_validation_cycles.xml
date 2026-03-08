@@ -1,0 +1,147 @@
+<validation_cycles>
+  <overview>
+    Before a PRD can proceed to user story decomposition, it must pass validation across all 8 dimensions.
+    Each dimension receives a confidence score: low, medium, or high.
+    ALL 8 dimensions must reach "high" confidence before proceeding.
+    This gate is not advisory — it is blocking.
+  </overview>
+
+  <dimensions>
+    <dimension id="1" name="structure_completeness">
+      <description>All 14 required PRD sections are present and contain substantive content.</description>
+      <scoring>
+        <low>Sections are missing, or contain placeholder text (TBD, TODO, see later).</low>
+        <medium>All sections present but some lack depth or specificity.</medium>
+        <high>All 14 sections present with substantive, specific content — no placeholders.</high>
+      </scoring>
+      <probing_questions>
+        <question>Which sections still contain placeholder or generic content?</question>
+        <question>Could a new team member understand each section without asking clarifying questions?</question>
+      </probing_questions>
+    </dimension>
+
+    <dimension id="2" name="testability">
+      <description>Every acceptance criterion maps to a specific, automatable test condition.</description>
+      <scoring>
+        <low>Criteria use subjective or unmeasurable terms: "intuitive", "fast", "user-friendly", "clean".</low>
+        <medium>Most criteria are testable but one or more remain vague or threshold-less.</medium>
+        <high>Every criterion has an explicit, measurable threshold and an observable pass/fail condition.</high>
+      </scoring>
+      <probing_questions>
+        <question>For each criterion, can you write a test assertion right now? What is the exact condition?</question>
+        <question>What is the numeric threshold for performance criteria (load time, throughput, error rate)?</question>
+        <question>What defines "correct" output for LLM-generated or AI-powered features?</question>
+      </probing_questions>
+    </dimension>
+
+    <dimension id="3" name="consistency">
+      <description>No contradictions exist between sections; tensions are explicitly acknowledged and resolved.</description>
+      <scoring>
+        <low>Direct contradictions exist between sections (e.g., offline-first AND real-time sync required).</low>
+        <medium>Potential tensions exist that are not explicitly resolved.</medium>
+        <high>All sections align; any tensions are acknowledged with an explicit resolution rationale.</high>
+      </scoring>
+      <probing_questions>
+        <question>Does [requirement in section X] conflict with [requirement in section Y]? Which takes priority?</question>
+        <question>Is [term] defined consistently across all sections?</question>
+      </probing_questions>
+    </dimension>
+
+    <dimension id="4" name="security_privacy">
+      <description>Security and privacy considerations are addressed adequately for the product type and data handled.</description>
+      <scoring>
+        <low>No security or privacy section; sensitive data handling is undescribed.</low>
+        <medium>Basic security mentions exist but key concerns (credential storage, PII handling, threat model) are unaddressed.</medium>
+        <high>Sensitive data identified and handling strategy described; credential security addressed; privacy obligations acknowledged; key threats mitigated.</high>
+      </scoring>
+      <probing_questions>
+        <question>Where is [sensitive data / API key / PII] stored? What is the encryption strategy?</question>
+        <question>What is the threat model? What happens if an attacker gains access to [credential/token]?</question>
+        <question>Which data qualifies as PII under applicable regulations? How is it retained and deleted?</question>
+      </probing_questions>
+    </dimension>
+
+    <dimension id="5" name="clarity_precision">
+      <description>No subjective or ambiguous terms are used without an explicit definition or measurable proxy.</description>
+      <scoring>
+        <low>Multiple undefined subjective terms: "mature aesthetic", "feels fast", "user-friendly", "relevant results".</low>
+        <medium>Most terms defined but some subjective language remains without measurable proxy.</medium>
+        <high>All terms are either objectively defined or have an explicit measurable proxy agreed by the user.</high>
+      </scoring>
+      <probing_questions>
+        <question>What does "[subjective term]" mean specifically? Can you point to a reference product or give a measurable threshold?</question>
+        <question>How would two engineers independently interpret "[ambiguous phrase]"? Would they agree?</question>
+      </probing_questions>
+    </dimension>
+
+    <dimension id="6" name="technical_feasibility">
+      <description>Technology choices are viable for the stated requirements and justified with known trade-offs.</description>
+      <scoring>
+        <low>Technology choices are assumed without justification; known incompatibilities or risks are unaddressed.</low>
+        <medium>Choices are plausible but key trade-offs or compatibility risks are not documented.</medium>
+        <high>Each significant technology choice is justified, key trade-offs are acknowledged, and known risks are mitigated.</high>
+      </scoring>
+      <probing_questions>
+        <question>What evidence supports that [technology] can handle [requirement] at the expected scale or context?</question>
+        <question>What are the known trade-offs of choosing [technology] over alternatives?</question>
+        <question>Is there a known incompatibility between [technology A] and [technology B] in this context?</question>
+      </probing_questions>
+      <research_dispatch_trigger>When the planner cannot confidently assess technical feasibility, REQUIRE dispatching an sdlc-project-research agent before scoring this dimension.</research_dispatch_trigger>
+    </dimension>
+
+    <dimension id="7" name="scope_definition">
+      <description>In-scope and out-of-scope are explicit, exhaustive, and leave no gray areas.</description>
+      <scoring>
+        <low>Scope is implied or vague; no explicit out-of-scope list; boundary cases unaddressed.</low>
+        <medium>Core scope is defined but some boundary cases or edge behaviors are unaddressed.</medium>
+        <high>In-scope and out-of-scope are exhaustive; boundary behaviors are explicitly defined; no gray areas remain.</high>
+      </scoring>
+      <probing_questions>
+        <question>What happens when a user tries to do [out-of-scope item]? Is the behavior defined?</question>
+        <question>Are there any features that are "sort of in scope" but not explicitly called out?</question>
+        <question>What is the expected behavior at the boundary between [feature A] and [feature B]?</question>
+      </probing_questions>
+    </dimension>
+
+    <dimension id="8" name="downstream_readiness">
+      <description>Designers and developers have enough detail to begin work without requiring additional clarification sessions.</description>
+      <scoring>
+        <low>Key design or implementation decisions are deferred; navigation, data model, or UI flow is undefined.</low>
+        <medium>Most decisions are present but some key details (screen flow, data shape, API contract) are missing.</medium>
+        <high>All decisions needed to begin design and implementation are present; no blocking ambiguities remain.</high>
+      </scoring>
+      <probing_questions>
+        <question>What is the default screen when the app opens? Is the navigation flow defined?</question>
+        <question>What are the exact fields in the data model for [entity]?</question>
+        <question>Is there an API contract or data format defined for [integration point]?</question>
+      </probing_questions>
+    </dimension>
+  </dimensions>
+
+  <validation_process>
+    <step order="1">After a PRD draft is created or significantly updated, run self-assessment across all 8 dimensions.</step>
+    <step order="2">Present the scorecard table to the user, explicitly naming the key issue for each non-high dimension.</step>
+    <step order="3">For each low or medium dimension, present the targeted probing questions from that dimension's question bank.</step>
+    <step order="4">User provides answers. Update the PRD and re-score the affected dimensions.</step>
+    <step order="5">Repeat until all 8 dimensions reach "high".</step>
+    <step order="6">GATE: Do not proceed to user story decomposition until all 8 are "high".</step>
+    <step order="7">If the user explicitly overrides the gate, require written acknowledgment of risk per each non-high dimension before proceeding.</step>
+  </validation_process>
+
+  <scorecard_format>
+    Present as a markdown table after each validation run:
+
+    | # | Dimension | Confidence | Key Issue |
+    |---|-----------|-----------|-----------|
+    | 1 | Structure and Completeness | high/medium/low | [specific issue or "none"] |
+    | 2 | Testability | high/medium/low | [specific issue or "none"] |
+    | 3 | Consistency | high/medium/low | [specific issue or "none"] |
+    | 4 | Security and Privacy | high/medium/low | [specific issue or "none"] |
+    | 5 | Clarity and Precision | high/medium/low | [specific issue or "none"] |
+    | 6 | Technical Feasibility | high/medium/low | [specific issue or "none"] |
+    | 7 | Scope Definition | high/medium/low | [specific issue or "none"] |
+    | 8 | Downstream Readiness | high/medium/low | [specific issue or "none"] |
+
+    Follow with the targeted questions for each non-high dimension, grouped by dimension.
+  </scorecard_format>
+</validation_cycles>

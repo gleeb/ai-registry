@@ -101,6 +101,18 @@ create_link \
   || ((ERRORS++))
 
 create_link \
+  "$REGISTRY_DIR/roo-code" \
+  "$TARGET_DIR/.roo" \
+  ".roo/" \
+  || ((ERRORS++))
+
+create_link \
+  "$REGISTRY_DIR/common-skills" \
+  "$TARGET_DIR/.skills" \
+  ".skills/" \
+  || ((ERRORS++))
+
+create_link \
   "$REGISTRY_DIR/claude/CLAUDE.md" \
   "$TARGET_DIR/CLAUDE.md" \
   "CLAUDE.md" \
