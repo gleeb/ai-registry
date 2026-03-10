@@ -40,33 +40,39 @@ description: Canonical SDLC Planner skill for Linear planning where Initiative=P
    - REQUIRE User Story decomposition second using [`references/USER-STORY.md`](references/USER-STORY.md).
    - REQUIRE HLD issue shaping third using [`references/HLD.md`](references/HLD.md).
 
-4. **PRD validation gate (REQUIRE before decomposition)**
+4. **Pre-write PRD template compliance gate (REQUIRE before any Initiative write)**
+   - REQUIRE PRD headings match the 14-section template in [`references/PRD.md`](references/PRD.md) exactly (same section count, same canonical section names, same order).
+   - REQUIRE section numbering format to remain explicit (`1)` through `14)`) and present in Initiative body.
+   - DENY Initiative write when section names are renamed, merged, omitted, reordered, or replaced with custom structure.
+   - REQUIRE a quick compliance check output before write: `pass/fail` plus list of mismatches.
+
+5. **PRD validation gate (REQUIRE before decomposition)**
    - REQUIRE passing all 8 validation dimensions at "high" confidence before creating User Story Projects or HLD Issues.
    - DENY decomposition when any dimension is "low" or "medium" without explicit user risk acknowledgment.
    - See [`references/VALIDATION.md`](references/VALIDATION.md) for the full rubric, scoring criteria, and probing questions.
 
-5. **Cross-level validation gates (REQUIRE)**
+6. **Cross-level validation gates (REQUIRE)**
    - REQUIRE traceability links Initiative → Project → Issue.
    - REQUIRE overlap/conflict check across sibling Projects and sibling Issues.
    - REQUIRE measurable acceptance criteria at each level.
 
-6. **Apply sequence**
+7. **Apply sequence**
    - REQUIRE apply order: Initiative → Project (User Story) → Issue (HLD).
    - DENY out-of-order writes unless parent links already exist and are verified.
 
-7. **Communication and change-tracking gate (REQUIRE)**
+8. **Communication and change-tracking gate (REQUIRE)**
    - REQUIRE each meaningful change to be tracked through either:
      - Initiative/Project update body, or
      - HLD Issue comment thread.
    - REQUIRE the minimal contract from [`references/COMMUNICATION.md`](references/COMMUNICATION.md): what changed, why, impact, next action.
    - REQUIRE use of Resources for durable context links (specs, decision docs, references) when applicable.
 
-8. **MCP unavailable stop behavior**
+9. **MCP unavailable stop behavior**
    - DENY writes when MCP is unavailable or state fetch fails.
    - REQUIRE explicit blocker report with missing capability and impact.
    - ALLOW provisional local draft only when clearly marked `PROVISIONAL - NOT SYNCED TO LINEAR`.
 
-9. **Iteration close**
+10. **Iteration close**
    - REQUIRE compact per-iteration output contract (below).
 
 ## Output per iteration
@@ -89,3 +95,4 @@ description: Canonical SDLC Planner skill for Linear planning where Initiative=P
 - If Projects overlap, REQUIRE explicit boundary rewrite before creating/updating HLD Issues.
 - If HLD Issues are vague, REQUIRE rewrite to explicit outcome + testable acceptance criteria.
 - If PRD validation dimension is blocked on technical feasibility, DENY guessing — dispatch a research agent first.
+- If PRD shape drifts from the canonical 14-section template, DENY write and return a mismatch report before any further proposal.
