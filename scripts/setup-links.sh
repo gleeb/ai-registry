@@ -10,6 +10,8 @@ set -euo pipefail
 # Usage:
 #   ./setup-links.sh                  # Links into current directory
 #   ./setup-links.sh /path/to/project # Links into specified directory
+#   ./setup-links.sh --force          # Remove all registry symlinks, then recreate
+#   ./setup-links.sh --force /path    # Same, with explicit target
 #
 # Note for Windows users:
 #   This script uses POSIX symlinks (ln -s) and requires a Unix-like shell.
@@ -19,18 +21,64 @@ set -euo pipefail
 #       (requires Administrator privileges or Developer Mode enabled)
 # =============================================================================
 
+FORCE=false
+POSITIONAL=()
+for arg in "$@"; do
+  case "$arg" in
+    --force) FORCE=true ;;
+    *) POSITIONAL+=("$arg") ;;
+  esac
+done
+
 REGISTRY_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-TARGET_DIR="${1:-.}"
+TARGET_DIR="${POSITIONAL[0]:-.}"
 TARGET_DIR="$(cd "$TARGET_DIR" && pwd)"
 
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
+CYAN='\033[0;36m'
 NC='\033[0m'
 
-log_ok()   { echo -e "${GREEN}  [OK]${NC} $1"; }
-log_skip() { echo -e "${YELLOW}[SKIP]${NC} $1"; }
-log_fail() { echo -e "${RED}[FAIL]${NC} $1"; }
+log_ok()    { echo -e "  ${GREEN}[OK]${NC} $1"; }
+log_skip()  { echo -e "${YELLOW}[SKIP]${NC} $1"; }
+log_fail()  { echo -e "  ${RED}[FAIL]${NC} $1"; }
+log_clean() { echo -e " ${CYAN}[DEL]${NC} $1"; }
+
+# Remove all symlinks in TARGET_DIR that resolve into REGISTRY_DIR.
+# Walks one level deep + known nested paths. Handles stale links from
+# entries that were removed from the script (e.g. .cursorrules, .clinerules).
+clean_registry_links() {
+  local candidates=(
+    "$TARGET_DIR/.cursor/rules"
+    "$TARGET_DIR/.roomodes"
+    "$TARGET_DIR/.roo"
+    "$TARGET_DIR/CLAUDE.md"
+    "$TARGET_DIR/AGENTS.md"
+    # Legacy / previously created — cleaned up even if no longer in the script
+    "$TARGET_DIR/.cursorrules"
+    "$TARGET_DIR/.clinerules"
+    "$TARGET_DIR/.skills"
+  )
+
+  local removed=0
+  for candidate in "${candidates[@]}"; do
+    if [ -L "$candidate" ]; then
+      local target
+      target="$(readlink "$candidate")"
+      if [[ "$target" == "$REGISTRY_DIR"* ]]; then
+        rm "$candidate"
+        log_clean "$(basename "$candidate") (was → $target)"
+        ((removed++))
+      fi
+    fi
+  done
+
+  if [ "$removed" -eq 0 ]; then
+    echo "  (no stale registry links found)"
+  fi
+  echo ""
+}
 
 create_link() {
   local source="$1"
@@ -72,15 +120,15 @@ echo "AI Registry — Symlink Setup"
 echo "============================"
 echo "  Registry : $REGISTRY_DIR"
 echo "  Target   : $TARGET_DIR"
+echo "  Force    : $FORCE"
 echo ""
 
-ERRORS=0
+if [ "$FORCE" = true ]; then
+  echo "Cleaning existing registry links..."
+  clean_registry_links
+fi
 
-create_link \
-  "$REGISTRY_DIR/cursor/.cursorrules" \
-  "$TARGET_DIR/.cursorrules" \
-  ".cursorrules" \
-  || ((ERRORS++))
+ERRORS=0
 
 create_link \
   "$REGISTRY_DIR/cursor/.cursor/rules" \
@@ -95,21 +143,9 @@ create_link \
   || ((ERRORS++))
 
 create_link \
-  "$REGISTRY_DIR/roo-code/.clinerules" \
-  "$TARGET_DIR/.clinerules" \
-  ".clinerules" \
-  || ((ERRORS++))
-
-create_link \
   "$REGISTRY_DIR/roo-code" \
   "$TARGET_DIR/.roo" \
   ".roo/" \
-  || ((ERRORS++))
-
-create_link \
-  "$REGISTRY_DIR/common-skills" \
-  "$TARGET_DIR/.skills" \
-  ".skills/" \
   || ((ERRORS++))
 
 create_link \

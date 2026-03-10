@@ -10,3 +10,44 @@ alwaysApply: true
 - Prefer composition over inheritance.
 - Keep modules loosely coupled with well-defined interfaces.
 - When in doubt, optimize for readability over cleverness.
+
+## Language & Framework
+
+- Always use TypeScript over JavaScript. Enable `strict` mode in `tsconfig.json`.
+- Prefer functional components with hooks over class components in React.
+- Use `const` by default. Only use `let` when reassignment is necessary. Never use `var`.
+
+## Code Style
+
+- Use named exports over default exports for better refactoring support.
+- Prefer early returns to reduce nesting depth.
+- Keep functions under 40 lines. Extract helpers when complexity grows.
+- Use descriptive variable names — avoid single-letter names outside of loop iterators.
+
+## Type Safety
+
+- Avoid `any`. Use `unknown` when the type is genuinely not known, then narrow with type guards.
+- Define explicit return types on public functions and API boundaries.
+- Use discriminated unions over optional fields when modeling state.
+
+## Error Handling
+
+- Use `Result<T, E>` patterns or explicit error returns over thrown exceptions where feasible.
+- Always handle promise rejections — no dangling `.catch()`-less chains.
+
+## Testing
+
+- Colocate test files next to source files (`Component.test.tsx` alongside `Component.tsx`).
+- Test behavior, not implementation details.
+- Prefer integration tests over unit tests for API routes and data flows.
+
+## Performance
+
+- Memoize expensive computations with `useMemo` / `useCallback` only when profiling shows a need.
+- Lazy-load routes and heavy components with `React.lazy()` or dynamic `import()`.
+
+## Security
+
+- Never commit secrets, tokens, or credentials.
+- Sanitize all user-supplied input before rendering or database insertion.
+- Use parameterized queries — never interpolate values into SQL strings.

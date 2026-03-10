@@ -32,9 +32,9 @@ The **AI Registry** solves this by storing all agent configurations in a single 
 │                   AI Registry (this repo)            │
 │                                                      │
 │  cursor/        roo-code/     claude/     codex/     │
-│  ├─ .cursorrules ├─ .roomodes  ├─ CLAUDE.md ├─ AGENTS.md
-│  └─ .cursor/     ├─ .clinerules              │       │
-│     └─ rules/    └─ skills/ → ../common-skills/      │
+│  └─ .cursor/     ├─ .roomodes  ├─ CLAUDE.md ├─ AGENTS.md
+│     └─ rules/    ├─ rules-sdlc-*/            │       │
+│                  └─ skills/ → ../common-skills/      │
 │                                                      │
 │  common-skills/                                      │
 │  ├─ scaffold-project/                                │
@@ -56,19 +56,17 @@ The **AI Registry** solves this by storing all agent configurations in a single 
 ```
 ai-registry/
 ├── cursor/                     # Cursor IDE configurations
-│   ├── .cursorrules            # Global coding standards
 │   └── .cursor/
 │       └── rules/
 │           └── general.mdc     # Rule files (.mdc) for Cursor
 │
 ├── roo-code/                   # Roo-Code configurations (symlinked as .roo/)
 │   ├── .roomodes               # Custom modes/agents (YAML)
-│   ├── .clinerules             # Global rules for Roo-Code
 │   ├── mcp.json                # MCP server configurations
 │   ├── rules-sdlc-*/           # Per-mode instruction files (XML)
 │   └── skills/ → ../common-skills/  # Symlink to shared skills
 │
-├── common-skills/              # Shared skills (symlinked as .skills/ and via .roo/skills/)
+├── common-skills/              # Shared skills (accessible via .roo/skills/)
 │   ├── architect-execution-hub/
 │   ├── code-review/
 │   ├── prd-linear-planning/
@@ -113,16 +111,19 @@ Or specify a target directory explicitly:
 ~/ai-registry/scripts/setup-links.sh /path/to/my-project
 ```
 
+To clean up stale links and recreate everything from scratch:
+
+```bash
+~/ai-registry/scripts/setup-links.sh --force
+```
+
 The script will create symlinks for:
 
 | Source (Registry)              | Link (Project)       |
 | ------------------------------ | -------------------- |
-| `cursor/.cursorrules`          | `.cursorrules`       |
 | `cursor/.cursor/rules/`       | `.cursor/rules/`     |
 | `roo-code/.roomodes`          | `.roomodes`          |
-| `roo-code/.clinerules`        | `.clinerules`        |
 | `roo-code/`                   | `.roo/`              |
-| `common-skills/`              | `.skills/`           |
 | `claude/CLAUDE.md`            | `CLAUDE.md`          |
 | `codex/AGENTS.md`             | `AGENTS.md`          |
 
@@ -145,12 +146,9 @@ cat >> ~/.gitignore_global << 'EOF'
 # ===========================================
 # AI Registry — Symlinked Configuration Files
 # ===========================================
-.cursorrules
 .cursor/rules
 .roomodes
-.clinerules
 .roo
-.skills
 CLAUDE.md
 AGENTS.md
 EOF
@@ -171,7 +169,7 @@ git config --global core.excludesfile
 
 From this point forward, Git will ignore these files in **every** repository on your machine, regardless of whether the project has its own `.gitignore`.
 
-> **Tip**: If a project already tracks one of these files (e.g., a committed `.cursorrules`), the global ignore will not apply. You'll need to `git rm --cached .cursorrules` first to untrack it.
+> **Tip**: If a project already tracks one of these files, the global ignore will not apply. You'll need to `git rm --cached <file>` first to untrack it.
 
 ---
 
@@ -179,8 +177,8 @@ From this point forward, Git will ignore these files in **every** repository on 
 
 | Provider     | Config Files                         | Docs |
 | ------------ | ------------------------------------ | ---- |
-| **Cursor**   | `.cursorrules`, `.cursor/rules/*.mdc`| [Cursor Docs](https://docs.cursor.com) |
-| **Roo-Code** | `.roomodes`, `.clinerules`, `.roo/`, `.skills/` | [Roo-Code Docs](https://docs.roocode.com) |
+| **Cursor**   | `.cursor/rules/*.mdc`                | [Cursor Docs](https://docs.cursor.com) |
+| **Roo-Code** | `.roomodes`, `.roo/`                 | [Roo-Code Docs](https://docs.roocode.com) |
 | **Claude Code** | `CLAUDE.md`                       | [Claude Code Docs](https://docs.anthropic.com/en/docs/claude-code) |
 | **Codex / Windsurf** | `AGENTS.md`                 | — |
 
