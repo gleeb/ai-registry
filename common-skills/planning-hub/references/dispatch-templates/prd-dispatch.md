@@ -25,6 +25,9 @@ REQUIREMENTS FROM HIGHER DIMENSIONS:
 - [User's stated goals and constraints]
 - [Any organizational or business requirements]
 
+SHARED SPARRING RULES:
+Read and apply common-skills/planning-hub/references/shared-sparring-rules.md for all interactions.
+
 OUTPUT:
 - Write the validated PRD to plan/prd.md
 

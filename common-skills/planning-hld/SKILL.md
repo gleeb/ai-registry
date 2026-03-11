@@ -1,25 +1,26 @@
 ---
 name: planning-hld
-description: HLD specialist agent skill. Produces High-Level Design documents and User Story decomposition from validated PRD and System Architecture inputs. Defines component-level design, acceptance criteria, and traceability chains. Writes to plan/hld.md and plan/user-stories/. Operates independently of any SaaS system.
+description: Per-story HLD specialist agent. Use when the Planning Hub dispatches HLD work for a specific user story in Phase 3. Produces a high-level design scoped to a single user story, defining component structure, data flows, integration points, and technology choices. Reads story.md, system-architecture.md, and consumed contracts. Writes to plan/user-stories/US-NNN-name/hld.md.
 ---
 
-# Planning HLD
+# Planning HLD (Per-Story)
 
 ## When to use
-- Use when decomposing a validated PRD into high-level design and user stories.
-- Use when updating or revising existing HLD and user stories in `plan/`.
-- Use when the Planning Hub dispatches HLD work.
+- Use when the Planning Hub dispatches HLD work for a specific user story (`sdlc-planner-hld`).
+- Use when updating or revising an existing per-story HLD.
 
 ## When NOT to use
-- DENY use before the PRD passes all 8 validation dimensions — the PRD must be validated first.
-- DENY use for LLD generation — LLDs are created by the sdlc-architect during execution.
+- DENY use before the story's `story.md` and system architecture are validated.
+- DENY use for story decomposition — the Story Decomposer agent handles that.
+- DENY use for LLD generation — LLDs are created by the `sdlc-architect` during execution.
+- DENY use for modifying other stories' HLD files.
 - DENY use for implementation work.
-- DENY use for SaaS synchronization — use the appropriate sync skill.
 
 ## Inputs required
-1. Validated `plan/prd.md`.
-2. `plan/system-architecture.md` (system topology and component boundaries).
-3. `plan/security.md` (if available, for security-informed design).
+1. `plan/user-stories/US-NNN-name/story.md` — scope, acceptance criteria, dependency manifest.
+2. `plan/system-architecture.md` — component boundaries, technology stack.
+3. Consumed contracts from `plan/contracts/` (listed in story's dependency manifest).
+4. `plan/prd.md` — for traceability back to requirements.
 
 ## Contract terms
 - **REQUIRE**: mandatory condition that must be satisfied.
@@ -29,79 +30,76 @@ description: HLD specialist agent skill. Produces High-Level Design documents an
 ## Workflow
 
 ### Phase 1: Context Gathering
-1. Read `plan/prd.md` — extract user story groups (section 7), constraints, and NFRs.
-2. Read `plan/system-architecture.md` — extract component boundaries, integration patterns, technology stack.
-3. Read `plan/security.md` if available — extract security requirements that affect design.
-4. Identify the scope: full decomposition (greenfield) or targeted update (incremental).
 
-### Phase 2: User Story Decomposition
-1. ALWAYS create a "Project Scaffolding and Environment Setup" user story as the first story (`US-001-scaffolding.md`). This covers:
-   - Repository initialization and project structure
-   - Package manager and dependency setup
-   - Linting, formatting, and CI configuration
-   - Documentation tree (`docs/`) scaffolding
-   - Development environment verification
-2. Derive remaining user stories from the user story groups in PRD section 7.
-3. Use the user story template from [`references/USER-STORY.md`](references/USER-STORY.md).
-4. For each user story:
-   - Define scope boundaries.
-   - Write testable acceptance criteria (Given/When/Then or explicit bullet checks).
-   - Include error cases and edge behaviors.
-   - Map to parent PRD section.
-5. Check for sibling overlap across user stories.
-6. Write user stories to `plan/user-stories/US-NNN-[name].md`.
+1. Read the story's `story.md` — extract scope, acceptance criteria, and dependency manifest.
+2. Read `plan/system-architecture.md` — extract components referenced in the story's `architecture_components`.
+3. Read consumed contracts from `plan/contracts/` — understand shared interfaces this story depends on.
+4. Read `plan/prd.md` sections referenced in the story's `prd_sections` — for traceability.
+5. Confirm scope: is this initial design or a revision based on validation feedback?
 
-### Phase 3: High-Level Design
-1. For each major component or feature area, produce an HLD section.
-2. Use the HLD template from [`references/HLD.md`](references/HLD.md).
-3. Each HLD section must include:
-   - Outcome statement.
-   - Parent linkage (to user story and PRD).
+### Phase 2: Component Design
+
+1. For each architecture component this story touches, define:
+   - Component responsibilities within this story's scope.
+   - Internal module structure (if the component is complex enough).
+   - Data flow within and between components.
+   - Integration points with other stories (via contracts).
+2. Use consumed contract definitions as authoritative — do not redefine shared interfaces.
+3. If the story provides contracts, ensure the design supports the contract definition.
+4. Technology choices must align with `plan/system-architecture.md`.
+
+### Phase 3: Design Documentation
+
+1. Use the template from [`references/HLD.md`](references/HLD.md).
+2. For each major design unit:
+   - Outcome statement (what is observable when done).
+   - Parent linkage (story ID, PRD sections).
    - Scope (in and out).
    - High-level design (architecture approach, key interfaces, data contracts).
-   - Acceptance criteria (testable, observable).
-   - Dependencies and blockers.
-4. Verify traceability: each HLD section traces to a user story which traces to the PRD.
-5. Check for sibling overlap across HLD sections.
-6. Write the HLD to `plan/hld.md`.
+   - Acceptance criteria mapping (which story ACs this design unit addresses).
+   - Dependencies (on contracts, other story artifacts, external systems).
+3. Verify every story acceptance criterion is addressed by at least one design unit.
+4. Check that no design unit is out-of-scope for this story.
 
 ### Phase 4: Review with User
-1. Present the decomposition summary to the user.
-2. Spar on each user story and HLD section:
-   - Challenge scope boundaries.
-   - Probe acceptance criteria for testability.
-   - Verify no gaps in PRD coverage.
+
+1. Present the per-story HLD draft.
+2. Apply sparring protocol — challenge component boundaries, probe integration points, verify traceability.
 3. Iterate until the user approves.
 
 ### Phase 5: Completion
-1. Write final versions of `plan/hld.md` and `plan/user-stories/*.md`.
+
+1. Write the final HLD to `plan/user-stories/US-NNN-name/hld.md`.
 2. Return completion summary to the Planning Hub.
 
 ## Sparring Protocol
-- Challenge every scope boundary: "Where exactly does this user story end and the next begin?"
-- Probe acceptance criteria: "Can you write a test for this right now?"
-- Check for hidden dependencies: "Does this user story assume something from another story is already done?"
-- Verify traceability: "Which PRD requirement does this HLD section satisfy?"
-- Look for gaps: "Is there a PRD requirement that no user story addresses?"
-- Check sizing: "Is this HLD section small enough for one focused implementation cycle?"
+
+- "Does this component do too much for one story? Should part of it move to another story?"
+- "How does this integrate with the {contract} contract? Are the interface assumptions correct?"
+- "Which acceptance criterion does this design unit satisfy? Show me the trace."
+- "What happens at the boundary between this story's components and the next story's?"
+- "Is this technology choice consistent with the architecture? What's the rationale?"
+- "Where are the error paths? What happens when {integration point} fails?"
 
 ## Anti-Pleasing Patterns
-- **Scope creep acceptance**: Challenge any HLD section that tries to cover too much.
+
+- **Scope creep**: Challenge any design that goes beyond the story's acceptance criteria.
 - **Vague acceptance criteria**: DENY "it should work correctly" — demand specific observable conditions.
-- **Missing error cases**: Always ask about error handling and boundary conditions.
-- **Assumed dependencies**: Make all dependencies explicit.
-- **Gap glossing**: If a PRD requirement has no corresponding HLD section, flag it immediately.
+- **Contract violations**: If the design contradicts a consumed contract, flag immediately.
+- **Missing error cases**: Always ask about error handling at integration points.
+- **Over-design**: HLD is high-level. Push back on function signatures or implementation details.
 
 ## Output
-- `plan/hld.md` — the High-Level Design document.
-- `plan/user-stories/US-NNN-[name].md` — individual user story files.
+
+- `plan/user-stories/US-NNN-name/hld.md` — the per-story High-Level Design.
 
 ## Files
+
 - [`references/HLD.md`](references/HLD.md): HLD section template and quality checklist.
-- [`references/USER-STORY.md`](references/USER-STORY.md): User Story template and decomposition rules.
 
 ## Troubleshooting
-- If PRD is not validated, DENY HLD work and report the blocker to the Planning Hub.
-- If architecture is missing, DENY HLD work and report the blocker.
-- If an HLD section is too broad for one implementation cycle, split it.
-- If user stories overlap, require explicit boundary rewrite before proceeding.
+
+- If story.md is incomplete, report the blocker to the Planning Hub.
+- If architecture components referenced by the story don't exist, flag for the Architecture agent.
+- If a consumed contract is missing or incomplete, flag for the Story Decomposer.
+- If the design conflicts with sibling stories' designs (via contracts), escalate to the Hub.

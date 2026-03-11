@@ -2,84 +2,108 @@
 
 ## Overview
 
-This reference defines the specific consistency checks to run between sibling plan documents. These checks detect contradictions, misalignments, and gaps where two or more documents make incompatible decisions.
+This reference defines consistency checks between plan documents. In the per-story architecture, checks run at two levels: within a story's artifacts and across stories.
 
-## Check Categories
+## Validation Posture
 
-### 1. Technology Stack Alignment
+Default to NEEDS WORK. For each check:
+1. State what was checked.
+2. State what evidence was examined (specific sections, field values).
+3. State the finding.
 
-**Documents**: Architecture, HLD, API Design, DevOps, Data Architecture
+Do NOT mark a check as PASS without examining the actual content. "References exist" is insufficient — verify the content matches.
 
-| Check | What to verify |
-|---|---|
-| Language consistency | Same backend language in Architecture and HLD component specs |
-| Framework consistency | Framework choice in Architecture matches HLD implementation approach |
-| Database consistency | DB technology in Architecture matches Data Architecture choice |
-| API protocol consistency | API style in Architecture (REST/gRPC/GraphQL) matches API Design spec |
-| Runtime consistency | Runtime in Architecture matches DevOps container/deployment config |
-| Dependency consistency | Libraries/SDKs consistent across documents |
+## Per-Story Consistency Checks
 
-### 2. Data Model Consistency
-
-**Documents**: HLD, API Design, Data Architecture
+### 1. HLD-API Alignment
+**Artifacts**: hld.md, api.md within same story folder.
 
 | Check | What to verify |
 |---|---|
-| Entity names | Same entities use same names across documents |
-| Field definitions | Field names and types in API schemas match Data Architecture schemas |
-| Relationship cardinality | Relationships described in HLD match Data Architecture ERD |
-| Data flows | Data flow in HLD matches API request/response contracts |
+| Component → endpoint mapping | Every HLD component that exposes functionality has API endpoints |
+| Data flow → schema | Data flows in HLD match API request/response schemas |
+| Error handling | HLD failure modes have corresponding API error codes |
 
-### 3. Security Alignment
-
-**Documents**: Security, Architecture, API Design, DevOps
+### 2. HLD-Data Alignment
+**Artifacts**: hld.md, data.md within same story folder.
 
 | Check | What to verify |
 |---|---|
-| Auth approach | Authentication method in Security matches API Design auth spec |
-| Encryption | Encryption requirements in Security reflected in Architecture and DevOps |
-| Secret management | Secret handling in Security matches DevOps secrets approach |
-| Access control | Authorization model in Security matches API Design per-endpoint auth |
-| Data protection | Data classification in Security matches Data Architecture handling |
-| Network security | Network restrictions in Security reflected in DevOps infrastructure |
+| Entity coverage | Every data entity in HLD has a schema in data.md |
+| Relationship consistency | Entity relationships in HLD match data.md cardinality |
+| Lifecycle coverage | Data lifecycle in HLD matches data.md create/update/delete patterns |
 
-### 4. Performance Targets
-
-**Documents**: PRD, Architecture, API Design, Testing Strategy
+### 3. API-Data Alignment
+**Artifacts**: api.md, data.md within same story folder.
 
 | Check | What to verify |
 |---|---|
-| Latency targets | PRD performance NFRs match Architecture capacity planning |
-| Rate limits | API Design rate limits consistent with Architecture scalability |
-| Load targets | Architecture load projections match Testing Strategy performance tests |
-| Caching alignment | Architecture caching strategy consistent with Data Architecture caching |
+| Schema field alignment | API request/response fields match data.md entity fields |
+| Query pattern support | API list/filter endpoints have corresponding indexes in data.md |
+| Data type consistency | Field types match (e.g., string in API = varchar in data) |
 
-### 5. Environment Requirements
-
-**Documents**: DevOps, Testing Strategy
+### 4. Security-API Alignment
+**Artifacts**: security.md, api.md within same story folder.
 
 | Check | What to verify |
 |---|---|
-| Test environments | Testing Strategy test env requirements match DevOps environment inventory |
-| CI/CD integration | Testing Strategy QA gates match DevOps pipeline stages |
-| Data requirements | Testing Strategy test data needs match DevOps environment provisioning |
+| Auth per endpoint | Every API endpoint has auth requirements matching security.md |
+| Rate limiting | Rate limits in security.md reflected in api.md |
+| Input validation | Input validation rules in security.md reflected in api.md |
 
-### 6. User Flow Coverage
-
-**Documents**: PRD, HLD, Design
+### 5. Contract Compliance
+**Artifacts**: story artifacts vs consumed contracts.
 
 | Check | What to verify |
 |---|---|
-| Screen coverage | Every user story with UI has a corresponding design mockup |
-| Flow completeness | User flows in PRD are fully represented in Design screen inventory |
-| Error states | Error states in HLD acceptance criteria have corresponding design mockups |
-| Responsive design | If PRD specifies responsive, Design includes breakpoint mockups |
+| Schema match | Consumed contract definitions used exactly in story artifacts |
+| No local redefinition | Story does not redefine a consumed contract's fields differently |
+| Invariant respect | Contract invariants not violated by story's design |
+
+## Cross-Story Consistency Checks
+
+### 6. Technology Stack Alignment
+**Artifacts**: All per-story hld.md vs system-architecture.md.
+
+| Check | What to verify |
+|---|---|
+| Language consistency | All stories use the same backend language as architecture |
+| Framework consistency | Framework choices match architecture |
+| Database consistency | Database technology matches architecture and data decisions |
+
+### 7. Contract Provider-Consumer Alignment
+**Artifacts**: plan/contracts/*.md vs all story artifacts.
+
+| Check | What to verify |
+|---|---|
+| Provider completeness | Contract file is complete enough for consumers |
+| Consumer compliance | All consumers use the contract as defined |
+| No conflicting extensions | If consumers extend contracts, extensions don't conflict |
+
+### 8. Cross-Cutting Coverage
+**Artifacts**: cross-cutting/* vs per-story artifacts.
+
+| Check | What to verify |
+|---|---|
+| Security rollup | security-overview.md covers all per-story security.md controls |
+| Testing coverage | testing-strategy.md maps all acceptance criteria to test types |
+| DevOps coverage | devops.md covers all services from per-story hld.md files |
+
+### 9. Dependency Graph Integrity
+**Artifacts**: All story.md dependency manifests.
+
+| Check | What to verify |
+|---|---|
+| No circular dependencies | No cycles in depends_on_stories graph |
+| Execution order consistency | No story ordered before its dependencies |
+| Contract ownership | Every contract has exactly one owner story |
+| No orphan contracts | Every contract has at least one consumer |
 
 ## Severity Classification
 
 | Severity | Definition | Action |
 |---|---|---|
-| **CONFLICT** | Two documents make directly contradictory decisions | MUST resolve before proceeding |
-| **TENSION** | Two documents make potentially incompatible decisions | SHOULD resolve or explicitly acknowledge |
-| **GAP** | A decision in one document has no counterpart in another | MAY be acceptable if documented |
-| **DRIFT** | Same concept uses different terminology across documents | SHOULD align terminology |
+| **CONFLICT** | Two artifacts make directly contradictory decisions | MUST resolve before proceeding |
+| **TENSION** | Two artifacts make potentially incompatible decisions | SHOULD resolve or acknowledge |
+| **GAP** | A decision in one artifact has no counterpart in another | MAY be acceptable if documented |
+| **DRIFT** | Same concept uses different terminology | SHOULD align terminology |

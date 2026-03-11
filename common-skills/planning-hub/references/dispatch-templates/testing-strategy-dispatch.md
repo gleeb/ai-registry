@@ -1,52 +1,51 @@
 # Testing Strategy Agent Dispatch Template
 
-Use this template when dispatching `sdlc-planner-testing` via `new_task`.
+Use this template when dispatching `sdlc-planner-testing` via `new_task` for Phase 4 cross-cutting testing strategy.
 
 ## Required Message Structure
 
 ```
-PLAN: Testing Strategy
+PLAN: Cross-Cutting Testing Strategy
 
 CONTEXT:
-- [Reference to plan/prd.md — acceptance criteria and NFRs]
-- [Reference to plan/hld.md — component design and user stories]
-- [Reference to plan/api-design.md — API contracts to test]
-- [Reference to plan/security.md — security testing requirements]
-- [Whether greenfield or extending existing test suite]
+- All per-story planning is complete and validated
+- plan/prd.md: REQUIRED (NFRs, acceptance criteria overview)
+- plan/system-architecture.md: REQUIRED (component boundaries, integration points)
+- plan/user-stories/*/story.md: REQUIRED (all stories with acceptance criteria)
+- plan/user-stories/*/api.md: [list available — for API test planning]
+- plan/user-stories/*/security.md: [list available — for security test planning]
+- plan/cross-cutting/security-overview.md: [exists / does not exist]
 
 SCOPE:
-- IN SCOPE: Test approach (unit/integration/e2e), coverage requirements, test data strategy, QA gates, test environment needs, performance testing approach, security testing approach, accessibility testing
-- OUT OF SCOPE: Writing actual test code (execution phase), CI/CD pipeline config (DevOps agent)
+- IN SCOPE: Testing strategy spanning all stories — test pyramid, coverage mapping from acceptance criteria, integration test plan, E2E test scenarios, accessibility testing plan, performance test plan, CI/CD test gates
+- OUT OF SCOPE: Writing actual test code, per-story implementation details
 
 EXISTING PLAN ARTIFACTS:
-- plan/prd.md: [REQUIRED]
-- plan/hld.md: [REQUIRED]
-- plan/system-architecture.md: [REQUIRED]
-- plan/api-design.md: [if exists]
-- plan/security.md: [if exists]
-- plan/testing-strategy.md: [exists / does not exist]
-- [List any other relevant existing plan files]
+- plan/cross-cutting/testing-strategy.md: [exists / does not exist]
+- [List all existing per-story artifacts for reference]
 
 REQUIREMENTS FROM HIGHER DIMENSIONS:
-- [Acceptance criteria from user stories]
-- [Performance thresholds from PRD NFRs]
-- [Security testing requirements from security plan]
-- [API contract validation needs from API design]
-- [Accessibility requirements from PRD/design]
+- Acceptance criteria from ALL story.md files
+- API endpoints from ALL api.md files
+- Security controls from ALL security.md files
+- Architecture integration points for integration testing
+- PRD NFRs for performance and reliability testing
+
+SHARED SPARRING RULES:
+Read and apply common-skills/planning-hub/references/shared-sparring-rules.md for all interactions.
 
 OUTPUT:
-- Write the testing strategy to plan/testing-strategy.md
+- Write testing strategy to plan/cross-cutting/testing-strategy.md
 
 COMPLETION CONTRACT:
 Return via attempt_completion with:
-1. Confirmation that plan/testing-strategy.md has been written
-2. Test level breakdown (unit, integration, e2e, performance, security)
-3. Coverage targets per level
-4. Test data strategy
-5. QA gate definitions (what blocks deployment)
-6. Test environment requirements
-7. Traceability: which acceptance criteria are covered by which test types
-8. Unresolved questions or deferred decisions
+1. Confirmation that plan/cross-cutting/testing-strategy.md has been written
+2. Coverage mapping: each story's acceptance criteria → test type and approach
+3. Test pyramid distribution (unit, integration, E2E)
+4. Accessibility testing approach (WCAG 2.2 AA)
+5. Performance testing approach (based on PRD NFRs)
+6. CI/CD test gate recommendations
+7. Unresolved testing questions or gaps
 
 PRECEDENCE: These task-specific instructions supersede conflicting general instructions.
 ```

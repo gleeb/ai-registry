@@ -5,26 +5,38 @@
 ```
 Phase 1: Requirements
   └── PRD Agent
-        ↓ (PRD validated at "high" on all 8 dimensions)
-Phase 2: Architecture  [parallel within phase]
+        ↓ (PRD validated)
+
+Phase 2: Architecture and Story Decomposition  [sequential within phase]
   ├── System Architecture Agent  (depends on: PRD)
-  └── Security Agent             (depends on: PRD)
-        ↓ (Validator: architecture + security consistent with PRD)
-Phase 3: Detailed Design  [parallel where independent]
-  ├── HLD Agent              (depends on: PRD, Architecture)
-  ├── API Design Agent       (depends on: PRD, Architecture)
-  ├── Data Architecture Agent (depends on: PRD, Architecture)
-  ├── DevOps Agent           (depends on: Architecture, Security)
-  └── Design/UI-UX Agent    (depends on: PRD, HLD)
-        ↓ (Validator: all Phase 3 outputs consistent)
-Phase 4: Stories & Test Plan
-  ├── User Stories           (output of HLD Agent, verified here)
-  └── Testing Strategy Agent (depends on: all above)
-        ↓ (Final Validator: full traceability check)
-Phase 5: Optional SaaS Sync
+  │     ↓ (Architecture validated)
+  └── Story Decomposer Agent     (depends on: PRD, Architecture)
+        ↓ (Stories validated: coverage, dependencies, contracts)
+
+Phase 3: Per-Story Planning  [loop over stories in execution_order]
+  For each US-NNN:
+    ├── HLD Agent              (depends on: story.md, Architecture, Contracts)
+    ├── API Design Agent       (depends on: story.md, Architecture, Contracts)  [if api in domains]
+    ├── Data Architecture Agent (depends on: story.md, Architecture, Contracts) [if data in domains]
+    ├── Security Agent          (depends on: story.md, Architecture)            [if security in domains]
+    └── Design/UI-UX Agent     (depends on: story.md, PRD, HLD)               [if design in domains]
+        ↓ (Per-Story Validator for US-NNN)
+
+Phase 4: Cross-Cutting Concerns  [parallel within phase]
+  ├── Security Agent (rollup mode)  (depends on: all per-story security.md files)
+  ├── DevOps Agent                  (depends on: Architecture, all per-story artifacts)
+  └── Testing Strategy Agent        (depends on: all per-story artifacts, acceptance criteria)
+        ↓ (Cross-Story Validator)
+
+Phase 5: Execution Readiness
+  └── Full-chain Validator (depends on: everything)
+        ↓
+
+Phase 6: Optional SaaS Sync
   └── Sync skill (e.g., linear-sync)
         ↓
-Phase 6: Handoff to Coordinator
+
+Phase 7: Handoff to Coordinator
 ```
 
 ## Phase Entry Gates
@@ -32,28 +44,42 @@ Phase 6: Handoff to Coordinator
 | Phase | Entry Condition |
 |---|---|
 | Phase 1 | User request received; plan/ folder state assessed |
-| Phase 2 | PRD passes all 8 validation dimensions at "high" |
-| Phase 3 | Phase 2 validator passes (architecture + security consistent with PRD) |
-| Phase 4 | Phase 3 validator passes (all detailed design documents consistent) |
-| Phase 5 | Phase 4 final validator passes; user opts into SaaS sync |
-| Phase 6 | All planning complete; all validators passed |
+| Phase 2 | PRD passes validation |
+| Phase 2 (Story Decomposer) | Architecture passes validation |
+| Phase 3 | Stories validated (coverage, dependency integrity, contracts created) |
+| Phase 3 (per story) | Previous story in execution_order passed per-story validation (or stories are independent/parallel) |
+| Phase 4 | ALL stories have passed per-story validation |
+| Phase 5 | Phase 4 cross-cutting validation passes |
+| Phase 6 | Phase 5 execution readiness validation passes; user opts into SaaS sync |
+| Phase 7 | All planning complete; all validators passed |
 
 ## Parallelism Rules
 
-Within a phase, agents that do not depend on each other's output can run in parallel:
+### Between Phases
+Phases are strictly sequential. Phase N+1 cannot start until Phase N's gate passes.
 
-- **Phase 2**: System Architecture and Security can run in parallel.
-- **Phase 3**: HLD, API Design, and Data Architecture can start together (all depend on PRD + Architecture, not each other). DevOps depends on Architecture + Security. Design depends on PRD + HLD (so it starts after HLD produces initial output).
-- **Phase 4**: User Story verification and Testing Strategy can run in parallel.
+### Within Phase 2
+Architecture THEN Story Decomposition. Story decomposition requires validated architecture as input.
 
-## Incremental Planning
+### Within Phase 3
+Agents within a single story can run in parallel (HLD, API, Data, Security all read the same inputs and produce independent outputs). Design depends on HLD (needs component structure for mockups), so it starts after HLD produces initial output.
 
-When only part of the plan needs updating:
-1. Identify which plan artifacts are stale or missing.
-2. Determine the earliest affected phase.
-3. Run only from that phase forward.
-4. Treat existing unaffected artifacts as constraints (not re-planned).
-5. Validator still checks consistency across all artifacts (new and existing).
+Stories themselves are processed in execution_order. Stories with the same execution_order can be planned in parallel if the user prefers speed over sequential review.
+
+### Within Phase 4
+Security rollup, DevOps, and Testing Strategy can run in parallel (they read per-story artifacts but produce independent cross-cutting outputs).
+
+## Incremental Planning (Brownfield)
+
+When a change is proposed to an existing plan:
+
+1. Run impact analysis to determine blast radius.
+2. Present blast radius to user.
+3. Re-plan only affected artifacts from the earliest affected phase forward.
+4. Treat unaffected artifacts as constraints (not re-planned).
+5. Validator checks consistency across all artifacts (new and existing).
+
+See [brownfield-change-protocol.md](brownfield-change-protocol.md) for the full protocol.
 
 ## Phase Skip Policy
 

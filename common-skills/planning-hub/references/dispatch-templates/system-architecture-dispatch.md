@@ -27,6 +27,9 @@ REQUIREMENTS FROM HIGHER DIMENSIONS:
 - [Platform requirements from PRD section 9]
 - [Deployment constraints from PRD section 8]
 
+SHARED SPARRING RULES:
+Read and apply common-skills/planning-hub/references/shared-sparring-rules.md for all interactions.
+
 OUTPUT:
 - Write the architecture specification to plan/system-architecture.md
 

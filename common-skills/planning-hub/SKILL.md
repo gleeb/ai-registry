@@ -1,6 +1,6 @@
 ---
 name: planning-hub
-description: Orchestration hub for project planning. Manages phase ordering, dispatches specialized planning sub-agents (PRD, System Architecture, HLD, Security, API Design, Data Architecture, DevOps, Design/UI-UX, Testing Strategy), triggers cross-plan validation after each phase, and optionally syncs to external SaaS systems. Internal plan artifacts in plan/ are the source of truth.
+description: Orchestration hub for project planning. Use when starting a new project, adding features to an existing project, or re-planning after changes. Manages 7-phase per-story planning workflow, dispatches specialized sub-agents (PRD, Architecture, Story Decomposer, HLD, Security, API, Data, DevOps, Design, Testing), triggers validation after each phase, handles brownfield change propagation via impact analysis, and optionally syncs to external SaaS systems. Internal plan artifacts in plan/ are the source of truth.
 ---
 
 # Planning Hub
@@ -8,16 +8,20 @@ description: Orchestration hub for project planning. Manages phase ordering, dis
 ## When to use
 - Use as the entry point for all project planning work.
 - Use when starting a new product/project from scratch (greenfield).
-- Use when adding significant new capabilities to an existing project (incremental).
+- Use when adding significant new capabilities to an existing project (incremental/brownfield).
 - Use when re-planning or revising existing plan artifacts.
+- Use when the user proposes a change to an existing plan (triggers brownfield change protocol).
 
 ## When NOT to use
-- DENY use for implementation work — hand off to sdlc-coordinator for execution.
-- DENY use for SaaS-specific operations — delegate to the appropriate sync skill (e.g., linear-sync).
+- DENY use for implementation work — hand off to `sdlc-coordinator` for execution.
+- DENY use for SaaS-specific operations — delegate to the appropriate sync skill (e.g., `linear-sync`).
 - DENY direct plan content authoring — dispatch to the appropriate planning sub-agent.
 
 ## Core Principle
-**Internal planning is king.** All plan artifacts live in the `plan/` folder as markdown files (and HTML/CSS for design mockups). No external SaaS system is required. SaaS sync skills are optional translation layers.
+
+**Internal planning is king.** All plan artifacts live in the `plan/` folder. No external SaaS system is required. SaaS sync skills are optional translation layers.
+
+**Per-story execution packages.** The planning unit matches the execution unit. Each user story gets its own folder with all artifacts an execution agent needs.
 
 ## Contract terms
 - **REQUIRE**: mandatory condition that must be satisfied.
@@ -30,99 +34,126 @@ description: Orchestration hub for project planning. Manages phase ordering, dis
 |---|---|---|---|
 | PRD | `sdlc-planner-prd` | `planning-prd` | `plan/prd.md` |
 | System Architecture | `sdlc-planner-architecture` | `planning-system-architecture` | `plan/system-architecture.md` |
-| HLD | `sdlc-planner-hld` | `planning-hld` | `plan/hld.md` + `plan/user-stories/*.md` |
-| Security | `sdlc-planner-security` | `planning-security` | `plan/security.md` |
-| API Design | `sdlc-planner-api` | `planning-api-design` | `plan/api-design.md` |
-| Data Architecture | `sdlc-planner-data` | `planning-data-architecture` | `plan/data-architecture.md` |
-| DevOps | `sdlc-planner-devops` | `planning-devops` | `plan/devops.md` |
-| Design/UI-UX | `sdlc-planner-design` | `planning-design` | `plan/design/` |
-| Testing Strategy | `sdlc-planner-testing` | `planning-testing-strategy` | `plan/testing-strategy.md` |
-| Plan Validator | `sdlc-plan-validator` | `planning-validator` | `plan/validation/cross-validation-report.md` |
+| Story Decomposer | `sdlc-planner-stories` | `planning-stories` | `plan/user-stories/US-NNN-name/story.md` + `plan/contracts/*.md` |
+| HLD | `sdlc-planner-hld` | `planning-hld` | `plan/user-stories/US-NNN-name/hld.md` |
+| Security | `sdlc-planner-security` | `planning-security` | `plan/user-stories/US-NNN-name/security.md` + `plan/cross-cutting/security-overview.md` |
+| API Design | `sdlc-planner-api` | `planning-api-design` | `plan/user-stories/US-NNN-name/api.md` |
+| Data Architecture | `sdlc-planner-data` | `planning-data-architecture` | `plan/user-stories/US-NNN-name/data.md` |
+| DevOps | `sdlc-planner-devops` | `planning-devops` | `plan/cross-cutting/devops.md` |
+| Design/UI-UX | `sdlc-planner-design` | `planning-design` | `plan/user-stories/US-NNN-name/design/` + `plan/design/` |
+| Testing Strategy | `sdlc-planner-testing` | `planning-testing-strategy` | `plan/cross-cutting/testing-strategy.md` |
+| Plan Validator | `sdlc-plan-validator` | `planning-validator` | `plan/validation/` |
 
 ## Workflow
 
-### Phase 0: Initialization
-1. Assess the current state of the `plan/` folder. Identify what exists, what is missing, what is stale.
-2. Determine scope: greenfield (full planning cycle) or incremental (specific phases only).
-3. If a SaaS sync is desired, identify the system and load the corresponding sync skill (e.g., `linear-sync`). This is optional.
-4. Present the planning roadmap to the user: which phases are needed and in what order.
-
 ### Phase 1: Requirements (PRD)
-1. Dispatch the **PRD Agent** (`sdlc-planner-prd`) using [`references/dispatch-templates/prd-dispatch.md`](references/dispatch-templates/prd-dispatch.md).
+
+1. Dispatch the **PRD Agent** (`sdlc-planner-prd`) using [`dispatch-templates/prd-dispatch.md`](references/dispatch-templates/prd-dispatch.md).
 2. The PRD agent conducts interactive sparring with the user, drafts and validates the PRD.
 3. On completion, dispatch the **Plan Validator** to validate PRD completeness and internal consistency.
-4. GATE: PRD must pass all 8 validation dimensions at "high" before proceeding.
+4. GATE: PRD must pass all validation dimensions before proceeding.
 
-### Phase 2: Architecture
-Dispatch in parallel (no dependency between them):
-1. **System Architecture Agent** (`sdlc-planner-architecture`) using [`references/dispatch-templates/system-architecture-dispatch.md`](references/dispatch-templates/system-architecture-dispatch.md).
-2. **Security Agent** (`sdlc-planner-security`) using [`references/dispatch-templates/security-dispatch.md`](references/dispatch-templates/security-dispatch.md).
+### Phase 2: Architecture and Story Decomposition
 
-On completion of both:
-3. Dispatch **Plan Validator** to check:
-   - Architecture satisfies all PRD requirements.
-   - Security plan covers all sensitive data and threat surfaces identified in PRD.
-   - No conflicts between architecture and security decisions.
+Sequential within this phase:
 
-### Phase 3: Detailed Design
-Dispatch after Phase 2 validation passes. These can run in parallel where independent:
-1. **HLD Agent** (`sdlc-planner-hld`) — depends on PRD + Architecture.
-2. **API Design Agent** (`sdlc-planner-api`) — depends on PRD + Architecture.
-3. **Data Architecture Agent** (`sdlc-planner-data`) — depends on PRD + Architecture.
-4. **DevOps Agent** (`sdlc-planner-devops`) — depends on Architecture + Security.
-5. **Design/UI-UX Agent** (`sdlc-planner-design`) — depends on PRD + HLD.
+1. Dispatch **System Architecture Agent** (`sdlc-planner-architecture`) using [`dispatch-templates/system-architecture-dispatch.md`](references/dispatch-templates/system-architecture-dispatch.md).
+2. On completion, dispatch **Plan Validator** to check architecture-PRD alignment.
+3. GATE: Architecture must pass validation before story decomposition.
+4. Dispatch **Story Decomposer Agent** (`sdlc-planner-stories`) using [`dispatch-templates/story-decomposition-dispatch.md`](references/dispatch-templates/story-decomposition-dispatch.md).
+5. On completion, dispatch **Plan Validator** to check story coverage and dependency integrity.
+6. GATE: All stories must have valid dependency manifests and full PRD coverage.
 
-On completion:
-6. Dispatch **Plan Validator** to check:
-   - All PRD requirements are covered in HLD.
-   - API design is consistent with architecture and HLD.
-   - Data architecture supports all data entities from HLD and API design.
-   - DevOps plan supports the architecture and security requirements.
-   - Design mockups cover all user-facing flows from user stories.
+### Phase 3: Per-Story Planning (loop)
 
-### Phase 4: Stories and Test Plan
-1. **User Story Decomposition** — part of the HLD agent's output, verified here.
-2. **Testing Strategy Agent** (`sdlc-planner-testing`) using [`references/dispatch-templates/testing-strategy-dispatch.md`](references/dispatch-templates/testing-strategy-dispatch.md).
+For each user story (in execution_order):
 
-On completion:
-3. Dispatch **Final Validator** to check:
-   - All PRD requirements trace through HLD to user stories.
-   - All user stories have testable acceptance criteria.
-   - Testing strategy covers all acceptance criteria.
-   - All cross-domain requirements (security, devops, data) are reflected in stories.
+1. Read the story's `candidate_domains` from its dependency manifest.
+2. Dispatch Phase 3 agents in parallel based on candidate_domains:
+   - **HLD Agent** (always) using [`dispatch-templates/hld-dispatch.md`](references/dispatch-templates/hld-dispatch.md)
+   - **API Design Agent** (if `api` in domains) using [`dispatch-templates/api-design-dispatch.md`](references/dispatch-templates/api-design-dispatch.md)
+   - **Data Architecture Agent** (if `data` in domains) using [`dispatch-templates/data-architecture-dispatch.md`](references/dispatch-templates/data-architecture-dispatch.md)
+   - **Security Agent** in per-story mode (if `security` in domains) using [`dispatch-templates/security-dispatch.md`](references/dispatch-templates/security-dispatch.md)
+   - **Design Agent** (if `design` in domains) using [`dispatch-templates/design-dispatch.md`](references/dispatch-templates/design-dispatch.md)
+3. On completion, dispatch **Plan Validator** in per-story mode.
+4. GATE: Per-story validation must pass before moving to next story.
 
-### Phase 5: Optional SaaS Sync
-If a SaaS sync skill was loaded in Phase 0:
+Use [`dispatch-templates/per-story-planning-dispatch.md`](references/dispatch-templates/per-story-planning-dispatch.md) as the orchestration wrapper.
+
+### Phase 4: Cross-Cutting Concerns
+
+After all stories are planned:
+
+1. Dispatch **Security Agent** in rollup mode using [`dispatch-templates/security-rollup-dispatch.md`](references/dispatch-templates/security-rollup-dispatch.md) — produces `plan/cross-cutting/security-overview.md`.
+2. Dispatch **DevOps Agent** using [`dispatch-templates/devops-dispatch.md`](references/dispatch-templates/devops-dispatch.md) — produces `plan/cross-cutting/devops.md`.
+3. Dispatch **Testing Strategy Agent** using [`dispatch-templates/testing-strategy-dispatch.md`](references/dispatch-templates/testing-strategy-dispatch.md) — produces `plan/cross-cutting/testing-strategy.md`.
+4. On completion, dispatch **Plan Validator** in cross-story mode.
+5. GATE: Cross-cutting validation must pass.
+
+### Phase 5: Execution Readiness
+
+1. Dispatch **Plan Validator** for final full-chain validation.
+2. Verify: all stories planned, all contracts defined, all cross-cutting concerns addressed, no unresolved validation findings.
+3. GATE: Full validation pass required before handoff.
+
+### Phase 6: Optional SaaS Sync
+
+If a SaaS sync skill was loaded:
 1. Sync all plan artifacts to the external system using the loaded sync skill.
 2. Report sync results.
 
-### Phase 6: Handoff
+### Phase 7: Handoff
+
 1. Present a planning completion summary to the user.
 2. Hand off to `sdlc-coordinator` for execution orchestration.
-3. The handoff includes: what was planned, which artifacts exist in `plan/`, and what should be executed first.
+3. The handoff includes: what was planned, which story to execute first (execution_order: 1), and the full dependency graph.
+
+## Brownfield Change Protocol
+
+When the user proposes a change to an existing plan:
+
+1. Classify the change level (PRD, Architecture, Story internal, Story contract, Cross-cutting).
+2. Dispatch **Plan Validator** in impact analysis mode using [`dispatch-templates/impact-analysis-dispatch.md`](references/dispatch-templates/impact-analysis-dispatch.md).
+3. Present the blast radius to the user.
+4. User confirms or narrows scope.
+5. Re-dispatch ONLY the minimum required agents.
+
+See [`references/brownfield-change-protocol.md`](references/brownfield-change-protocol.md) for the full protocol specification.
+
+## Shared Sparring Rules
+
+ALL dispatch templates include a reference to [`references/shared-sparring-rules.md`](references/shared-sparring-rules.md). These apply to every planning sub-agent:
+
+- Spec quoting (cite PRD section numbers and text)
+- No gold-plating (flag additions beyond PRD)
+- Revision cycle norm (expect 2-3 cycles)
+- Evidence-based claims (justify every decision)
+- Progressive specificity (right detail at right level)
 
 ## Dispatch Protocol
+
 - Use the dispatch templates in [`references/dispatch-templates/`](references/dispatch-templates/) for each sub-agent.
-- Each dispatch includes: context (which plan docs to read), scope (what to plan), existing artifacts, requirements from higher dimensions, and a completion contract.
+- Each dispatch includes: context (which plan docs to read), scope (what to plan), existing artifacts, requirements from higher dimensions, shared sparring rules reference, and a completion contract.
 - See [`references/planning-phases.md`](references/planning-phases.md) for the full phase dependency graph.
 
 ## Plan Folder Structure
-See [`references/plan-structure.md`](references/plan-structure.md) for the canonical `plan/` folder layout.
 
-## Incremental Planning
-When not greenfield:
-- The hub identifies which plan artifacts are stale or missing.
-- Only the affected phases and agents are dispatched.
-- The validator still runs after each phase to ensure consistency with existing artifacts.
-- Existing plan artifacts that are not being updated are treated as constraints for new planning work.
+See [`references/plan-structure.md`](references/plan-structure.md) for the per-story folder layout.
+See [`references/contracts-registry.md`](references/contracts-registry.md) for shared contracts specification.
 
 ## Files
+
 - [`references/planning-phases.md`](references/planning-phases.md): Phase dependency graph and ordering rules.
-- [`references/plan-structure.md`](references/plan-structure.md): Canonical `plan/` folder structure.
+- [`references/plan-structure.md`](references/plan-structure.md): Per-story folder structure.
+- [`references/contracts-registry.md`](references/contracts-registry.md): Shared contracts registry specification.
+- [`references/brownfield-change-protocol.md`](references/brownfield-change-protocol.md): Brownfield change propagation protocol.
+- [`references/shared-sparring-rules.md`](references/shared-sparring-rules.md): Cross-cutting sparring rules for all agents.
 - [`references/dispatch-templates/`](references/dispatch-templates/): Dispatch templates for all sub-agents and validator.
 
 ## Troubleshooting
+
 - If a sub-agent cannot complete its plan, report the blocker and ask the user whether to skip, defer, or resolve.
 - If the validator finds conflicts, dispatch the affected agents to resolve before proceeding.
 - If the user wants to skip a phase, require explicit acknowledgment of what planning coverage is lost.
-- If plan artifacts are stale relative to each other, trigger re-validation before handoff.
+- If plan artifacts are stale relative to each other, trigger impact analysis before re-planning.
+- If a brownfield change has unclear blast radius, default to broader impact analysis and let the user narrow scope.

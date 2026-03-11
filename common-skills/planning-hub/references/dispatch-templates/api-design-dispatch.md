@@ -1,47 +1,52 @@
 # API Design Agent Dispatch Template
 
-Use this template when dispatching `sdlc-planner-api` via `new_task`.
+Use this template when dispatching `sdlc-planner-api` via `new_task` for a single user story.
 
 ## Required Message Structure
 
 ```
-PLAN: API Design and Contracts
+PLAN: Per-Story API Design
+
+STORY: US-NNN-name
+STORY FOLDER: plan/user-stories/US-NNN-name/
 
 CONTEXT:
-- [Reference to plan/prd.md]
-- [Reference to plan/system-architecture.md — component boundaries and integration points]
-- [Reference to plan/hld.md — feature-level design context]
-- [Whether greenfield or extending existing APIs]
+- plan/user-stories/US-NNN-name/story.md: REQUIRED (scope, acceptance criteria, dependency manifest)
+- plan/system-architecture.md: REQUIRED (integration points, API gateway config)
+- plan/contracts/: [list consumed contracts — especially shared DTOs and error formats]
+- plan/user-stories/US-NNN-name/hld.md: RECOMMENDED (component structure for endpoint mapping)
+- [Whether this is initial design or revision based on validation feedback]
 
 SCOPE:
-- IN SCOPE: API contracts, endpoint specifications, request/response schemas, authentication flows, versioning strategy, error response formats, rate limiting policy
-- OUT OF SCOPE: Implementation of APIs (execution phase), database schemas (Data Architecture agent), infrastructure/deployment (DevOps agent)
+- IN SCOPE: API endpoint design for this story — routes, methods, request/response schemas, authentication/authorization per endpoint, error handling, versioning
+- OUT OF SCOPE: Other stories' APIs, data storage implementation (Data Architecture agent), security threat model (Security agent), implementation code
 
 EXISTING PLAN ARTIFACTS:
-- plan/prd.md: [REQUIRED]
-- plan/system-architecture.md: [REQUIRED]
-- plan/hld.md: [REQUIRED or in progress]
-- plan/api-design.md: [exists / does not exist]
-- plan/security.md: [if exists, reference for auth requirements]
-- [List any other relevant existing plan files]
+- plan/user-stories/US-NNN-name/story.md: REQUIRED
+- plan/user-stories/US-NNN-name/api.md: [exists / does not exist]
+- plan/user-stories/US-NNN-name/hld.md: [exists / does not exist]
+- plan/system-architecture.md: REQUIRED
+- plan/contracts/: [list relevant contract files, especially api-error-format.md, auth-model.md]
 
 REQUIREMENTS FROM HIGHER DIMENSIONS:
-- [Integration points from system architecture]
-- [Data entities and operations from HLD]
-- [Authentication/authorization from security plan]
-- [Performance requirements from PRD (rate limits, latency)]
+- Story acceptance criteria involving API interactions
+- Architecture integration points and API gateway patterns
+- Consumed contracts: [list contract names and their definitions]
+- Provided contracts: [if this story provides API contracts consumed by others]
+
+SHARED SPARRING RULES:
+Read and apply common-skills/planning-hub/references/shared-sparring-rules.md for all interactions.
 
 OUTPUT:
-- Write the API specification to plan/api-design.md
+- Write API design to plan/user-stories/US-NNN-name/api.md
 
 COMPLETION CONTRACT:
 Return via attempt_completion with:
-1. Confirmation that plan/api-design.md has been written
-2. Endpoint inventory with methods and paths
-3. Authentication/authorization approach per endpoint group
-4. Error handling and response format conventions
-5. Versioning strategy
-6. Unresolved questions or deferred decisions
+1. Confirmation that api.md has been written in the story folder
+2. Endpoint inventory: method, path, purpose, auth required
+3. Contract compliance: how consumed contracts are used in schemas
+4. Error handling approach and alignment with error format contract
+5. Unresolved questions or blockers
 
 PRECEDENCE: These task-specific instructions supersede conflicting general instructions.
 ```

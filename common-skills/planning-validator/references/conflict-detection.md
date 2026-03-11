@@ -2,90 +2,108 @@
 
 ## Overview
 
-This reference provides a library of common conflict patterns to look for when cross-validating plan documents. Each pattern describes a specific contradiction type, which documents are typically involved, and how to detect it.
+This reference provides a library of common conflict patterns for cross-validation. In the per-story architecture, conflicts can occur within a story, between stories (via contracts), and between per-story and cross-cutting artifacts.
 
-## Pattern Library
+## Per-Story Conflict Patterns
 
-### P-001: Offline vs. Real-Time Conflict
-- **Documents**: PRD (NFRs) vs Architecture/HLD
-- **Pattern**: PRD states "offline-first" or "works without internet" but Architecture or HLD describes features requiring real-time connectivity.
-- **Detection**: Search PRD for offline requirements. Cross-reference with Architecture integration points and HLD features that require network calls.
-- **Resolution**: Define which features work offline and which require connectivity. Update PRD or Architecture to align.
+### PS-001: HLD-API Schema Mismatch
+- **Artifacts**: hld.md vs api.md within same story
+- **Pattern**: HLD describes a data flow with fields X, Y, Z but API response schema has fields X, Y, W.
+- **Detection**: Map HLD data flow fields to API schema fields. Flag mismatches.
+- **Resolution**: Align schemas. Determine authoritative source (usually HLD defines the concept, API defines the wire format).
 
-### P-002: No-Backend vs. Server-Side Logic
-- **Documents**: PRD (Constraints) vs Architecture/API Design
-- **Pattern**: PRD states "no backend" or "client-only" but Architecture describes a backend service or API Design defines server endpoints.
-- **Detection**: Search PRD constraints for backend restrictions. Check Architecture and API Design for server-side components.
-- **Resolution**: Clarify whether the constraint means "no custom backend" (allowing BaaS) or "purely client-side".
+### PS-002: Contract Violation
+- **Artifacts**: Story artifacts vs consumed contract in plan/contracts/
+- **Pattern**: Story's api.md defines an endpoint response that contradicts the consumed contract's schema definition.
+- **Detection**: Compare story's usage of contract fields against the contract definition.
+- **Resolution**: Story MUST conform to consumed contract. If story needs the contract changed, escalate to contract owner story.
 
-### P-003: Authentication Mismatch
-- **Documents**: Security vs API Design vs Architecture
-- **Pattern**: Security plan specifies one authentication method (e.g., JWT) but API Design uses a different method (e.g., session cookies), or Architecture assumes a third approach.
-- **Detection**: Extract auth method from each document and compare.
-- **Resolution**: Align all documents to a single authentication approach.
+### PS-003: Auth Model Mismatch
+- **Artifacts**: security.md vs api.md within same story
+- **Pattern**: Security defines JWT auth but API endpoints specify session-based auth, or auth requirements don't match.
+- **Detection**: Extract auth method from security.md and compare with api.md per-endpoint auth.
+- **Resolution**: Align to auth-model contract if it exists, otherwise resolve between the two artifacts.
 
-### P-004: Database Technology Disagreement
-- **Documents**: Architecture vs Data Architecture vs HLD
-- **Pattern**: Architecture specifies PostgreSQL, Data Architecture models with MongoDB patterns, HLD references DynamoDB access patterns.
-- **Detection**: Extract database technology mentions from all documents. Check for consistency.
-- **Resolution**: Align to a single database technology (or explicitly document a multi-DB strategy).
+### PS-004: Data Entity Orphan
+- **Artifacts**: data.md vs hld.md/api.md within same story
+- **Pattern**: data.md defines an entity that no HLD component or API endpoint references.
+- **Detection**: Map data entities to HLD components and API endpoints. Flag entities with no references.
+- **Resolution**: Remove orphan entity or identify the missing component/endpoint.
 
-### P-005: Performance Target Contradiction
-- **Documents**: PRD vs Architecture vs Testing Strategy
-- **Pattern**: PRD specifies "< 200ms response time" but Architecture's chosen approach cannot meet that target, or Testing Strategy tests for a different threshold.
-- **Detection**: Extract all numeric performance targets and compare across documents.
-- **Resolution**: Align targets. If architecture cannot meet PRD targets, flag as a feasibility issue.
+## Cross-Story Conflict Patterns
 
-### P-006: Scope Boundary Violation
-- **Documents**: HLD sections vs User Stories vs PRD (Out of Scope)
-- **Pattern**: An HLD section or user story includes functionality that PRD explicitly lists as out of scope.
-- **Detection**: Cross-reference HLD sections and user stories against PRD Out of Scope list (section 13).
-- **Resolution**: Remove the out-of-scope functionality from HLD/stories, or update PRD scope if the decision has changed.
+### CS-001: Contract Provider-Consumer Conflict
+- **Artifacts**: Provider story artifacts vs consumer story artifacts
+- **Pattern**: Provider story's implementation doesn't match the contract definition that consumers depend on.
+- **Detection**: Compare provider's actual schema in hld.md/api.md/data.md against contract file.
+- **Resolution**: Provider MUST match contract. Update provider artifacts or update contract (triggers consumer re-validation).
 
-### P-007: Deployment vs. Security Conflict
-- **Documents**: DevOps vs Security
-- **Pattern**: DevOps plan exposes services or ports that Security plan requires to be restricted. Or DevOps uses plaintext secrets that Security requires encrypted.
-- **Detection**: Compare DevOps infrastructure config against Security network and access requirements.
-- **Resolution**: Update DevOps plan to meet Security requirements.
+### CS-002: Dependency Cycle
+- **Artifacts**: story.md dependency manifests across stories
+- **Pattern**: US-003 depends on US-005 depends on US-003 (circular).
+- **Detection**: Build dependency graph from all depends_on_stories fields. Check for cycles using topological sort.
+- **Resolution**: Break the cycle by extracting a shared contract, merging stories, or removing a false dependency.
 
-### P-008: API Contract vs. Data Model Mismatch
-- **Documents**: API Design vs Data Architecture
-- **Pattern**: API response schema includes fields that don't exist in the data model, or data model has required fields that no API endpoint populates.
-- **Detection**: Map API response fields to data model fields. Look for mismatches.
-- **Resolution**: Align API schemas with data model. Add derived/computed field documentation if fields are transformations.
+### CS-003: Duplicate Contract Ownership
+- **Artifacts**: Multiple stories claim provides_contracts for the same contract
+- **Pattern**: Both US-002 and US-004 list auth-model in provides_contracts.
+- **Detection**: Scan all story manifests for provides_contracts. Flag duplicates.
+- **Resolution**: Assign single owner (typically the earlier story in execution order).
 
-### P-009: Test Coverage Gap
-- **Documents**: Testing Strategy vs User Stories/HLD
-- **Pattern**: User stories or HLD sections have acceptance criteria that no test type in the Testing Strategy covers.
-- **Detection**: Map each acceptance criterion to a test type in the Testing Strategy. Flag unmapped criteria.
-- **Resolution**: Add test types or update Testing Strategy to cover the gap.
+### CS-004: Orphan Contract
+- **Artifacts**: plan/contracts/ file with no consumer stories
+- **Pattern**: A contract file exists but no story lists it in consumes_contracts.
+- **Detection**: Scan all story manifests for consumes_contracts. Flag contracts with no consumers.
+- **Resolution**: Remove the contract (it serves no purpose) or identify the missing consumer story.
 
-### P-010: Design vs. PRD UX Constraint Violation
-- **Documents**: Design vs PRD (Constraints - UX & Design)
-- **Pattern**: Design mockups violate PRD UX constraints (e.g., too many screens, wrong navigation structure, missing dark mode).
-- **Detection**: Extract UX constraints from PRD section 8 and verify each against Design spec and mockups.
-- **Resolution**: Update Design to comply with PRD constraints, or negotiate PRD constraint changes.
+## Cross-Cutting Conflict Patterns
 
-### P-011: Terminology Drift
-- **Documents**: Any pair
-- **Pattern**: The same concept is referred to by different names in different documents (e.g., "user" vs "customer" vs "account holder").
-- **Detection**: Build a glossary of key terms from each document. Look for synonyms used inconsistently.
+### CC-001: Security Rollup Inconsistency
+- **Artifacts**: cross-cutting/security-overview.md vs per-story security.md files
+- **Pattern**: Security overview states "all endpoints use JWT" but one story's security.md uses API keys.
+- **Detection**: Compare aggregate claims in security overview against individual per-story controls.
+- **Resolution**: Either update the per-story control to match, or update the overview to reflect the exception.
+
+### CC-002: Testing Coverage Gap
+- **Artifacts**: cross-cutting/testing-strategy.md vs story.md acceptance criteria
+- **Pattern**: Acceptance criteria exist in a story that have no test type mapping in the testing strategy.
+- **Detection**: Map all acceptance criteria across all stories to testing strategy entries. Flag unmapped criteria.
+- **Resolution**: Add test coverage for the missing criteria.
+
+### CC-003: DevOps Service Gap
+- **Artifacts**: cross-cutting/devops.md vs per-story hld.md files
+- **Pattern**: A service defined in a story's HLD has no deployment configuration in the DevOps plan.
+- **Detection**: Extract all services/components from per-story HLD files. Check each against DevOps service inventory.
+- **Resolution**: Add deployment configuration for the missing service.
+
+## General Conflict Patterns
+
+### G-001: Terminology Drift
+- **Artifacts**: Any pair
+- **Pattern**: Same concept referred to by different names (e.g., "user" vs "customer" vs "account holder").
+- **Detection**: Build a glossary of key terms from each document. Look for synonyms.
 - **Resolution**: Establish canonical terminology in the PRD and align all documents.
 
-### P-012: Missing Error Handling
-- **Documents**: HLD vs API Design vs Design
-- **Pattern**: HLD describes a failure mode, API Design has no error code for it, and Design has no error state mockup.
-- **Detection**: Extract failure modes from HLD. Check for corresponding API error codes and Design error mockups.
-- **Resolution**: Add missing error handling across all three documents.
+### G-002: Performance Target Contradiction
+- **Artifacts**: PRD NFRs vs architecture vs per-story artifacts
+- **Pattern**: PRD says "< 200ms response time" but architecture cannot meet it.
+- **Detection**: Extract numeric performance targets. Compare across documents.
+- **Resolution**: Align targets. If infeasible, flag as a feasibility issue.
+
+### G-003: Scope Boundary Violation
+- **Artifacts**: story.md vs PRD out-of-scope
+- **Pattern**: A story includes functionality that the PRD explicitly lists as out of scope.
+- **Detection**: Cross-reference story scope against PRD out-of-scope section.
+- **Resolution**: Remove the out-of-scope functionality or update the PRD.
 
 ## Detection Process
 
-1. Run each pattern against the relevant documents.
+1. Run each pattern against relevant artifacts.
 2. For each match, record:
    - Pattern ID
    - Severity (CONFLICT, TENSION, GAP, DRIFT)
-   - Source document and location
-   - Target document and location
+   - Source artifact and location
+   - Target artifact and location
    - Specific finding
    - Suggested resolution
 3. Include all findings in the validation report.
