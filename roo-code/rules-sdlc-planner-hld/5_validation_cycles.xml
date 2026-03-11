@@ -1,0 +1,68 @@
+<validation_cycles>
+  <overview>
+    The HLD agent performs self-validation before completion. These checks ensure traceability, no overlap, appropriate sizing, and testable acceptance criteria.
+    No external validator is invoked — the agent self-validates and iterates until all checks pass.
+  </overview>
+
+  <self_validation_checks>
+    <check name="traceability_check">
+      <description>Every HLD section traces to a user story; every user story traces to a PRD requirement.</description>
+      <procedure>
+        <step>For each HLD section, verify parent linkage to a user story and PRD section.</step>
+        <step>For each user story, verify mapping to PRD section 7 user story groups.</step>
+        <step>Flag any orphaned content.</step>
+      </procedure>
+      <failure_action>Add traceability or remove orphaned content before completion.</failure_action>
+    </check>
+
+    <check name="overlap_check">
+      <description>No sibling overlap between user stories or between HLD sections.</description>
+      <procedure>
+        <step>Compare scope boundaries of each user story pair.</step>
+        <step>Compare scope boundaries of each HLD section pair.</step>
+        <step>Identify any overlapping responsibilities.</step>
+      </procedure>
+      <failure_action>Require explicit boundary rewrite to eliminate overlap before completion.</failure_action>
+    </check>
+
+    <check name="sizing_check">
+      <description>Each HLD section is sized for one implementation cycle.</description>
+      <procedure>
+        <step>For each HLD section, assess whether it could be implemented in one focused cycle.</step>
+        <step>If a section is too broad, split it into smaller sections.</step>
+      </procedure>
+      <failure_action>Split oversized HLD sections before completion.</failure_action>
+    </check>
+
+    <check name="acceptance_criteria_testability_check">
+      <description>Every acceptance criterion is testable and observable.</description>
+      <procedure>
+        <step>For each acceptance criterion in user stories and HLD sections, ask: "Can you write a test for this right now?"</step>
+        <step>Flag any criterion that uses vague terms: "correctly", "intuitive", "user-friendly", "works well".</step>
+      </procedure>
+      <failure_action>Rewrite vague criteria with specific observable conditions before completion.</failure_action>
+    </check>
+
+    <check name="coverage_check">
+      <description>All PRD requirements have corresponding user stories and HLD coverage.</description>
+      <procedure>
+        <step>Map each PRD section 7 user story group to at least one user story.</step>
+        <step>Map each architecture component to at least one HLD section.</step>
+        <step>Map each security requirement (if plan/security.md exists) to HLD or user story.</step>
+      </procedure>
+      <failure_action>Add missing user stories or HLD sections before completion.</failure_action>
+    </check>
+  </self_validation_checks>
+
+  <validation_schedule>
+    <when>Before completion phase</when>
+    <steps>
+      <step>Run traceability_check.</step>
+      <step>Run overlap_check.</step>
+      <step>Run sizing_check.</step>
+      <step>Run acceptance_criteria_testability_check.</step>
+      <step>Run coverage_check.</step>
+      <step>If any check fails, iterate and re-run before writing final artifacts.</step>
+    </steps>
+  </validation_schedule>
+</validation_cycles>

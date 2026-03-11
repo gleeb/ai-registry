@@ -1,0 +1,99 @@
+<best_practices>
+  <general_principles>
+    <principle priority="critical">
+      <name>Environment parity</name>
+      <description>Dev, staging, and production should have parity in configuration, tooling, and deployment process. Document differences explicitly; avoid "works on my machine" by enforcing consistent environments.</description>
+      <rationale>Parity reduces environment-specific bugs and deployment surprises.</rationale>
+    </principle>
+
+    <principle priority="critical">
+      <name>Rollback always planned</name>
+      <description>Every deployment has a defined rollback strategy: blue-green, canary revert, or database rollback. Document the rollback procedure and expected RTO.</description>
+      <rationale>Deployments fail; unplanned rollbacks cause extended outages.</rationale>
+    </principle>
+
+    <principle priority="critical">
+      <name>Monitoring from day one</name>
+      <description>Define monitoring, alerting, and observability from the start. Health checks, metrics, logs, and traces. No "we'll add monitoring later."</description>
+      <rationale>Production issues without visibility are impossible to diagnose.</rationale>
+    </principle>
+
+    <principle priority="critical">
+      <name>Secrets never in code</name>
+      <description>Secrets (API keys, passwords, tokens) must never be committed to code or config in plaintext. Use secrets manager, environment variables, or vault. Document the approach.</description>
+      <rationale>Secrets in code lead to security breaches and credential leaks.</rationale>
+    </principle>
+
+    <principle priority="high">
+      <name>Backup before deploy</name>
+      <description>Define backup strategy before deployment. For stateful components: backup before deploy, verify restore procedure. Document recovery point and recovery time objectives.</description>
+      <rationale>Deployments can corrupt data; backups enable recovery.</rationale>
+    </principle>
+
+    <principle priority="high">
+      <name>Cost awareness</name>
+      <description>Document cost considerations for infrastructure choices. Resource sizing, scaling strategy, and cost optimization trade-offs. Avoid over-provisioning for MVP.</description>
+      <rationale>Unbounded cost leads to budget overruns; awareness enables optimization.</rationale>
+    </principle>
+  </general_principles>
+
+  <common_pitfalls>
+    <pitfall>
+      <description>"Works on my machine" — environment drift</description>
+      <why_problematic>Different configs cause production bugs that don't reproduce locally.</why_problematic>
+      <correct_approach>Enforce environment parity; document and minimize differences.</correct_approach>
+    </pitfall>
+
+    <pitfall>
+      <description>Missing rollback plan</description>
+      <why_problematic>Failed deployments leave the system in uncertain state; recovery is ad-hoc.</why_problematic>
+      <correct_approach>Define rollback for every deployment path before first deploy.</correct_approach>
+    </pitfall>
+
+    <pitfall>
+      <description>No monitoring</description>
+      <why_problematic>Outages are discovered by users; debugging is blind.</why_problematic>
+      <correct_approach>Define health checks, metrics, and alerts from day one.</correct_approach>
+    </pitfall>
+
+    <pitfall>
+      <description>Secrets in code or config</description>
+      <why_problematic>Credentials leak into repos; security breach.</why_problematic>
+      <correct_approach>Use secrets manager; never commit secrets.</correct_approach>
+    </pitfall>
+
+    <pitfall>
+      <description>No DR plan</description>
+      <why_problematic>Disaster recovery is ad-hoc; extended downtime.</why_problematic>
+      <correct_approach>Define backup, restore, and DR procedure before production.</correct_approach>
+    </pitfall>
+
+    <pitfall>
+      <description>Over-engineering for MVP</description>
+      <why_problematic>Complex pipelines and infra delay delivery; cost exceeds value.</why_problematic>
+      <correct_approach>Match DevOps complexity to stage; MVP can be minimal.</correct_approach>
+    </pitfall>
+
+    <pitfall>
+      <description>Staging-prod drift</description>
+      <why_problematic>Staging passes, prod fails due to different config or data.</why_problematic>
+      <correct_approach>Document parity; automate config parity checks.</correct_approach>
+    </pitfall>
+  </common_pitfalls>
+
+  <quality_checklist>
+    <category name="before_writing_spec">
+      <item>Pipeline stages and environment flow defined.</item>
+      <item>Rollback plan documented for each deployment.</item>
+      <item>Monitoring and alerting plan defined.</item>
+      <item>Secrets management approach documented.</item>
+      <item>Backup and DR plan documented.</item>
+      <item>Environment parity requirements documented.</item>
+    </category>
+
+    <category name="security">
+      <item>No secrets in code or plaintext config.</item>
+      <item>Secrets management approach aligns with security plan.</item>
+    </category>
+  </quality_checklist>
+</best_practices>

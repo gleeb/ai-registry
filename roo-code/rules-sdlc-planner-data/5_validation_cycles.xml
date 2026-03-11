@@ -1,0 +1,56 @@
+<validation_cycles>
+  <overview>
+    The Data Architecture Agent performs self-validation before writing plan/data-architecture.md.
+    All validation checks must pass before the artifact is considered complete.
+  </overview>
+
+  <self_validation_checks>
+    <check name="entity_completeness">
+      <description>Every data-bearing component from architecture and HLD has corresponding entity definitions.</description>
+      <criteria>
+        <criterion>All entities referenced in HLD or architecture have schema definitions.</criterion>
+        <criterion>No "TBD" or placeholder entities in the spec.</criterion>
+      </criteria>
+    </check>
+
+    <check name="relationship_correctness">
+      <description>Relationships between entities are correctly defined.</description>
+      <criteria>
+        <criterion>Foreign keys and cardinality are explicit.</criterion>
+        <criterion>No circular dependencies without clear resolution.</criterion>
+        <criterion>Relationships align with HLD data flows.</criterion>
+      </criteria>
+    </check>
+
+    <check name="index_coverage">
+      <description>All identified query patterns have index support.</description>
+      <criteria>
+        <criterion>Every query pattern from HLD maps to an index or access path.</criterion>
+        <criterion>Index definitions include columns and order where relevant.</criterion>
+      </criteria>
+    </check>
+
+    <check name="lifecycle_defined">
+      <description>Data lifecycle is documented for all entities or categories.</description>
+      <criteria>
+        <criterion>Retention policy defined (or explicitly "indefinite" with rationale).</criterion>
+        <criterion>Archival and deletion strategy documented where applicable.</criterion>
+      </criteria>
+    </check>
+
+    <check name="migration_strategy_present">
+      <description>Schema evolution and migration approach is documented.</description>
+      <criteria>
+        <criterion>Migration strategy for schema changes is defined.</criterion>
+        <criterion>Rollback approach for failed migrations is documented.</criterion>
+      </criteria>
+    </check>
+  </self_validation_checks>
+
+  <validation_flow>
+    <step>Run all self-validation checks after access_patterns phase.</step>
+    <step>If any check fails, iterate on the design before writing.</step>
+    <step>Do not write plan/data-architecture.md until all checks pass.</step>
+    <step>Report validation status to the user upon completion.</step>
+  </validation_flow>
+</validation_cycles>

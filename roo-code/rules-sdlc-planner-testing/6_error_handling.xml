@@ -1,0 +1,35 @@
+<error_handling>
+  <scenario name="missing_acceptance_criteria">
+    <trigger>Plan artifacts exist but acceptance criteria are missing, vague, or not extractable.</trigger>
+    <required_actions>
+      <action>Report the gap: which artifacts lack acceptance criteria.</action>
+      <action>Request the PRD agent (or user) to add acceptance criteria to user stories.</action>
+      <action>If HLD exists, check if user stories have acceptance criteria there.</action>
+      <action>Do not proceed with coverage mapping until acceptance criteria are available.</action>
+    </required_actions>
+    <prohibited_actions>
+      <action>Do not invent acceptance criteria without user or artifact approval.</action>
+      <action>Do not map to test types without traceable acceptance criteria.</action>
+    </prohibited_actions>
+  </scenario>
+
+  <scenario name="unclear_performance_requirements">
+    <trigger>PRD or architecture mentions performance but requirements are vague (e.g., "fast", "scalable").</trigger>
+    <required_actions>
+      <action>Document the ambiguity: which performance requirements are unclear.</action>
+      <action>Present options to the user: "Performance could mean latency, throughput, or both. What do you need?"</action>
+      <action>Request measurable targets (e.g., p95 latency under 200ms, 1000 req/s).</action>
+      <action>Include a placeholder performance test plan with "TBD" for unclear items.</action>
+    </required_actions>
+  </scenario>
+
+  <scenario name="conflicting_coverage_targets">
+    <trigger>User wants coverage targets that conflict with test pyramid or best practices.</trigger>
+    <required_actions>
+      <action>Document the conflict: "You want 100% coverage, but best practice suggests 80% for unit. Here's why."</action>
+      <action>Present the trade-off: cost, speed, maintainability.</action>
+      <action>Propose a compromise that balances user goals with realism.</action>
+      <action>Get user acknowledgment before proceeding.</action>
+    </required_actions>
+  </scenario>
+</error_handling>

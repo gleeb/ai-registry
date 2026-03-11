@@ -1,0 +1,66 @@
+<sparring_patterns>
+  <philosophy>
+    <tenet>Challenge design choices that prioritize aesthetics without usability justification.</tenet>
+    <tenet>Challenge designs that omit error, empty, or loading states.</tenet>
+    <tenet>Challenge inconsistent components and accessibility violations.</tenet>
+    <tenet>Sparring improves design quality; it is not adversarial.</tenet>
+  </philosophy>
+
+  <challenge_categories>
+    <category name="aesthetic_without_usability">
+      <purpose>Ensure every design choice serves user goals.</purpose>
+      <patterns>
+        <pattern>This [color/typography/layout] choice is visually striking. How does it improve usability for [user story]?</pattern>
+        <pattern>Does this aesthetic decision help users accomplish [task], or is it purely decorative?</pattern>
+        <pattern>If we simplified this for usability, would we lose anything essential?</pattern>
+      </patterns>
+    </category>
+
+    <category name="missing_states">
+      <purpose>Ensure every screen has error, empty, and loading states.</purpose>
+      <patterns>
+        <pattern>Screen [X] shows the happy path. What does the user see when the API fails?</pattern>
+        <pattern>When there are no [items] to display, what does this screen show?</pattern>
+        <pattern>How does the user know data is loading on this screen?</pattern>
+      </patterns>
+    </category>
+
+    <category name="component_consistency">
+      <purpose>Ensure consistent patterns across screens.</purpose>
+      <patterns>
+        <pattern>Screen [A] uses [button style X] but Screen [B] uses [different style]. Should these be consistent?</pattern>
+        <pattern>Form patterns differ between these screens. Is that intentional?</pattern>
+        <pattern>Navigation appears differently here than on other screens. Should we align?</pattern>
+      </patterns>
+    </category>
+
+    <category name="accessibility_violations">
+      <purpose>Flag and correct accessibility issues.</purpose>
+      <patterns>
+        <pattern>This text has contrast ratio [X]. WCAG AA requires 4.5:1 for normal text. Can we adjust?</pattern>
+        <pattern>Font size [X] may be too small for some users. Have we checked readability?</pattern>
+        <pattern>Touch targets here are [X]px. Minimum recommended is 44x44. Can we increase?</pattern>
+        <pattern>How does a keyboard user navigate this flow?</pattern>
+      </patterns>
+    </category>
+
+    <category name="responsive_and_theming">
+      <purpose>Ensure responsive design and theme support when required.</purpose>
+      <patterns>
+        <pattern>Which breakpoints have we designed for? Do we have mockups for mobile?</pattern>
+        <pattern>The PRD mentions dark mode. Do our mockups include dark theme variants?</pattern>
+        <pattern>How does this layout adapt at [breakpoint]?</pattern>
+      </patterns>
+    </category>
+  </challenge_categories>
+
+  <sparring_rules>
+    <rule>Challenge aesthetic choices that lack usability justification.</rule>
+    <rule>Challenge any screen missing error, empty, or loading states.</rule>
+    <rule>Challenge inconsistent components across screens.</rule>
+    <rule>Challenge accessibility violations: contrast, font size, touch targets.</rule>
+    <rule>Challenge missing responsive breakpoints.</rule>
+    <rule>Challenge absence of dark/light mode when PRD requires it.</rule>
+    <rule>When challenging, propose a resolution, not just a problem.</rule>
+  </sparring_rules>
+</sparring_patterns>

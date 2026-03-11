@@ -1,0 +1,89 @@
+<best_practices>
+  <general_principles>
+    <principle priority="critical">
+      <name>Consistent naming</name>
+      <description>Use consistent naming conventions across all endpoints: kebab-case for paths, camelCase for JSON fields. Resource names should be plural nouns. Verb usage should be avoided in paths — use HTTP methods for actions.</description>
+      <rationale>Consistency reduces cognitive load for consumers and prevents integration errors.</rationale>
+    </principle>
+
+    <principle priority="critical">
+      <name>Comprehensive error handling</name>
+      <description>Every endpoint must define error responses for: validation failures (400), auth failures (401/403), not found (404), conflicts (409), rate limiting (429), and server errors (5xx). Use a consistent error response schema with code, message, and optional details.</description>
+      <rationale>Clients need predictable error contracts to implement robust handling.</rationale>
+    </principle>
+
+    <principle priority="critical">
+      <name>Pagination on all list endpoints</name>
+      <description>Every endpoint that returns a collection must support pagination. Define cursor-based or offset-based pagination with page size limits. Document default and max page sizes.</description>
+      <rationale>Unbounded list responses cause performance and reliability issues at scale.</rationale>
+    </principle>
+
+    <principle priority="high">
+      <name>Versioning strategy upfront</name>
+      <description>Define the API versioning strategy before first release: URL path (/v1/...), header (Accept-Version), or query param. Document deprecation and sunset policy.</description>
+      <rationale>Retrofitting versioning after release is costly and disruptive.</rationale>
+    </principle>
+
+    <principle priority="high">
+      <name>Idempotency for writes</name>
+      <description>All create and update operations that can be retried must support idempotency. Document idempotency key mechanism (header, request body field) and behavior for duplicate requests.</description>
+      <rationale>Network retries and user double-clicks require idempotent handling to prevent duplicates.</rationale>
+    </principle>
+
+    <principle priority="high">
+      <name>Auth on every endpoint</name>
+      <description>Explicitly document auth requirements for every endpoint: public, authenticated, or role-based. No endpoint should have unspecified auth — default to authenticated unless explicitly public.</description>
+      <rationale>Unspecified auth leads to security gaps and inconsistent enforcement.</rationale>
+    </principle>
+  </general_principles>
+
+  <common_pitfalls>
+    <pitfall>
+      <description>Inconsistent resource naming (e.g., /users vs /getUser vs /user-list)</description>
+      <why_problematic>Confuses API consumers and makes discovery difficult.</why_problematic>
+      <correct_approach>Use plural nouns for resources: /users, /orders, /products.</correct_approach>
+    </pitfall>
+
+    <pitfall>
+      <description>List endpoints without pagination</description>
+      <why_problematic>Leads to unbounded responses, timeouts, and memory issues.</why_problematic>
+      <correct_approach>Always define pagination parameters and enforce limits.</correct_approach>
+    </pitfall>
+
+    <pitfall>
+      <description>Undocumented or incomplete error responses</description>
+      <why_problematic>Clients cannot implement proper error handling; debugging is difficult.</why_problematic>
+      <correct_approach>Document all error codes and response schemas for each endpoint.</correct_approach>
+    </pitfall>
+
+    <pitfall>
+      <description>Auth requirements left unspecified</description>
+      <why_problematic>Implementation may default incorrectly; security gaps emerge.</why_problematic>
+      <correct_approach>Explicitly state auth for every endpoint in the spec.</correct_approach>
+    </pitfall>
+
+    <pitfall>
+      <description>Deferring versioning to "later"</description>
+      <why_problematic>Breaking changes become painful; migration paths are unclear.</why_problematic>
+      <correct_approach>Define versioning strategy and deprecation policy from day one.</correct_approach>
+    </pitfall>
+  </common_pitfalls>
+
+  <quality_checklist>
+    <category name="before_writing_spec">
+      <item>All endpoints have HTTP method, path, and purpose documented.</item>
+      <item>Request/response schemas defined for each endpoint.</item>
+      <item>Error codes and schemas documented for all failure cases.</item>
+      <item>Pagination parameters defined for list endpoints.</item>
+      <item>Auth requirement specified per endpoint.</item>
+      <item>Versioning strategy documented.</item>
+      <item>Idempotency documented for write operations.</item>
+    </category>
+
+    <category name="naming_consistency">
+      <item>Paths use kebab-case.</item>
+      <item>JSON fields use camelCase.</item>
+      <item>Resources use plural nouns.</item>
+    </category>
+  </quality_checklist>
+</best_practices>

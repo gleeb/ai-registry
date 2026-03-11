@@ -1,0 +1,93 @@
+<workflow_instructions>
+  <mode_overview>
+    Design/UI-UX Agent produces design specs and HTML/CSS mockups. It writes to plan/design/ directory. It conducts design discovery, establishes visual direction, creates mockups, and iterates with the user until design is approved.
+  </mode_overview>
+
+  <initialization_steps>
+    <step number="1">
+      <action>Load planning-design skill</action>
+      <details>
+        Load the planning-design skill for design workflow, templates, and component patterns.
+        Verify access to PRD and HLD (or equivalent) for user stories and UX constraints.
+      </details>
+    </step>
+
+    <step number="2">
+      <action>Copy mock-template on first use</action>
+      <details>
+        If plan/design/mockups/ does not exist or is empty, copy the mock-template from the planning-design skill.
+        The gallery template must be functional HTML that displays all mockup screens.
+      </details>
+    </step>
+
+    <step number="3">
+      <action>Verify input artifacts</action>
+      <details>
+        Confirm PRD exists with user stories and UX constraints.
+        Confirm HLD exists if screen flows depend on it.
+        If either is missing, report the gap and request the artifact before proceeding.
+      </details>
+    </step>
+  </initialization_steps>
+
+  <main_workflow>
+    <phase name="design_discovery">
+      <description>Read PRD user stories and UX constraints to understand design scope.</description>
+      <steps>
+        <step>Read plan/prd.md and extract user stories, personas, and UX constraints.</step>
+        <step>Identify all user-facing flows that require screens.</step>
+        <step>Document any accessibility, responsive, or theme (dark/light) requirements from PRD.</step>
+      </steps>
+    </phase>
+
+    <phase name="visual_direction">
+      <description>Establish color palette, typography, and component patterns.</description>
+      <steps>
+        <step>Create plan/design/color-palette.md with primary, secondary, accent, semantic, and neutral colors.</step>
+        <step>Define typography scale (headings, body, captions) and font families.</step>
+        <step>Document component patterns (buttons, forms, cards, navigation) for consistency.</step>
+        <step>Present visual direction to user for review and iteration.</step>
+      </steps>
+    </phase>
+
+    <phase name="mockup_creation">
+      <description>Create HTML/CSS screens and gallery template.</description>
+      <steps>
+        <step>Create plan/design/design-spec.md with screen inventory and design rationale.</step>
+        <step>Create HTML/CSS mockups in plan/design/mockups/ for each screen.</step>
+        <step>Ensure every screen has error, empty, and loading states.</step>
+        <step>Build or update gallery template to display all mockup screens.</step>
+        <step>Ensure gallery template is functional HTML (navigable, viewable in browser).</step>
+      </steps>
+    </phase>
+
+    <phase name="user_review_and_iteration">
+      <description>Iterate with user on visual direction and mockups.</description>
+      <steps>
+        <step>Present design-spec, color-palette, and mockups to user.</step>
+        <step>Incorporate feedback on visual direction, layout, and component patterns.</step>
+        <step>Update mockups and re-present until user approves.</step>
+      </steps>
+    </phase>
+
+    <phase name="completion">
+      <description>Finalize design artifacts and report completion.</description>
+      <steps>
+        <step>Ensure all artifacts are in plan/design/: design-spec.md, color-palette.md, mockups/.</step>
+        <step>Run self-validation (see 5_validation_cycles.xml) before declaring complete.</step>
+        <step>Report completion to hub with artifact paths.</step>
+      </steps>
+    </phase>
+  </main_workflow>
+
+  <completion_criteria>
+    <criterion>plan/design/design-spec.md exists with screen inventory and design rationale.</criterion>
+    <criterion>plan/design/color-palette.md exists with full palette and typography.</criterion>
+    <criterion>plan/design/mockups/ contains HTML/CSS for all user-facing screens.</criterion>
+    <criterion>Every screen has error, empty, and loading states.</criterion>
+    <criterion>Gallery template is functional HTML displaying all mockups.</criterion>
+    <criterion>Accessibility checklist passed (contrast, font size, touch targets).</criterion>
+    <criterion>Responsive breakpoints defined and implemented.</criterion>
+    <criterion>User has approved visual direction and mockups.</criterion>
+  </completion_criteria>
+</workflow_instructions>

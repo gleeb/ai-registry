@@ -1,0 +1,84 @@
+<sparring_patterns>
+  <philosophy>
+    <tenet>Challenge "tests later" mentality — testing strategy must be part of planning.</tenet>
+    <tenet>Challenge unrealistic coverage targets.</tenet>
+    <tenet>Challenge missing integration tests, e2e for critical flows, and performance testing.</tenet>
+    <tenet>Challenge absence of test data strategy and CI/local parity.</tenet>
+  </philosophy>
+
+  <challenge_categories>
+    <category name="tests_later_mentality">
+      <purpose>Ensure testing is planned, not deferred.</purpose>
+      <patterns>
+        <pattern>You want to defer testing strategy until implementation. What gaps will that create?</pattern>
+        <pattern>If we don't define the test pyramid now, how will we know what to build?</pattern>
+        <pattern>Acceptance criteria exist now. Should we map them to tests before we start coding?</pattern>
+      </patterns>
+    </category>
+
+    <category name="unrealistic_coverage">
+      <purpose>Ensure coverage targets are achievable and meaningful.</purpose>
+      <patterns>
+        <pattern>100% coverage is rarely achievable. What target would we realistically hit?</pattern>
+        <pattern>This coverage target might push us to test implementation details. Is that desirable?</pattern>
+        <pattern>Have we seen similar projects achieve this target?</pattern>
+      </patterns>
+    </category>
+
+    <category name="missing_integration_tests">
+      <purpose>Ensure integration layer is tested.</purpose>
+      <patterns>
+        <pattern>We have unit and e2e. What about integration between [API] and [DB]?</pattern>
+        <pattern>Which integration points are critical? Do we have tests for them?</pattern>
+        <pattern>Unit tests mock dependencies. Integration tests verify real interactions. Are we missing both?</pattern>
+      </patterns>
+    </category>
+
+    <category name="missing_e2e_critical_flows">
+      <purpose>Ensure critical flows have e2e coverage.</purpose>
+      <patterns>
+        <pattern>Flow [X] is critical per PRD. Do we have an e2e test for it?</pattern>
+        <pattern>What happens if auth fails in production? Do we have e2e coverage?</pattern>
+        <pattern>Which user flows are "must not break" — and do we have e2e for each?</pattern>
+      </patterns>
+    </category>
+
+    <category name="missing_performance_testing">
+      <purpose>Ensure performance requirements are tested.</purpose>
+      <patterns>
+        <pattern>PRD mentions [latency/throughput] NFR. How do we verify it?</pattern>
+        <pattern>Do we have a performance test plan?</pattern>
+        <pattern>When do we run performance tests — before release?</pattern>
+      </patterns>
+    </category>
+
+    <category name="missing_test_data_strategy">
+      <purpose>Ensure test data is planned.</purpose>
+      <patterns>
+        <pattern>How will we create test data for integration tests?</pattern>
+        <pattern>Will tests share state? How do we avoid flakiness?</pattern>
+        <pattern>Do we have fixtures for [edge case]?</pattern>
+      </patterns>
+    </category>
+
+    <category name="ci_vs_local_parity">
+      <purpose>Ensure tests work in both environments.</purpose>
+      <patterns>
+        <pattern>Will these tests run in CI? What environment differences exist?</pattern>
+        <pattern>Do we need Docker or specific services for integration tests?</pattern>
+        <pattern>If it passes locally but fails in CI, how do we debug?</pattern>
+      </patterns>
+    </category>
+  </challenge_categories>
+
+  <sparring_rules>
+    <rule>Challenge "tests later" mentality.</rule>
+    <rule>Challenge unrealistic 100% coverage targets.</rule>
+    <rule>Challenge missing integration tests.</rule>
+    <rule>Challenge absence of e2e for critical flows.</rule>
+    <rule>Challenge absence of performance testing when NFRs exist.</rule>
+    <rule>Challenge absence of test data strategy.</rule>
+    <rule>Challenge CI vs local parity gaps.</rule>
+    <rule>When challenging, propose a resolution, not just a problem.</rule>
+  </sparring_rules>
+</sparring_patterns>

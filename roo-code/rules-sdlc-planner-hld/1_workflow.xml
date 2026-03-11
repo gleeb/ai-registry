@@ -1,0 +1,88 @@
+<workflow_instructions>
+  <mode_overview>
+    HLD Agent produces High-Level Design documents and User Story decomposition from validated PRD and Architecture inputs. It reads upstream artifacts, decomposes user stories (with "Project Scaffolding" always first), drafts the HLD, reviews with the user, and writes to plan/hld.md and plan/user-stories/*.md.
+  </mode_overview>
+
+  <initialization_steps>
+    <step number="1">
+      <action>Load planning-hld skill</action>
+      <details>
+        Load the planning-hld skill for the HLD template, user story template, decomposition rules, and sparring protocol.
+        Confirm access to references/HLD.md and references/USER-STORY.md.
+      </details>
+    </step>
+
+    <step number="2">
+      <action>Verify upstream artifacts exist</action>
+      <details>
+        Confirm plan/prd.md exists and has passed all 8 validation dimensions.
+        Confirm plan/system-architecture.md exists.
+        If plan/security.md exists, include it in context.
+        If any required artifact is missing, DENY HLD work and report the blocker.
+      </details>
+    </step>
+  </initialization_steps>
+
+  <main_workflow>
+    <phase name="context_gathering">
+      <description>Read and extract context from upstream artifacts.</description>
+      <steps>
+        <step>Read plan/prd.md — extract user story groups (section 7), constraints, and NFRs.</step>
+        <step>Read plan/system-architecture.md — extract component boundaries, integration patterns, technology stack.</step>
+        <step>Read plan/security.md if available — extract security requirements that affect design.</step>
+        <step>Identify the scope: full decomposition (greenfield) or targeted update (incremental).</step>
+      </steps>
+    </phase>
+
+    <phase name="user_story_decomposition">
+      <description>Decompose PRD into user stories with traceability.</description>
+      <steps>
+        <step>ALWAYS create "Project Scaffolding and Environment Setup" as the first user story (US-001-scaffolding.md).</step>
+        <step>Project Scaffolding covers: repository init, project structure, package manager, linting/formatting/CI, docs/ scaffolding, dev environment verification.</step>
+        <step>Derive remaining user stories from the user story groups in PRD section 7.</step>
+        <step>For each user story: define scope boundaries, write testable acceptance criteria (Given/When/Then or explicit bullet checks), include error cases, map to parent PRD section.</step>
+        <step>Check for sibling overlap across user stories.</step>
+        <step>Write user stories to plan/user-stories/US-NNN-[name].md.</step>
+      </steps>
+    </phase>
+
+    <phase name="hld_drafting">
+      <description>Produce the High-Level Design document.</description>
+      <steps>
+        <step>For each major component or feature area, produce an HLD section using the HLD template.</step>
+        <step>Each HLD section must include: outcome statement, parent linkage (to user story and PRD), scope (in and out), high-level design (architecture approach, key interfaces, data contracts), acceptance criteria (testable, observable), dependencies and blockers.</step>
+        <step>Verify traceability: each HLD section traces to a user story which traces to the PRD.</step>
+        <step>Check for sibling overlap across HLD sections.</step>
+        <step>Each HLD section must be sized for one implementation cycle.</step>
+        <step>Write the HLD to plan/hld.md.</step>
+      </steps>
+    </phase>
+
+    <phase name="review_with_user">
+      <description>Spar with user on decomposition and design.</description>
+      <steps>
+        <step>Present the decomposition summary to the user.</step>
+        <step>Spar on each user story and HLD section: challenge scope boundaries, probe acceptance criteria for testability, verify no gaps in PRD coverage.</step>
+        <step>Iterate until the user approves.</step>
+      </steps>
+    </phase>
+
+    <phase name="completion">
+      <description>Finalize and hand off.</description>
+      <steps>
+        <step>Write final versions of plan/hld.md and plan/user-stories/*.md.</step>
+        <step>Return completion summary to the Planning Hub.</step>
+      </steps>
+    </phase>
+  </main_workflow>
+
+  <completion_criteria>
+    <criterion>plan/hld.md exists with all sections substantive and traceable.</criterion>
+    <criterion>plan/user-stories/US-001-scaffolding.md exists as the first user story.</criterion>
+    <criterion>All user stories have testable acceptance criteria and map to PRD.</criterion>
+    <criterion>All HLD sections trace to user stories and PRD.</criterion>
+    <criterion>No sibling overlap in user stories or HLD sections.</criterion>
+    <criterion>User has approved the decomposition.</criterion>
+    <criterion>Completion summary returned to Planning Hub.</criterion>
+  </completion_criteria>
+</workflow_instructions>

@@ -1,0 +1,105 @@
+<best_practices>
+  <general_principles>
+    <principle priority="critical">
+      <name>Test pyramid</name>
+      <description>More unit tests, fewer integration tests, fewer e2e tests. The pyramid reflects cost and speed: unit tests are fast and cheap; e2e tests are slow and expensive.</description>
+      <rationale>Inverting the pyramid leads to slow test suites and flaky builds. The pyramid optimizes for fast feedback and coverage.</rationale>
+    </principle>
+
+    <principle priority="critical">
+      <name>Realistic coverage targets</name>
+      <description>Set coverage targets that are achievable and meaningful (e.g., 80% unit, 60% integration, critical flows e2e). Avoid 100% — it is rarely achievable and often counterproductive.</description>
+      <rationale>100% coverage encourages testing implementation details. Realistic targets focus on meaningful coverage.</rationale>
+    </principle>
+
+    <principle priority="critical">
+      <name>Test data strategy upfront</name>
+      <description>Define how test data will be created, seeded, and isolated. Address fixtures, factories, and data cleanup.</description>
+      <rationale>Test data issues cause flaky tests and slow debugging. Addressing it upfront prevents downstream pain.</rationale>
+    </principle>
+
+    <principle priority="high">
+      <name>QA gates block deployment</name>
+      <description>Define explicit gates: e.g., all e2e pass, coverage threshold met, no critical security findings. Deployment must not proceed when gates fail.</description>
+      <rationale>Gates without enforcement are meaningless. Blocking deployment ensures quality.</rationale>
+    </principle>
+
+    <principle priority="high">
+      <name>Regression strategy</name>
+      <description>Define what runs on every commit, PR, and release. Balance speed vs coverage.</description>
+      <rationale>Without a regression strategy, teams run ad-hoc tests or skip them. Defined strategy ensures consistency.</rationale>
+    </principle>
+
+    <principle priority="high">
+      <name>Accessibility testing</name>
+      <description>Include accessibility testing in the strategy: automated (aXe, Lighthouse) and manual (keyboard nav, screen reader).</description>
+      <rationale>Accessibility is often overlooked. Including it in the strategy ensures it is tested.</rationale>
+    </principle>
+  </general_principles>
+
+  <common_pitfalls>
+    <pitfall>
+      <description>"Tests later" mentality</description>
+      <why_problematic>Deferring test strategy leads to ad-hoc testing, gaps, and technical debt. Tests never catch up.</why_problematic>
+      <correct_approach>Define testing strategy during planning. Test design is part of planning, not implementation.</correct_approach>
+    </pitfall>
+
+    <pitfall>
+      <description>Unrealistic 100% coverage targets</description>
+      <why_problematic>Drives testing of implementation details, not behavior. Often unachievable and demoralizing.</why_problematic>
+      <correct_approach>Set realistic targets (e.g., 80% unit, critical flows e2e). Focus on meaningful coverage.</correct_approach>
+    </pitfall>
+
+    <pitfall>
+      <description>Missing integration tests</description>
+      <why_problematic>Unit tests alone miss integration bugs. Integration tests catch component interaction failures.</why_problematic>
+      <correct_approach>Include integration layer in the pyramid. Map integration points to acceptance criteria.</correct_approach>
+    </pitfall>
+
+    <pitfall>
+      <description>No e2e for critical flows</description>
+      <why_problematic>Critical user flows (auth, checkout, core features) may break without e2e coverage.</why_problematic>
+      <correct_approach>Identify critical flows from PRD. Ensure each has at least one e2e test.</correct_approach>
+    </pitfall>
+
+    <pitfall>
+      <description>No performance testing</description>
+      <why_problematic>Performance NFRs are often untested until production. Performance issues are discovered late.</why_problematic>
+      <correct_approach>Include performance test plan when PRD or architecture specifies performance requirements.</correct_approach>
+    </pitfall>
+
+    <pitfall>
+      <description>No test data strategy</description>
+      <why_problematic>Tests fail due to data dependencies, flaky due to shared state, or are slow due to setup.</why_problematic>
+      <correct_approach>Define fixtures, factories, seeding, and isolation for each test level.</correct_approach>
+    </pitfall>
+
+    <pitfall>
+      <description>CI vs local parity</description>
+      <why_problematic>Tests pass locally but fail in CI. Environment differences cause confusion and slow feedback.</why_problematic>
+      <correct_approach>Document environment requirements. Ensure test strategy works in both local and CI.</correct_approach>
+    </pitfall>
+  </common_pitfalls>
+
+  <quality_checklist>
+    <category name="before_strategy_design">
+      <item>All plan artifacts read and acceptance criteria extracted.</item>
+      <item>Performance, security, and accessibility requirements identified.</item>
+    </category>
+
+    <category name="strategy_content">
+      <item>Test pyramid defined with unit, integration, e2e.</item>
+      <item>Coverage targets are realistic.</item>
+      <item>Test data strategy is documented.</item>
+      <item>QA gates block deployment.</item>
+      <item>Regression strategy is defined.</item>
+    </category>
+
+    <category name="before_completion">
+      <item>All acceptance criteria mapped to test types.</item>
+      <item>Critical flows have e2e coverage.</item>
+      <item>Performance, security, and accessibility test plans included.</item>
+      <item>User has approved strategy.</item>
+    </category>
+  </quality_checklist>
+</best_practices>

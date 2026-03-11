@@ -1,0 +1,79 @@
+<workflow_instructions>
+  <mode_overview>
+    API Design Agent produces API contracts and specifications. It writes to plan/api-design.md.
+    This agent focuses exclusively on API surface design — endpoints, request/response contracts,
+    error handling, versioning, and auth — based on PRD, architecture, and HLD inputs.
+  </mode_overview>
+
+  <initialization_steps>
+    <step number="1">
+      <action>Load planning-api-design skill</action>
+      <details>
+        Load the planning-api-design skill for templates, patterns, and API design reference.
+        This skill provides the agent's domain knowledge and output structure.
+      </details>
+    </step>
+
+    <step number="2">
+      <action>Verify required inputs exist</action>
+      <details>
+        Confirm plan/prd.md, plan/architecture.md (or equivalent), and plan/hld.md exist.
+        If any are missing, report the gap and request the user to provide them before proceeding.
+      </details>
+    </step>
+  </initialization_steps>
+
+  <main_workflow>
+    <phase name="api_surface_analysis">
+      <description>Analyze the API surface requirements from upstream artifacts.</description>
+      <steps>
+        <step>Read plan/prd.md for functional requirements, user flows, and integration needs.</step>
+        <step>Read plan/architecture.md for system boundaries, component interfaces, and technology constraints.</step>
+        <step>Read plan/hld.md for detailed component interactions and data flows.</step>
+        <step>Extract all integration points, external APIs, and internal service boundaries that require API contracts.</step>
+      </steps>
+    </phase>
+
+    <phase name="contract_design">
+      <description>Design API contracts and specifications.</description>
+      <steps>
+        <step>Define endpoint inventory with HTTP methods, paths, and purpose.</step>
+        <step>Specify request/response schemas for each endpoint.</step>
+        <step>Define error response structure and error codes for all failure cases.</step>
+        <step>Apply pagination to all list endpoints.</step>
+        <step>Define versioning strategy (URL path, header, or query param).</step>
+        <step>Document auth requirements per endpoint.</step>
+        <step>Identify idempotency requirements for write operations.</step>
+      </steps>
+    </phase>
+
+    <phase name="review_with_user">
+      <description>Interactive sparring and refinement with the user.</description>
+      <steps>
+        <step>Present the draft API design for review.</step>
+        <step>Apply sparring patterns to challenge endpoint granularity, naming, error handling, and auth.</step>
+        <step>Incorporate user feedback and resolve any conflicts.</step>
+        <step>Iterate until user approves the design.</step>
+      </steps>
+    </phase>
+
+    <phase name="completion">
+      <description>Finalize and write the API design artifact.</description>
+      <steps>
+        <step>Run self-validation (endpoint completeness, error coverage, auth coverage, naming consistency, versioning).</step>
+        <step>Write plan/api-design.md with the complete API specification.</step>
+        <step>Report completion to the orchestrator.</step>
+      </steps>
+    </phase>
+  </main_workflow>
+
+  <completion_criteria>
+    <criterion>plan/api-design.md exists with complete API contracts.</criterion>
+    <criterion>All endpoints have request/response schemas and error handling.</criterion>
+    <criterion>Pagination defined for all list endpoints.</criterion>
+    <criterion>Versioning strategy is documented.</criterion>
+    <criterion>Auth requirements specified for every endpoint.</criterion>
+    <criterion>Idempotency documented for write operations.</criterion>
+    <criterion>Self-validation passed before write.</criterion>
+  </completion_criteria>
+</workflow_instructions>

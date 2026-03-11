@@ -1,81 +1,78 @@
 <error_handling>
-  <scenario name="skill_not_found">
-    <trigger>No planning skill matches the identified planning system (e.g., user says "Jira" but no prd-jira-planning skill exists).</trigger>
+  <scenario name="sub_agent_dispatch_failure">
+    <trigger>A planning sub-agent fails to start, crashes, or returns an error.</trigger>
     <required_actions>
-      <action>Report the gap explicitly: state which system was identified and which skill is missing.</action>
-      <action>Offer two options: (a) proceed with local-only planning without system synchronization, or (b) create the missing skill first using skill-writer mode.</action>
-      <action>If user chooses local-only, mark all artifacts as PROVISIONAL - NOT SYNCED TO [SYSTEM].</action>
+      <action>Report the failure to the user: which agent, what error.</action>
+      <action>Assess impact: can other agents in the same phase continue?</action>
+      <action>Attempt re-dispatch once with the same parameters.</action>
+      <action>If re-dispatch fails, offer the user alternatives: skip the agent (with risk acknowledgment), try a different approach, or abort the phase.</action>
+    </required_actions>
+  </scenario>
+
+  <scenario name="validation_persistent_failure">
+    <trigger>Validator finds conflicts that persist after 3 re-dispatch cycles.</trigger>
+    <required_actions>
+      <action>Escalate to the user with the specific unresolvable conflict.</action>
+      <action>Present the conflicting requirements from both documents.</action>
+      <action>Ask the user to make a decision on which requirement takes priority.</action>
+      <action>Re-dispatch the affected agent with the user's decision as a constraint.</action>
+    </required_actions>
+  </scenario>
+
+  <scenario name="missing_upstream_artifact">
+    <trigger>An agent needs an upstream artifact that doesn't exist.</trigger>
+    <required_actions>
+      <action>Do not dispatch the agent.</action>
+      <action>Identify which phase and agent produces the missing artifact.</action>
+      <action>Dispatch the upstream agent first, or ask the user if the upstream phase should be run.</action>
     </required_actions>
     <prohibited_actions>
-      <action>Do not attempt to use a different skill as a substitute without telling the user.</action>
-      <action>Do not claim system synchronization when no skill was loaded.</action>
+      <action>Do not dispatch an agent without its required upstream artifacts.</action>
     </prohibited_actions>
   </scenario>
 
-  <scenario name="system_unavailable">
-    <trigger>The planning system is unavailable (MCP tools inaccessible, API error, authentication failure).</trigger>
+  <scenario name="user_wants_to_skip_phase">
+    <trigger>User wants to skip a planning phase.</trigger>
     <required_actions>
-      <action>Stop all system write operations immediately.</action>
-      <action>Report the blocker clearly: which system, which operation failed, what the impact is.</action>
-      <action>Continue only with provisional local planning draft if user approves temporary offline drafting.</action>
-      <action>Mark all provisional artifacts as PROVISIONAL - NOT SYNCED TO [SYSTEM].</action>
+      <action>Identify which plan artifacts will be missing.</action>
+      <action>Identify which downstream phases will be affected (missing input).</action>
+      <action>Present the risks explicitly to the user.</action>
+      <action>Require explicit acknowledgment before skipping.</action>
+      <action>Mark skipped artifacts as NOT PLANNED in the validation report.</action>
+    </required_actions>
+  </scenario>
+
+  <scenario name="sync_skill_not_found">
+    <trigger>User wants SaaS sync but no matching skill exists.</trigger>
+    <required_actions>
+      <action>Report which system was requested and that no sync skill exists.</action>
+      <action>Offer to proceed with internal planning only (plan/ is complete without sync).</action>
+      <action>Offer to create the missing sync skill using skill-writer mode.</action>
     </required_actions>
     <prohibited_actions>
-      <action>Do not claim synchronization to the planning system when writes did not occur.</action>
+      <action>Do not attempt to sync without a matching skill.</action>
+      <action>Do not claim sync occurred when it did not.</action>
     </prohibited_actions>
   </scenario>
 
-  <scenario name="stale_or_conflicting_state">
-    <trigger>Planning system state appears outdated, contradictory, or incomplete relative to expectations.</trigger>
+  <scenario name="plan_folder_stale">
+    <trigger>Plan artifacts exist but appear outdated or inconsistent with each other.</trigger>
     <required_actions>
-      <action>Re-fetch current state before proposing additional writes.</action>
-      <action>Identify and document conflicts and the proposed resolution path.</action>
-      <action>Ask one focused clarification question when conflict cannot be resolved from available state.</action>
+      <action>Run the validator on all existing artifacts to identify specific issues.</action>
+      <action>Present findings to the user.</action>
+      <action>Recommend which phases need re-running.</action>
+      <action>Get user agreement before re-dispatching agents.</action>
     </required_actions>
   </scenario>
 
-  <scenario name="validation_gate_override">
-    <trigger>User wants to proceed to decomposition despite one or more PRD validation dimensions being "low" or "medium".</trigger>
+  <scenario name="scope_change_mid_planning">
+    <trigger>User changes requirements or scope after some phases are complete.</trigger>
     <required_actions>
-      <action>Do not silently skip the gate.</action>
-      <action>For each non-high dimension, state the specific risk that is being accepted.</action>
-      <action>Require the user to explicitly acknowledge each risk in writing before proceeding.</action>
-      <action>Note the overridden dimensions in the PRD and in the coordinator handoff summary.</action>
+      <action>Identify which existing plan artifacts are affected by the change.</action>
+      <action>Determine the earliest affected phase.</action>
+      <action>Present the re-planning scope to the user.</action>
+      <action>Re-run from the earliest affected phase, treating unaffected artifacts as constraints.</action>
+      <action>Re-validate all artifacts after updates.</action>
     </required_actions>
-    <prohibited_actions>
-      <action>Do not proceed without explicit per-dimension risk acknowledgment.</action>
-      <action>Do not downgrade the severity of unresolved validation gaps to justify moving forward.</action>
-    </prohibited_actions>
-  </scenario>
-
-  <scenario name="research_dispatch_failure">
-    <trigger>A dispatched sdlc-project-research agent fails, returns inconclusive results, or is blocked.</trigger>
-    <required_actions>
-      <action>Report the research failure to the user with the specific question that was unresolvable.</action>
-      <action>Ask the user if they have domain knowledge that can fill the gap.</action>
-      <action>If the gap is in technical feasibility (validation dimension 6), mark that dimension as "medium" with the unresolved question documented.</action>
-      <action>Do not fabricate an answer to fill the research gap.</action>
-    </required_actions>
-  </scenario>
-
-  <scenario name="overbroad_hld_issue_scope">
-    <trigger>An HLD Issue draft is too broad for one focused architect-led execution cycle.</trigger>
-    <required_actions>
-      <action>Split into smaller HLD Issues with explicit scope boundaries and dependency order.</action>
-      <action>Add testable acceptance criteria for each resulting issue.</action>
-      <action>Verify each resulting issue traces back to the parent User Story Project and PRD Initiative.</action>
-    </required_actions>
-  </scenario>
-
-  <scenario name="handoff_not_ready">
-    <trigger>Artifacts are incomplete, validation gate was not cleared, or required fields are missing for execution.</trigger>
-    <required_actions>
-      <action>Do not hand off to coordinator yet.</action>
-      <action>Identify the specific blocker: which artifact is missing what field, or which validation dimension is not "high".</action>
-      <action>Complete the missing content or resolve the validation gap before handoff.</action>
-    </required_actions>
-    <prohibited_actions>
-      <action>Do not hand off to coordinator with unanswered validation gaps or incomplete artifacts.</action>
-    </prohibited_actions>
   </scenario>
 </error_handling>

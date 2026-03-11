@@ -1,0 +1,82 @@
+<best_practices>
+  <general_principles>
+    <principle priority="critical">
+      <name>Normalize by default</name>
+      <description>Design schemas in normalized form unless there is evidence that denormalization is needed. Document denormalization decisions with specific rationale: query pattern, performance requirement, or consistency trade-off.</description>
+      <rationale>Normalization reduces redundancy and update anomalies. Denormalization without evidence leads to maintenance burden.</rationale>
+    </principle>
+
+    <principle priority="critical">
+      <name>Index common query patterns</name>
+      <description>Every query pattern identified in the HLD must have a corresponding index or access path. Document which queries each index supports. Avoid over-indexing — each index has write cost.</description>
+      <rationale>Unindexed queries cause full scans and performance degradation at scale.</rationale>
+    </principle>
+
+    <principle priority="high">
+      <name>Plan migrations upfront</name>
+      <description>Define migration strategy for schema changes: additive changes, backfill requirements, downtime expectations. Document rollback approach for failed migrations.</description>
+      <rationale>Schema evolution is inevitable; unplanned migrations cause production incidents.</rationale>
+    </principle>
+
+    <principle priority="high">
+      <name>Define data lifecycle</name>
+      <description>For each entity or data category, define retention policy, archival strategy, and deletion rules. Consider compliance (GDPR, etc.) and cost.</description>
+      <rationale>Unbounded data growth causes cost and compliance issues.</rationale>
+    </principle>
+
+    <principle priority="high">
+      <name>Consider data growth patterns</name>
+      <description>Estimate or document expected data volume and growth rate. Design for scale: partitioning, sharding, or archival strategy if growth is significant.</description>
+      <rationale>Designs that ignore growth fail when data scales.</rationale>
+    </principle>
+  </general_principles>
+
+  <common_pitfalls>
+    <pitfall>
+      <description>Denormalizing without evidence</description>
+      <why_problematic>Adds complexity and consistency bugs without proven benefit.</why_problematic>
+      <correct_approach>Start normalized; denormalize only when a specific query pattern or performance requirement justifies it.</correct_approach>
+    </pitfall>
+
+    <pitfall>
+      <description>Missing indexes for common queries</description>
+      <why_problematic>Queries degrade as data grows; full table scans are unacceptable at scale.</why_problematic>
+      <correct_approach>Map each query pattern to an index; document the mapping.</correct_approach>
+    </pitfall>
+
+    <pitfall>
+      <description>No migration strategy</description>
+      <why_problematic>Schema changes become risky, ad-hoc, and error-prone.</why_problematic>
+      <correct_approach>Define migration approach, rollback, and backfill strategy upfront.</correct_approach>
+    </pitfall>
+
+    <pitfall>
+      <description>No retention policy</description>
+      <why_problematic>Data grows unbounded; compliance and cost issues emerge.</why_problematic>
+      <correct_approach>Define retention, archival, and deletion for each data category.</correct_approach>
+    </pitfall>
+
+    <pitfall>
+      <description>Overcaching</description>
+      <why_problematic>Cache invalidation complexity; stale data; unnecessary cost.</why_problematic>
+      <correct_approach>Cache only when access pattern justifies it; document TTL and invalidation strategy.</correct_approach>
+    </pitfall>
+  </common_pitfalls>
+
+  <quality_checklist>
+    <category name="before_writing_spec">
+      <item>All entities have attributes, types, and relationships defined.</item>
+      <item>Normalization decisions documented; denormalization has rationale.</item>
+      <item>Indexes defined for all identified query patterns.</item>
+      <item>Migration strategy documented.</item>
+      <item>Data lifecycle (retention, archival) defined per entity or category.</item>
+      <item>Storage technology choices documented with rationale.</item>
+    </category>
+
+    <category name="schema_quality">
+      <item>Primary keys defined for all entities.</item>
+      <item>Foreign keys and relationships explicit.</item>
+      <item>No orphaned entities without clear ownership.</item>
+    </category>
+  </quality_checklist>
+</best_practices>

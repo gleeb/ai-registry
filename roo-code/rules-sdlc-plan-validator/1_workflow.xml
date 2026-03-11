@@ -1,0 +1,91 @@
+<workflow_instructions>
+  <mode_overview>
+    Plan Validator validates cross-plan consistency. It reads all specified plan artifacts, runs traceability, consistency, and completeness checks, and writes findings to plan/validation/cross-validation-report.md. The validator NEVER modifies plan artifacts — only reads and reports.
+  </mode_overview>
+
+  <initialization_steps>
+    <step number="1">
+      <action>Load planning-validator skill</action>
+      <details>
+        Load the planning-validator skill for validation workflow, check categories, and severity classification.
+      </details>
+    </step>
+
+    <step number="2">
+      <action>Receive artifact list</action>
+      <details>
+        The hub (or dispatcher) provides the list of plan artifacts to validate. This may be phase-specific (e.g., PRD only) or full-chain (all artifacts).
+      </details>
+    </step>
+
+    <step number="3">
+      <action>Verify artifact paths</action>
+      <details>
+        Confirm which artifacts exist and which are missing. Missing artifacts will be marked as MISSING in the report.
+      </details>
+    </step>
+  </initialization_steps>
+
+  <main_workflow>
+    <phase name="artifact_collection">
+      <description>Read all specified plan files.</description>
+      <steps>
+        <step>Read each specified plan artifact from the provided list.</step>
+        <step>For missing artifacts: mark as MISSING, document which checks could not run.</step>
+        <step>For artifacts that are too large: summarize key sections for validation.</step>
+        <step>Build an internal representation of plan content for cross-referencing.</step>
+      </steps>
+    </phase>
+
+    <phase name="traceability_check">
+      <description>Verify requirements trace through the plan chain.</description>
+      <steps>
+        <step>Trace PRD requirements through Architecture, HLD, user stories, to acceptance criteria.</step>
+        <step>Verify testing strategy maps to acceptance criteria.</step>
+        <step>Identify orphan requirements (in PRD but not in downstream) and orphan implementations (in downstream but not in PRD).</step>
+      </steps>
+    </phase>
+
+    <phase name="consistency_check">
+      <description>Verify no conflicts between plan artifacts.</description>
+      <steps>
+        <step>Compare terminology, technology stack, and data models across artifacts.</step>
+        <step>Check architecture vs security alignment (auth, encryption, network).</step>
+        <step>Check API design vs architecture integration points.</step>
+        <step>Check data architecture vs HLD entities.</step>
+        <step>Check design mockups vs PRD user flows.</step>
+      </steps>
+    </phase>
+
+    <phase name="completeness_check">
+      <description>Verify all required sections and content exist.</description>
+      <steps>
+        <step>Verify each artifact has required sections per its template.</step>
+        <step>Identify placeholder or empty content.</step>
+        <step>Flag incomplete artifacts as INCOMPLETE.</step>
+      </steps>
+    </phase>
+
+    <phase name="report_generation">
+      <description>Generate cross-validation report.</description>
+      <steps>
+        <step>Write plan/validation/cross-validation-report.md.</step>
+        <step>Classify each finding by severity: CRITICAL, WARNING, INFO.</step>
+        <step>Cite specific document locations (section, line) for each finding.</step>
+        <step>Suggest resolution for each finding where possible.</step>
+        <step>Include coverage metrics (e.g., traceability %, artifact completeness).</step>
+        <step>Include summary: PASS, PASS with Warnings, or FAIL.</step>
+      </steps>
+    </phase>
+  </main_workflow>
+
+  <completion_criteria>
+    <criterion>All specified artifacts were read (or marked MISSING).</criterion>
+    <criterion>Traceability, consistency, and completeness checks were run.</criterion>
+    <criterion>plan/validation/cross-validation-report.md exists with findings.</criterion>
+    <criterion>Findings cite specific document locations.</criterion>
+    <criterion>Findings are classified by severity.</criterion>
+    <criterion>Coverage metrics are calculated and reported.</criterion>
+    <criterion>No plan artifact was modified.</criterion>
+  </completion_criteria>
+</workflow_instructions>

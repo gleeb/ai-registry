@@ -1,0 +1,49 @@
+<error_handling>
+  <scenario name="missing_artifact">
+    <trigger>An artifact in the validation list does not exist at the specified path.</trigger>
+    <required_actions>
+      <action>Mark the artifact as MISSING in the report.</action>
+      <action>Document which checks could not run due to the missing artifact (e.g., "Traceability check: PRD missing — cannot trace requirements").</action>
+      <action>Proceed with validation of remaining artifacts.</action>
+      <action>Include MISSING artifacts in the report summary with clear impact.</action>
+    </required_actions>
+    <prohibited_actions>
+      <action>Do not invent or assume artifact content.</action>
+      <action>Do not skip reporting the missing artifact.</action>
+    </prohibited_actions>
+  </scenario>
+
+  <scenario name="incomplete_artifact">
+    <trigger>An artifact exists but has placeholder content, empty sections, or is clearly unfinished.</trigger>
+    <required_actions>
+      <action>Flag the artifact as INCOMPLETE in the report.</action>
+      <action>Cite specific sections that are placeholder or empty.</action>
+      <action>Classify as WARNING (incomplete blocks quality) or INFO (minor gaps) based on impact.</action>
+      <action>Suggest resolution: "Complete section X with..."</action>
+    </required_actions>
+  </scenario>
+
+  <scenario name="contradictory_findings">
+    <trigger>During validation, initial analysis suggests a conflict, but re-checking reveals the conflict may not exist or is ambiguous.</trigger>
+    <required_actions>
+      <action>Re-read both documents at the cited locations.</action>
+      <action>Verify the conflict is real (different contexts, different scopes can explain apparent contradictions).</action>
+      <action>If conflict is confirmed, report with specific citations and resolution suggestion.</action>
+      <action>If conflict is not confirmed, do not report. Avoid false positives.</action>
+    </required_actions>
+  </scenario>
+
+  <scenario name="artifact_too_large">
+    <trigger>An artifact is too large to read in full (e.g., very long document, binary, or complex structure).</trigger>
+    <required_actions>
+      <action>Summarize key sections relevant to validation (e.g., requirements, architecture components, user stories).</action>
+      <action>Run validation on the summarized/key sections.</action>
+      <action>Document in the report: "Artifact X was summarized for validation due to size. Key sections validated: [list]."</action>
+      <action>Note any validation limitations due to summarization.</action>
+    </required_actions>
+    <prohibited_actions>
+      <action>Do not skip the artifact entirely without attempting to validate key sections.</action>
+      <action>Do not report findings on sections that were not actually read.</action>
+    </prohibited_actions>
+  </scenario>
+</error_handling>

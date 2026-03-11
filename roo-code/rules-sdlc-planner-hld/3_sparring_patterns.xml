@@ -1,0 +1,93 @@
+<sparring_patterns>
+  <philosophy>
+    <tenet>Challenge every scope boundary: "Where exactly does this user story end and the next begin?"</tenet>
+    <tenet>Probe acceptance criteria: "Can you write a test for this right now?"</tenet>
+    <tenet>Check for hidden dependencies: "Does this user story assume something from another story is already done?"</tenet>
+    <tenet>Verify traceability: "Which PRD requirement does this HLD section satisfy?"</tenet>
+    <tenet>Look for gaps: "Is there a PRD requirement that no user story addresses?"</tenet>
+    <tenet>Check sizing: "Is this HLD section small enough for one focused implementation cycle?"</tenet>
+  </philosophy>
+
+  <challenge_categories>
+    <category name="scope_boundary_challenges">
+      <purpose>Make scope boundaries explicit and prevent overlap.</purpose>
+      <patterns>
+        <pattern>Where exactly does this user story end and the next begin?</pattern>
+        <pattern>What is in-scope vs out-of-scope for this HLD section?</pattern>
+        <pattern>Does this user story overlap with [sibling story]? How do we split the boundary?</pattern>
+      </patterns>
+    </category>
+
+    <category name="acceptance_criteria_testability">
+      <purpose>Ensure every acceptance criterion is observable and testable.</purpose>
+      <patterns>
+        <pattern>Can you write a test for this right now? What is the exact pass/fail condition?</pattern>
+        <pattern>"It should work correctly" — what does "correctly" mean in observable terms?</pattern>
+        <pattern>What error cases and edge behaviors are covered by these acceptance criteria?</pattern>
+      </patterns>
+    </category>
+
+    <category name="hidden_dependencies">
+      <purpose>Surface implicit dependencies between user stories.</purpose>
+      <patterns>
+        <pattern>Does this user story assume something from another story is already done?</pattern>
+        <pattern>What is the ordering dependency between [story A] and [story B]?</pattern>
+        <pattern>Does this HLD section depend on an interface or contract from another section?</pattern>
+      </patterns>
+    </category>
+
+    <category name="traceability_verification">
+      <purpose>Ensure every artifact traces to upstream requirements.</purpose>
+      <patterns>
+        <pattern>Which PRD requirement does this HLD section satisfy?</pattern>
+        <pattern>Which PRD section does this user story map to?</pattern>
+        <pattern>Is there a PRD requirement that no user story addresses?</pattern>
+      </patterns>
+    </category>
+
+    <category name="coverage_gaps">
+      <purpose>Identify requirements with no corresponding design or story.</purpose>
+      <patterns>
+        <pattern>Is there a PRD requirement that no user story addresses?</pattern>
+        <pattern>Does the HLD cover all architecture components mentioned in system-architecture.md?</pattern>
+        <pattern>Are security requirements from plan/security.md reflected in the HLD?</pattern>
+      </patterns>
+    </category>
+
+    <category name="sizing_challenges">
+      <purpose>Ensure HLD sections are appropriately sized.</purpose>
+      <patterns>
+        <pattern>Is this HLD section small enough for one focused implementation cycle?</pattern>
+        <pattern>Could this section be split into smaller, independently implementable pieces?</pattern>
+        <pattern>Is this user story too large? What would "done" look like in one cycle?</pattern>
+      </patterns>
+    </category>
+  </challenge_categories>
+
+  <anti_pleasing_patterns>
+    <pattern name="scope_creep_acceptance">
+      <bad>Accepting HLD sections that try to cover too much.</bad>
+      <good>Challenge any HLD section that tries to cover too much. Split until each is one-cycle sized.</good>
+    </pattern>
+
+    <pattern name="vague_acceptance_criteria">
+      <bad>Accepting "it should work correctly" or similar vague criteria.</bad>
+      <good>DENY vague criteria — demand specific observable conditions.</good>
+    </pattern>
+
+    <pattern name="missing_error_cases">
+      <bad>Omitting error handling and boundary conditions from acceptance criteria.</bad>
+      <good>Always ask about error handling and boundary conditions.</good>
+    </pattern>
+
+    <pattern name="assumed_dependencies">
+      <bad>Leaving dependencies implicit between stories or HLD sections.</bad>
+      <good>Make all dependencies explicit in the HLD and user story artifacts.</good>
+    </pattern>
+
+    <pattern name="gap_glossing">
+      <bad>Ignoring PRD requirements that have no corresponding HLD section.</bad>
+      <good>If a PRD requirement has no corresponding HLD section, flag it immediately.</good>
+    </pattern>
+  </anti_pleasing_patterns>
+</sparring_patterns>
