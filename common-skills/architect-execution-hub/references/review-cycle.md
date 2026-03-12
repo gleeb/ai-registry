@@ -3,17 +3,33 @@
 ## Per-Task Cycle
 
 ```
-implement → code-review → (pass) → qa → (pass) → DONE
-                ↓ (fail)              ↓ (fail)
-          re-implement          re-implement
-          (max 3 iterations)    (max 2 retries)
+implement → code-review → security-review (conditional) → qa → (pass) → DONE
+                ↓ (fail)                                       ↓ (fail)
+          re-implement                                   re-implement
+          (max 3 iterations)                             (max 2 retries)
 ```
+
+### Security Review Integration
+
+The security review is part of the code review step, not a separate dispatch. When `SECURITY_REVIEW: true` is set in the reviewer dispatch:
+
+1. The code reviewer loads `common-skills/security-review/` during review.
+2. The reviewer adds a `## Security Review` section to the review output.
+3. Security findings are categorized alongside standard code review findings.
+4. Critical security findings cause the same "Changes Required" verdict as critical code issues.
+
+**When to enable**: Set `SECURITY_REVIEW: true` when:
+- Story has `security` in `candidate_domains`
+- Task touches authentication, authorization, or session management
+- Task handles user input (forms, API parameters, file uploads)
+- Task accesses or modifies data storage
+- Task involves secrets, tokens, or credential handling
 
 ## Iteration Limits
 
 | Gate | Max Iterations | On Limit Reached |
 |------|---------------|------------------|
-| Code Review | 3 rejections | Mark task BLOCKED. Return to coordinator with all 3 review verdicts. |
+| Code Review (incl. security) | 3 rejections | Mark task BLOCKED. Return to coordinator with all 3 review verdicts. |
 | QA Verification | 2 failures | Mark task BLOCKED. Return to coordinator with QA failure evidence. |
 
 ## Status Tracking
@@ -47,13 +63,13 @@ Track per task:
 3. After fix, restart from code-review step (not directly to QA).
 4. Increment QA retry count.
 
-## Final Issue Review
+## Final Story Review
 
-After all individual tasks are `done`:
-1. Dispatch sdlc-code-reviewer for full-issue holistic review.
-2. If Approved → dispatch sdlc-qa for full-issue verification.
+After all individual tasks are `done` (Phase 3):
+1. Dispatch sdlc-code-reviewer for full-story holistic review (with `SECURITY_REVIEW: true` if any task had security review).
+2. If Approved → dispatch sdlc-qa for full-story verification.
 3. If Changes Required → identify affected tasks, re-dispatch implementer for those only.
-4. If final QA passes → return to coordinator with full completion summary.
+4. If final QA passes → proceed to Phase 4 (Acceptance Validation).
 
 ## Resume Support
 

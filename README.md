@@ -11,6 +11,7 @@ A centralized, version-controlled source of truth for AI agent configurations, c
 - [Concept](#concept)
 - [Repository Structure](#repository-structure)
 - [Planning System Architecture](#planning-system-architecture)
+- [Implementation Hub Architecture](#implementation-hub-architecture)
 - [Quick Start](#quick-start)
 - [Git Safety — Global Gitignore](#git-safety--global-gitignore)
 - [Supported Providers](#supported-providers)
@@ -94,6 +95,7 @@ ai-registry/
 │   ├── rules-sdlc-implementer/        # Implementer rules
 │   ├── rules-sdlc-code-reviewer/      # Code Reviewer rules
 │   ├── rules-sdlc-qa/                 # QA Verifier rules
+│   ├── rules-sdlc-acceptance-validator/ # Acceptance Validator rules
 │   ├── rules-skill-writer/            # Skill Writer rules
 │   ├── rules-mode-writer/             # Mode Writer rules
 │   └── skills/ → ../common-skills/    # Symlink to shared skills
@@ -112,7 +114,10 @@ ai-registry/
 │   ├── planning-testing-strategy/      # Cross-cutting testing strategy
 │   ├── planning-validator/             # 4-mode validation with Reality Checker
 │   ├── linear-sync/                    # Linear SaaS sync (translation layer)
-│   ├── architect-execution-hub/        # Architect dispatch templates
+│   ├── architect-execution-hub/        # Implementation Hub — full lifecycle orchestration
+│   ├── project-documentation/          # Documentation skill — staging docs, templates, integration
+│   ├── security-review/                # Security review skill — OWASP, secrets, RN security
+│   ├── acceptance-validation/          # Acceptance validation skill — criterion mapping, reports
 │   ├── scaffold-project/               # Project bootstrapping
 │   ├── code-review/                    # Code review skill
 │   ├── react-native/                   # React Native skill
@@ -152,7 +157,7 @@ SDLC Coordinator
   └── Planning Hub (sdlc-planner)
         ├── PRD Agent (sdlc-planner-prd)
         ├── System Architecture Agent (sdlc-planner-architecture)
-        ├── Story Decomposer (sdlc-planner-stories)          ← NEW
+        ├── Story Decomposer (sdlc-planner-stories)
         ├── HLD Agent (sdlc-planner-hld)                     ← per-story
         ├── Security Agent (sdlc-planner-security)            ← dual mode
         ├── API Design Agent (sdlc-planner-api)               ← per-story
@@ -162,10 +167,11 @@ SDLC Coordinator
         ├── Testing Strategy Agent (sdlc-planner-testing)     ← cross-cutting
         ├── Plan Validator (sdlc-plan-validator)               ← 4-mode Reality Checker
         └── [Optional] SaaS Sync (e.g., linear-sync)
-  └── Architect (sdlc-architect)
-        ├── Implementer (sdlc-implementer)
-        ├── Code Reviewer (sdlc-code-reviewer)
-        └── QA Verifier (sdlc-qa)
+  └── Architect / Implementation Hub (sdlc-architect)
+        ├── Implementer (sdlc-implementer)                   ← with tech skills + anti-fabrication
+        ├── Code Reviewer (sdlc-code-reviewer)               ← with security review
+        ├── QA Verifier (sdlc-qa)                            ← with doc verification
+        └── Acceptance Validator (sdlc-acceptance-validator)  ← evidence-based criterion check
 ```
 
 ### 7-Phase Planning Workflow
@@ -330,6 +336,84 @@ Each rule set follows the Markdown file pattern:
 4. `4_decision_guidance.md` — Boundaries and gates
 5. `5_validation.md` — Self-validation before declaring ready
 6. `6_error_handling.md` — Error scenarios and recovery
+
+---
+
+## Implementation Hub Architecture
+
+The **Implementation Hub** extends the sdlc-architect into a full lifecycle orchestrator. After the Planning Hub produces execution-ready story packages, the Implementation Hub manages the entire journey from readiness check through user acceptance.
+
+### Execution Phases
+
+```
+Phase 0: Readiness Check — verify plan artifacts, dependencies, load tech skills
+    ↓
+Phase 1: Task Decomposition + Staging Doc — architecture planning, create staging doc
+    ↓
+Phase 2: Per-Task Dev Loop — implement → code review (+ security) → QA
+    ↓
+Phase 3: Story Integration — full-story review + QA
+    ↓
+Phase 4: Acceptance Validation — independent criterion verification
+    ↓
+Phase 5: Documentation Integration — merge staging doc into permanent docs
+    ↓
+Phase 6: User Acceptance — present evidence, get approval
+```
+
+| Phase | Purpose | Agents Involved | Gate |
+|---|---|---|---|
+| **0: Readiness** | Verify plan artifacts exist, dependencies complete, load tech skills | Architect | All prerequisites met |
+| **1: Decomposition** | Architecture planning, staging doc creation | Architect | Task checklist ready |
+| **2: Dev Loop** | Per-task implement → review → QA cycle | Implementer, Code Reviewer, QA | Each task passes review + QA |
+| **3: Integration** | Full-story holistic review and verification | Code Reviewer, QA | Story-level review + QA pass |
+| **4: Acceptance** | Independent criterion-by-criterion verification | Acceptance Validator | All criteria verified with evidence |
+| **5: Doc Integration** | Merge staging doc into permanent documentation | Architect | Checklist complete |
+| **6: User Acceptance** | Present evidence report, get user approval | Architect → User | User confirms |
+
+### Key Features
+
+- **Technology Skill Loading**: The story manifest's `tech_stack` field maps to skills (e.g., `react-native` → `common-skills/react-native/`). Skills are loaded by the implementer and verified by the reviewer.
+- **Security Review Integration**: The code reviewer loads `common-skills/security-review/` when the dispatch includes `SECURITY_REVIEW: true`. No separate security agent dispatch needed.
+- **Anti-Fabrication Rules**: The implementer has strict DENY rules preventing placeholder implementations, skipped criteria, scope changes, and unverified completion claims.
+- **Evidence-Based Verification**: Every stage requires fresh evidence — the implementer self-verifies, QA re-verifies, and the acceptance validator independently maps every criterion to code and proof.
+- **Documentation-First Workflow**: The staging doc is scaffolded from plan artifacts in Phase 1 and continuously updated. Every dispatch template includes documentation requirements for that role.
+
+### Documentation System
+
+Documentation is enforced through the architect-execution-hub and its dispatch templates, not through global rules or per-mode rule files. This avoids polluting planner modes with implementation-time documentation rules.
+
+**How it works:**
+
+1. The architect loads `common-skills/project-documentation/` and scaffolds a staging doc from plan artifacts.
+2. Every dispatch template includes a documentation contract for the receiving role.
+3. The implementer updates staging docs with progress, decisions, and file references.
+4. The code reviewer verifies staging docs are current.
+5. The QA verifier validates file references point to real files.
+6. The acceptance validator checks documentation completeness as a gate.
+
+**`docs/` is the project's technical reference for agents.** It is NOT a project board. Planning artifacts live in `plan/`. Documentation captures how the system works and how it was built.
+
+### Story Manifest — tech_stack Field
+
+The story dependency manifest includes a `tech_stack` field that drives skill loading:
+
+```yaml
+---
+prd_sections: [3.1, 3.2]
+architecture_components: [auth-service, api-gateway]
+provides_contracts: [auth-session-contract]
+consumes_contracts: []
+depends_on_stories: []
+execution_order: 1
+candidate_domains: [api, data, security, design]
+tech_stack: [react-native, typescript, expo]
+---
+```
+
+### IDE Migration Note
+
+The implementation hub is currently built for **Roo-Code** only. Migration to Cursor, Claude Code, and Codex is planned as a future task.
 
 ---
 

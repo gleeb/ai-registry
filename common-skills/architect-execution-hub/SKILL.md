@@ -1,31 +1,134 @@
 ---
 name: architect-execution-hub
-description: Use when the sdlc-architect needs to orchestrate an implement-review-verify cycle for scoped implementation units, dispatching to sdlc-implementer, sdlc-code-reviewer, and sdlc-qa sub-modes with structured contracts and iteration limits.
+description: >
+  Use when the sdlc-architect needs to orchestrate the full implementation
+  lifecycle for a user story: readiness check, task decomposition, per-task
+  implement-review-verify cycles, story integration, acceptance validation,
+  documentation integration, and user acceptance.
 ---
 
 # Architect Execution Hub
 
 ## Overview
 
-Orchestrates the Phase 2 execution cycle for the sdlc-architect mode. Provides dispatch templates, review cycle rules, and iteration limits for managing sdlc-implementer, sdlc-code-reviewer, and sdlc-qa sub-modes.
+Orchestrates the full implementation lifecycle for the sdlc-architect mode. Manages seven phases from readiness check through user acceptance, dispatching to sdlc-implementer, sdlc-code-reviewer, sdlc-qa, and sdlc-acceptance-validator sub-modes with structured contracts and iteration limits.
 
 **Core principle:** Precise dispatch specifications reduce review iterations. Invest in dispatch quality.
 
 ## When to Use
 
-- sdlc-architect has completed Phase 1 (architecture planning) and is ready for Phase 2 (execution orchestration)
-- A task checklist exists in the staging document with implementation units
-- Each unit needs the implement-review-verify cycle
+- sdlc-architect receives a user story for execution
+- A plan exists at `plan/user-stories/US-NNN-name/` with story.md and supporting artifacts
+- The story needs the full implementation lifecycle
 
-## Dispatch Cycle
+## Lifecycle Phases
 
-For each implementation unit:
+```
+Phase 0: Implementation Readiness Check
+    ↓
+Phase 1: Task Decomposition + Staging Doc (existing Phase 0/1)
+    ↓
+Phase 2: Per-Task Dev Loop (implement → review → QA)
+    ↓
+Phase 3: Story-Level Integration
+    ↓
+Phase 4: Acceptance Validation
+    ↓
+Phase 5: Documentation Integration
+    ↓
+Phase 6: User Acceptance
+```
 
-1. **Implement** → dispatch `sdlc-implementer` using `references/implementer-dispatch-template.md`
-2. **Review** → dispatch `sdlc-code-reviewer` using `references/reviewer-dispatch-template.md`
-3. **Verify** → dispatch `sdlc-qa` using `references/qa-dispatch-template.md`
+---
 
-See `references/review-cycle.md` for iteration limits and escalation rules.
+## Phase 0: Implementation Readiness Check
+
+Before any implementation work, verify all prerequisites are in place.
+
+See [`references/readiness-check.md`](references/readiness-check.md) for the full protocol.
+
+1. **Verify plan artifacts** — read `plan/user-stories/US-NNN-name/story.md` and confirm all expected artifacts exist based on `candidate_domains` (hld.md, api.md, data.md, security.md, design/).
+2. **Check dependencies** — verify all stories in `depends_on_stories` are completed.
+3. **Determine tech skills** — read `tech_stack` from the story manifest and map to available skills using [`references/skill-loading-protocol.md`](references/skill-loading-protocol.md).
+4. **Load documentation skill** — load `common-skills/project-documentation/` for staging doc templates.
+
+**GATE**: All plan artifacts exist, all dependency stories are complete. If not, HALT and escalate to coordinator.
+
+---
+
+## Phase 1: Task Decomposition + Staging Doc
+
+This is the existing Phase 0 (resume check) and Phase 1 (context gathering, architecture, LLD, staging doc creation). No changes to the core flow, with one addition:
+
+**Staging doc scaffolding**: Use the staging doc template from `common-skills/project-documentation/references/staging-doc-template.md` to create the staging document. Pre-populate Plan References, Acceptance Criteria (from story.md), and Tech Stack sections.
+
+---
+
+## Phase 2: Per-Task Dev Loop
+
+For each implementation unit in the task checklist:
+
+1. **Implement** → dispatch `sdlc-implementer` using [`references/implementer-dispatch-template.md`](references/implementer-dispatch-template.md)
+2. **Review** → dispatch `sdlc-code-reviewer` using [`references/reviewer-dispatch-template.md`](references/reviewer-dispatch-template.md)
+3. **Verify** → dispatch `sdlc-qa` using [`references/qa-dispatch-template.md`](references/qa-dispatch-template.md)
+
+See [`references/review-cycle.md`](references/review-cycle.md) for iteration limits, security review integration, and escalation rules.
+
+---
+
+## Phase 3: Story-Level Integration
+
+After all per-task dev loops pass:
+
+1. **Final holistic code review** — dispatch sdlc-code-reviewer for full-story review (existing behavior from review-cycle.md).
+2. **Final holistic QA** — dispatch sdlc-qa for full-story verification (existing behavior).
+3. **Performance validation** — if tech skills include performance budgets (e.g., react-native), verify metrics meet targets.
+4. **Accessibility check** — if story has `design` in `candidate_domains`, verify accessibility requirements.
+
+**GATE**: Full-story review passes + full-story QA passes. If not, re-enter Phase 2 for affected tasks.
+
+---
+
+## Phase 4: Acceptance Validation
+
+Independent verification that every acceptance criterion was implemented.
+
+1. Dispatch `sdlc-acceptance-validator` using [`references/acceptance-validation-dispatch-template.md`](references/acceptance-validation-dispatch-template.md).
+2. Validator maps every criterion to code + evidence.
+3. Read the validation report.
+
+**GATE**: Verdict is COMPLETE. If INCOMPLETE, identify failing criteria and re-enter Phase 2 with targeted fix dispatches. Max 2 acceptance re-validations before escalating.
+
+---
+
+## Phase 5: Documentation Integration
+
+Merge implementation knowledge into permanent documentation.
+
+See [`references/doc-integration-protocol.md`](references/doc-integration-protocol.md) for the full protocol.
+
+1. Load `common-skills/project-documentation/references/integration-checklist.md`.
+2. Distribute staging doc insights into permanent docs (`docs/frontend/`, `docs/backend/`, etc.).
+3. Update `docs/index.md` if new domains were added.
+4. Verify all file references in staging doc are still valid.
+5. Mark staging doc as completed or move to `docs/archive/`.
+
+---
+
+## Phase 6: User Acceptance
+
+Present the completed story to the user for final approval.
+
+See [`references/user-acceptance-protocol.md`](references/user-acceptance-protocol.md) for the presentation format.
+
+1. Summarize what was implemented (per-task summary from staging doc).
+2. Present the acceptance validation report (per-criterion evidence).
+3. Note any deviations from the original plan with justification.
+4. Request user confirmation.
+
+If the user requests changes, create targeted tasks and re-enter Phase 2. Mark the staging doc with the change request context.
+
+---
 
 ## Scaffolding Dispatch (Task 0)
 
@@ -43,6 +146,20 @@ When the architect detects a greenfield project (no package manager config, no s
 
 - Max 3 review iterations per task before escalating to coordinator
 - Max 2 QA retries per task before escalating
+- Max 2 acceptance re-validations before escalating
 - Update task status in staging doc after each cycle (pending | in-progress | done | blocked)
-- Final full-issue review + QA after all tasks complete
+- Final full-story review + QA after all tasks complete (Phase 3)
 - Staging document is the single source of truth for resume capability
+- Documentation requirements are embedded in every dispatch template — the architect owns the staging doc lifecycle
+
+## References
+
+- [`references/readiness-check.md`](references/readiness-check.md) — Phase 0 readiness protocol
+- [`references/skill-loading-protocol.md`](references/skill-loading-protocol.md) — Tech stack to skill mapping
+- [`references/implementer-dispatch-template.md`](references/implementer-dispatch-template.md) — Implementer dispatch
+- [`references/reviewer-dispatch-template.md`](references/reviewer-dispatch-template.md) — Reviewer dispatch
+- [`references/qa-dispatch-template.md`](references/qa-dispatch-template.md) — QA dispatch
+- [`references/acceptance-validation-dispatch-template.md`](references/acceptance-validation-dispatch-template.md) — Acceptance validator dispatch
+- [`references/review-cycle.md`](references/review-cycle.md) — Iteration limits and escalation
+- [`references/doc-integration-protocol.md`](references/doc-integration-protocol.md) — Phase 5 documentation integration
+- [`references/user-acceptance-protocol.md`](references/user-acceptance-protocol.md) — Phase 6 user acceptance format

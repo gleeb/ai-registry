@@ -80,6 +80,15 @@ List of Phase 3 planning domains needed for this story. The Hub uses this to kno
 - `api` is needed when the story exposes or consumes API endpoints
 - `data` is needed when the story creates or modifies data entities
 
+### tech_stack (required)
+
+List of technologies and frameworks used by this story. The Implementation Hub uses this to load the appropriate technology skills during execution.
+
+- Format: List of technology identifiers (e.g., `[react-native, typescript, expo]`)
+- Each entry should match a skill name in `common-skills/` when a skill exists
+- If no matching skill exists, the entry is noted as a gap but does not block execution
+- Common values: `react-native`, `typescript`, `expo`, `node`, `python`, `aws-cdk`, `terraform`
+
 ## Example
 
 ```markdown
@@ -91,6 +100,7 @@ List of Phase 3 planning domains needed for this story. The Hub uses this to kno
 - depends_on_stories: [US-001]
 - execution_order: 2
 - candidate_domains: [hld, api, data, security]
+- tech_stack: [react-native, typescript, expo]
 ```
 
 ## Validation Rules
@@ -105,3 +115,4 @@ The Plan Validator checks:
 6. Execution order is consistent with dependency graph (no story ordered before its dependencies).
 7. No circular dependencies in `depends_on_stories`.
 8. `candidate_domains` always includes `hld`.
+9. `tech_stack` is present and non-empty.
