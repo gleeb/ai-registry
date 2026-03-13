@@ -45,10 +45,12 @@ Route to the appropriate mode based on assessed state.
 - plan &lt;project&gt; → sdlc-planner (Always routes to planner regardless of state.)
 - implement/continue &lt;project&gt; → sdlc-architect (Always routes to architect regardless of state.)
 - status &lt;project&gt; → none (Query and report Linear state, no dispatch.)
+- /sdlc-continue → checkpoint-resume (Read `.sdlc/coordinator.yaml` via `verify.sh`, route to the active hub with checkpoint context. See checkpoint resume protocol below.)
 
 **fallback:**
-If MCP is unavailable or state is ambiguous, ask ONE disambiguating question:
-"Should I (a) start/continue planning, or (b) begin/resume implementation?"
+If MCP is unavailable or state is ambiguous:
+1. Check if `.sdlc/coordinator.yaml` exists. If so, run `.roo/skills/sdlc-checkpoint/scripts/verify.sh` and route based on the recommendation (same as `/sdlc-continue`).
+2. If no checkpoint exists, ask ONE disambiguating question: "Should I (a) start/continue planning, or (b) begin/resume implementation?"
 
 ### phase: dispatch (order="3")
 
@@ -68,6 +70,22 @@ Process completion results from dispatched modes.
 - If architect reports issue complete: check for remaining issues, dispatch next if any.
 - If architect reports blocker: dispatch sdlc-project-research investigation, then re-dispatch architect.
 - If planner reports artifacts ready: transition to execution phase (dispatch architect).
+
+### phase: checkpoint_resume
+
+When the user sends `/sdlc-continue` or when falling back to checkpoint (MCP unavailable):
+
+1. Run `.roo/skills/sdlc-checkpoint/scripts/verify.sh` (no arguments).
+2. Read the output:
+   - `hub`: Which hub is active (planning or execution).
+   - `current_story`: Which story is in progress.
+   - `recommendation`: Routing target (sdlc-planner or sdlc-architect).
+3. Compose a delegation message to the target mode:
+   - Include the story identifier.
+   - Instruct the target mode to load the `sdlc-checkpoint` skill and run `verify.sh {hub}` for detailed resume context.
+4. Proceed to the dispatch phase (order="3") with the composed message.
+
+If verify.sh reports `NO_CHECKPOINT` or `NO_CHECKPOINT_DIR`, inform the user that no checkpoint exists and ask whether to start fresh.
 
 ## completion_criteria
 

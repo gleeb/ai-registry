@@ -12,6 +12,7 @@ A centralized, version-controlled source of truth for AI agent configurations, c
 - [Repository Structure](#repository-structure)
 - [Planning System Architecture](#planning-system-architecture)
 - [Implementation Hub Architecture](#implementation-hub-architecture)
+- [Checkpoint and Resume System](#checkpoint-and-resume-system)
 - [Quick Start](#quick-start)
 - [Git Safety — Global Gitignore](#git-safety--global-gitignore)
 - [Supported Providers](#supported-providers)
@@ -53,6 +54,7 @@ The **AI Registry** solves this by storing all agent configurations in a single 
 │  ├─ planning-validator/                               │
 │  ├─ linear-sync/                                      │
 │  ├─ architect-execution-hub/                          │
+│  ├─ sdlc-checkpoint/                                  │
 │  ├─ scaffold-project/                                 │
 │  └─ ...                                               │
 │  scripts/                                             │
@@ -118,6 +120,7 @@ ai-registry/
 │   ├── project-documentation/          # Documentation skill — staging docs, templates, integration
 │   ├── security-review/                # Security review skill — OWASP, secrets, RN security
 │   ├── acceptance-validation/          # Acceptance validation skill — criterion mapping, reports
+│   ├── sdlc-checkpoint/                # Checkpoint and resume — crash-safe cross-IDE continuation
 │   ├── scaffold-project/               # Project bootstrapping
 │   ├── code-review/                    # Code review skill
 │   ├── react-native/                   # React Native skill
@@ -417,6 +420,52 @@ The implementation hub is currently built for **Roo-Code** only. Migration to Cu
 
 ---
 
+## Checkpoint and Resume System
+
+The SDLC workflow includes a crash-safe checkpoint system that enables seamless continuation across agents, models, and IDEs. If an agent stops mid-workflow (token exhaustion, IDE switch, model change), you can resume from the exact point using `/sdlc-continue`.
+
+### How It Works
+
+- **Write-ahead checkpointing**: Before every sub-agent dispatch, the orchestrating hub calls a shell script to record the current state. If the agent dies mid-dispatch, the checkpoint reflects what was about to happen.
+- **Split YAML state files**: State is stored in `.sdlc/` at the project root, split by concern (coordinator, planning, execution) so each agent only reads what it needs.
+- **Shell scripts handle I/O**: All checkpoint reads and writes go through bundled scripts in `common-skills/sdlc-checkpoint/scripts/`, not the LLM. This reduces token cost by ~10x compared to agent-written checkpoints.
+- **Deterministic verification**: On resume, a verify script checks checkpoint state against actual artifacts on disk and outputs a concrete next-action recommendation. No LLM reasoning needed for the verification step.
+
+### State Files
+
+```
+<target-project>/.sdlc/
+├── coordinator.yaml         # Active hub, current story, stories progress
+├── planning.yaml            # Phase, story loop position, per-story agent progress
+├── execution.yaml           # Phase, task, dev-loop step, iteration counts
+└── history.log              # Append-only timestamped action log
+```
+
+### Resume Flow
+
+```
+User: /sdlc-continue
+  → Coordinator reads .sdlc/coordinator.yaml (via verify.sh)
+  → Routes to sdlc-planner or sdlc-architect
+  → Hub reads its own checkpoint (via verify.sh planning|execution)
+  → Verifies against artifacts on disk
+  → Resumes from the exact point
+```
+
+### Cross-IDE Portability
+
+The checkpoint files are plain YAML in the project root. The scripts are accessible via `.roo/skills/sdlc-checkpoint/scripts/` (symlinked from the registry). Any IDE that can run shell commands can read and write checkpoints — Roo-Code, Cursor, Claude Code, and Codex all work.
+
+### Skill Structure
+
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| **Skill** | `common-skills/sdlc-checkpoint/SKILL.md` | Skill contract, script API docs |
+| **Scripts** | `common-skills/sdlc-checkpoint/scripts/` | `checkpoint.sh` (write), `verify.sh` (read + recommend) |
+| **References** | `common-skills/sdlc-checkpoint/references/` | Resume protocol, artifact mapping |
+
+---
+
 ## Quick Start
 
 ### 1. Clone the Registry
@@ -479,6 +528,11 @@ cat >> ~/.gitignore_global << 'EOF'
 .roo
 CLAUDE.md
 AGENTS.md
+
+# ===========================================
+# SDLC Checkpoint — Session State (not code)
+# ===========================================
+.sdlc
 EOF
 ```
 

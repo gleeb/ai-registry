@@ -21,12 +21,15 @@ SDLC Architect is the execution hub. It converts a scoped issue into an executio
 **Description:** Check for existing progress before starting fresh
 
 **Steps:**
-- Check for existing staging document (docs/staging/US-NNN-*.md or docs/staging/T-{issue}-*.md).
-- If staging doc exists with a task checklist containing completed and incomplete items: read the last completed task, identify the next incomplete task, and resume at the appropriate phase.
-- If staging doc exists but no tasks are started: resume at Phase 2 start.
-- If no staging doc exists: proceed to Phase 0b (readiness check).
+- Load the `sdlc-checkpoint` skill.
+- If `.sdlc/execution.yaml` exists, run `.roo/skills/sdlc-checkpoint/scripts/verify.sh execution` and follow the structured recommendation. This provides the exact phase, task, and step to resume at.
+- If no checkpoint exists, fall back to staging document check:
+  - Check for existing staging document (docs/staging/US-NNN-*.md or docs/staging/T-{issue}-*.md).
+  - If staging doc exists with a task checklist containing completed and incomplete items: read the last completed task, identify the next incomplete task, and resume at the appropriate phase.
+  - If staging doc exists but no tasks are started: resume at Phase 2 start.
+  - If no staging doc exists: proceed to Phase 0b (readiness check).
 
-**key_principle:** Resume context comes from the staging document, not session memory. This makes resumption session-independent.
+**key_principle:** Resume context comes from the checkpoint and staging document, not session memory. The checkpoint provides routing (which phase, which task, which step). The staging document provides detail (task specifications, decisions, context). Together they make resumption fully session-independent and cross-IDE portable.
 
 ### phase: readiness_check (order: 0a)
 

@@ -44,39 +44,67 @@ description: Orchestration hub for project planning. Use when starting a new pro
 | Testing Strategy | `sdlc-planner-testing` | `planning-testing-strategy` | `plan/cross-cutting/testing-strategy.md` |
 | Plan Validator | `sdlc-plan-validator` | `planning-validator` | `plan/validation/` |
 
+## Checkpoint Integration
+
+Load the `sdlc-checkpoint` skill at hub initialization. The checkpoint script is at `.roo/skills/sdlc-checkpoint/scripts/checkpoint.sh`.
+
+**REQUIRE**: Before every dispatch, call `checkpoint.sh planning` with the current state (write-ahead pattern).
+**REQUIRE**: After every agent completion, call `checkpoint.sh planning` to record progress.
+
+### Phase 0: Resume Check
+
+Before starting any planning work:
+
+1. Check if `.sdlc/planning.yaml` exists.
+2. If it exists, run `.roo/skills/sdlc-checkpoint/scripts/verify.sh planning`.
+3. Read the `recommendation` field from the output and follow it (see `sdlc-checkpoint/references/resume-protocol.md`).
+4. If no checkpoint exists, proceed to Phase 1.
+
 ## Workflow
 
 ### Phase 1: Requirements (PRD)
 
-1. Dispatch the **PRD Agent** (`sdlc-planner-prd`) using [`dispatch-templates/prd-dispatch.md`](references/dispatch-templates/prd-dispatch.md).
-2. The PRD agent conducts interactive sparring with the user, drafts and validates the PRD.
-3. On completion, dispatch the **Plan Validator** to validate PRD completeness and internal consistency.
-4. GATE: PRD must pass all validation dimensions before proceeding.
+1. `checkpoint.sh planning --phase 1 --dispatch sdlc-planner-prd`
+2. Dispatch the **PRD Agent** (`sdlc-planner-prd`) using [`dispatch-templates/prd-dispatch.md`](references/dispatch-templates/prd-dispatch.md).
+3. The PRD agent conducts interactive sparring with the user, drafts and validates the PRD.
+4. `checkpoint.sh planning --completed prd`
+5. On completion, dispatch the **Plan Validator** to validate PRD completeness and internal consistency.
+6. GATE: PRD must pass all validation dimensions before proceeding.
 
 ### Phase 2: Architecture and Story Decomposition
 
 Sequential within this phase:
 
-1. Dispatch **System Architecture Agent** (`sdlc-planner-architecture`) using [`dispatch-templates/system-architecture-dispatch.md`](references/dispatch-templates/system-architecture-dispatch.md).
-2. On completion, dispatch **Plan Validator** to check architecture-PRD alignment.
-3. GATE: Architecture must pass validation before story decomposition.
-4. Dispatch **Story Decomposer Agent** (`sdlc-planner-stories`) using [`dispatch-templates/story-decomposition-dispatch.md`](references/dispatch-templates/story-decomposition-dispatch.md).
-5. On completion, dispatch **Plan Validator** to check story coverage and dependency integrity.
-6. GATE: All stories must have valid dependency manifests and full PRD coverage.
+1. `checkpoint.sh planning --phase 2 --dispatch sdlc-planner-architecture`
+2. Dispatch **System Architecture Agent** (`sdlc-planner-architecture`) using [`dispatch-templates/system-architecture-dispatch.md`](references/dispatch-templates/system-architecture-dispatch.md).
+3. `checkpoint.sh planning --completed architecture`
+4. On completion, dispatch **Plan Validator** to check architecture-PRD alignment.
+5. GATE: Architecture must pass validation before story decomposition.
+6. `checkpoint.sh planning --dispatch sdlc-planner-stories`
+7. Dispatch **Story Decomposer Agent** (`sdlc-planner-stories`) using [`dispatch-templates/story-decomposition-dispatch.md`](references/dispatch-templates/story-decomposition-dispatch.md).
+8. `checkpoint.sh planning --completed stories`
+9. On completion, dispatch **Plan Validator** to check story coverage and dependency integrity.
+10. GATE: All stories must have valid dependency manifests and full PRD coverage.
 
 ### Phase 3: Per-Story Planning (loop)
 
 For each user story (in execution_order):
 
-1. Read the story's `candidate_domains` from its dependency manifest.
-2. Dispatch Phase 3 agents in parallel based on candidate_domains:
-   - **HLD Agent** (always) using [`dispatch-templates/hld-dispatch.md`](references/dispatch-templates/hld-dispatch.md)
-   - **API Design Agent** (if `api` in domains) using [`dispatch-templates/api-design-dispatch.md`](references/dispatch-templates/api-design-dispatch.md)
-   - **Data Architecture Agent** (if `data` in domains) using [`dispatch-templates/data-architecture-dispatch.md`](references/dispatch-templates/data-architecture-dispatch.md)
-   - **Security Agent** in per-story mode (if `security` in domains) using [`dispatch-templates/security-dispatch.md`](references/dispatch-templates/security-dispatch.md)
-   - **Design Agent** (if `design` in domains) using [`dispatch-templates/design-dispatch.md`](references/dispatch-templates/design-dispatch.md)
-3. On completion, dispatch **Plan Validator** in per-story mode.
-4. GATE: Per-story validation must pass before moving to next story.
+1. `checkpoint.sh planning --phase 3 --story {US-NNN-name} --agents-done "" --agents-pending "{domains from manifest}"`
+2. `checkpoint.sh coordinator --hub planning --story {US-NNN-name}`
+3. Read the story's `candidate_domains` from its dependency manifest.
+4. For each agent to dispatch based on candidate_domains:
+   - `checkpoint.sh planning --dispatch {agent-slug}` (write-ahead)
+   - Dispatch the agent:
+     - **HLD Agent** (always) using [`dispatch-templates/hld-dispatch.md`](references/dispatch-templates/hld-dispatch.md)
+     - **API Design Agent** (if `api` in domains) using [`dispatch-templates/api-design-dispatch.md`](references/dispatch-templates/api-design-dispatch.md)
+     - **Data Architecture Agent** (if `data` in domains) using [`dispatch-templates/data-architecture-dispatch.md`](references/dispatch-templates/data-architecture-dispatch.md)
+     - **Security Agent** in per-story mode (if `security` in domains) using [`dispatch-templates/security-dispatch.md`](references/dispatch-templates/security-dispatch.md)
+     - **Design Agent** (if `design` in domains) using [`dispatch-templates/design-dispatch.md`](references/dispatch-templates/design-dispatch.md)
+   - `checkpoint.sh planning --completed {domain}` (after each agent returns)
+5. On completion, dispatch **Plan Validator** in per-story mode.
+6. `checkpoint.sh planning --story-done {US-NNN-name}`
+7. GATE: Per-story validation must pass before moving to next story.
 
 Use [`dispatch-templates/per-story-planning-dispatch.md`](references/dispatch-templates/per-story-planning-dispatch.md) as the orchestration wrapper.
 
@@ -84,17 +112,25 @@ Use [`dispatch-templates/per-story-planning-dispatch.md`](references/dispatch-te
 
 After all stories are planned:
 
-1. Dispatch **Security Agent** in rollup mode using [`dispatch-templates/security-rollup-dispatch.md`](references/dispatch-templates/security-rollup-dispatch.md) — produces `plan/cross-cutting/security-overview.md`.
-2. Dispatch **DevOps Agent** using [`dispatch-templates/devops-dispatch.md`](references/dispatch-templates/devops-dispatch.md) — produces `plan/cross-cutting/devops.md`.
-3. Dispatch **Testing Strategy Agent** using [`dispatch-templates/testing-strategy-dispatch.md`](references/dispatch-templates/testing-strategy-dispatch.md) — produces `plan/cross-cutting/testing-strategy.md`.
-4. On completion, dispatch **Plan Validator** in cross-story mode.
-5. GATE: Cross-cutting validation must pass.
+1. `checkpoint.sh planning --phase 4`
+2. `checkpoint.sh planning --dispatch sdlc-planner-security`
+3. Dispatch **Security Agent** in rollup mode using [`dispatch-templates/security-rollup-dispatch.md`](references/dispatch-templates/security-rollup-dispatch.md) — produces `plan/cross-cutting/security-overview.md`.
+4. `checkpoint.sh planning --completed security-rollup`
+5. `checkpoint.sh planning --dispatch sdlc-planner-devops`
+6. Dispatch **DevOps Agent** using [`dispatch-templates/devops-dispatch.md`](references/dispatch-templates/devops-dispatch.md) — produces `plan/cross-cutting/devops.md`.
+7. `checkpoint.sh planning --completed devops`
+8. `checkpoint.sh planning --dispatch sdlc-planner-testing`
+9. Dispatch **Testing Strategy Agent** using [`dispatch-templates/testing-strategy-dispatch.md`](references/dispatch-templates/testing-strategy-dispatch.md) — produces `plan/cross-cutting/testing-strategy.md`.
+10. `checkpoint.sh planning --completed testing`
+11. On completion, dispatch **Plan Validator** in cross-story mode.
+12. GATE: Cross-cutting validation must pass.
 
 ### Phase 5: Execution Readiness
 
-1. Dispatch **Plan Validator** for final full-chain validation.
-2. Verify: all stories planned, all contracts defined, all cross-cutting concerns addressed, no unresolved validation findings.
-3. GATE: Full validation pass required before handoff.
+1. `checkpoint.sh planning --phase 5`
+2. Dispatch **Plan Validator** for final full-chain validation.
+3. Verify: all stories planned, all contracts defined, all cross-cutting concerns addressed, no unresolved validation findings.
+4. GATE: Full validation pass required before handoff.
 
 ### Phase 6: Optional SaaS Sync
 
@@ -104,9 +140,11 @@ If a SaaS sync skill was loaded:
 
 ### Phase 7: Handoff
 
-1. Present a planning completion summary to the user.
-2. Hand off to `sdlc-coordinator` for execution orchestration.
-3. The handoff includes: what was planned, which story to execute first (execution_order: 1), and the full dependency graph.
+1. `checkpoint.sh planning --phase 7`
+2. `checkpoint.sh coordinator --hub execution --story {first-story-by-execution-order}`
+3. Present a planning completion summary to the user.
+4. Hand off to `sdlc-coordinator` for execution orchestration.
+5. The handoff includes: what was planned, which story to execute first (execution_order: 1), and the full dependency graph.
 
 ## Brownfield Change Protocol
 

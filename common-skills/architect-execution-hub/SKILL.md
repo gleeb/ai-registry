@@ -21,6 +21,13 @@ Orchestrates the full implementation lifecycle for the sdlc-architect mode. Mana
 - A plan exists at `plan/user-stories/US-NNN-name/` with story.md and supporting artifacts
 - The story needs the full implementation lifecycle
 
+## Checkpoint Integration
+
+Load the `sdlc-checkpoint` skill at architect initialization. The checkpoint script is at `.roo/skills/sdlc-checkpoint/scripts/checkpoint.sh`.
+
+**REQUIRE**: Before every sub-agent dispatch, call `checkpoint.sh execution` with the current state (write-ahead pattern).
+**REQUIRE**: After every sub-agent completion, call `checkpoint.sh execution` to record progress.
+
 ## Lifecycle Phases
 
 ```
@@ -47,10 +54,12 @@ Before any implementation work, verify all prerequisites are in place.
 
 See [`references/readiness-check.md`](references/readiness-check.md) for the full protocol.
 
-1. **Verify plan artifacts** — read `plan/user-stories/US-NNN-name/story.md` and confirm all expected artifacts exist based on `candidate_domains` (hld.md, api.md, data.md, security.md, design/).
-2. **Check dependencies** — verify all stories in `depends_on_stories` are completed.
-3. **Determine tech skills** — read `tech_stack` from the story manifest and map to available skills using [`references/skill-loading-protocol.md`](references/skill-loading-protocol.md).
-4. **Load documentation skill** — load `common-skills/project-documentation/` for staging doc templates.
+1. `checkpoint.sh execution --story {US-NNN-name} --phase 0`
+2. `checkpoint.sh coordinator --hub execution --story {US-NNN-name}`
+3. **Verify plan artifacts** — read `plan/user-stories/US-NNN-name/story.md` and confirm all expected artifacts exist based on `candidate_domains` (hld.md, api.md, data.md, security.md, design/).
+4. **Check dependencies** — verify all stories in `depends_on_stories` are completed.
+5. **Determine tech skills** — read `tech_stack` from the story manifest and map to available skills using [`references/skill-loading-protocol.md`](references/skill-loading-protocol.md).
+6. **Load documentation skill** — load `common-skills/project-documentation/` for staging doc templates.
 
 **GATE**: All plan artifacts exist, all dependency stories are complete. If not, HALT and escalate to coordinator.
 
@@ -60,23 +69,35 @@ See [`references/readiness-check.md`](references/readiness-check.md) for the ful
 
 This is the existing Phase 0 (resume check) and Phase 1 (context gathering, architecture, LLD, staging doc creation). No changes to the core flow, with one addition:
 
-**Staging doc scaffolding**: Use the staging doc template from `common-skills/project-documentation/references/staging-doc-template.md` to create the staging document. Pre-populate Plan References, Acceptance Criteria (from story.md), and Tech Stack sections.
+1. `checkpoint.sh execution --phase 1`
+2. **Staging doc scaffolding**: Use the staging doc template from `common-skills/project-documentation/references/staging-doc-template.md` to create the staging document. Pre-populate Plan References, Acceptance Criteria (from story.md), and Tech Stack sections.
+3. After staging doc is created: `checkpoint.sh execution --staging-doc "docs/staging/{filename}.md" --tasks-total {N}`
 
 ---
 
 ## Phase 2: Per-Task Dev Loop
 
+`checkpoint.sh execution --phase 2`
+
 For each implementation unit in the task checklist:
 
-1. **Implement** → dispatch `sdlc-implementer` using [`references/implementer-dispatch-template.md`](references/implementer-dispatch-template.md)
-2. **Review** → dispatch `sdlc-code-reviewer` using [`references/reviewer-dispatch-template.md`](references/reviewer-dispatch-template.md)
-3. **Verify** → dispatch `sdlc-qa` using [`references/qa-dispatch-template.md`](references/qa-dispatch-template.md)
+1. `checkpoint.sh execution --task "{id}:{name}" --step implement` (write-ahead)
+2. **Implement** → dispatch `sdlc-implementer` using [`references/implementer-dispatch-template.md`](references/implementer-dispatch-template.md)
+3. `checkpoint.sh execution --step review --iteration 1`
+4. **Review** → dispatch `sdlc-code-reviewer` using [`references/reviewer-dispatch-template.md`](references/reviewer-dispatch-template.md)
+5. On review pass: `checkpoint.sh execution --step qa`
+6. **Verify** → dispatch `sdlc-qa` using [`references/qa-dispatch-template.md`](references/qa-dispatch-template.md)
+7. On QA pass: `checkpoint.sh execution --task-done {id}`
+
+On review fail (re-dispatch implementer): `checkpoint.sh execution --step implement` then increment iteration on next review: `checkpoint.sh execution --step review --iteration {N}`
 
 See [`references/review-cycle.md`](references/review-cycle.md) for iteration limits, security review integration, and escalation rules.
 
 ---
 
 ## Phase 3: Story-Level Integration
+
+`checkpoint.sh execution --phase 3`
 
 After all per-task dev loops pass:
 
@@ -91,6 +112,8 @@ After all per-task dev loops pass:
 
 ## Phase 4: Acceptance Validation
 
+`checkpoint.sh execution --phase 4`
+
 Independent verification that every acceptance criterion was implemented.
 
 1. Dispatch `sdlc-acceptance-validator` using [`references/acceptance-validation-dispatch-template.md`](references/acceptance-validation-dispatch-template.md).
@@ -102,6 +125,8 @@ Independent verification that every acceptance criterion was implemented.
 ---
 
 ## Phase 5: Documentation Integration
+
+`checkpoint.sh execution --phase 5`
 
 Merge implementation knowledge into permanent documentation.
 
@@ -117,6 +142,8 @@ See [`references/doc-integration-protocol.md`](references/doc-integration-protoc
 
 ## Phase 6: User Acceptance
 
+`checkpoint.sh execution --phase 6`
+
 Present the completed story to the user for final approval.
 
 See [`references/user-acceptance-protocol.md`](references/user-acceptance-protocol.md) for the presentation format.
@@ -127,6 +154,8 @@ See [`references/user-acceptance-protocol.md`](references/user-acceptance-protoc
 4. Request user confirmation.
 
 If the user requests changes, create targeted tasks and re-enter Phase 2. Mark the staging doc with the change request context.
+
+On user approval: `checkpoint.sh coordinator --story-done {US-NNN-name}`
 
 ---
 
