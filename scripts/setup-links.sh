@@ -51,6 +51,8 @@ log_clean() { echo -e " ${CYAN}[DEL]${NC} $1"; }
 clean_registry_links() {
   local candidates=(
     "$TARGET_DIR/.cursor/rules"
+    "$TARGET_DIR/.cursor/agents"
+    "$TARGET_DIR/.cursor/skills"
     "$TARGET_DIR/.roomodes"
     "$TARGET_DIR/.roo"
     "$TARGET_DIR/CLAUDE.md"
@@ -134,6 +136,18 @@ create_link \
   "$REGISTRY_DIR/cursor/.cursor/rules" \
   "$TARGET_DIR/.cursor/rules" \
   ".cursor/rules/" \
+  || ((ERRORS++))
+
+create_link \
+  "$REGISTRY_DIR/cursor/.cursor/agents" \
+  "$TARGET_DIR/.cursor/agents" \
+  ".cursor/agents/" \
+  || ((ERRORS++))
+
+create_link \
+  "$REGISTRY_DIR/common-skills" \
+  "$TARGET_DIR/.cursor/skills" \
+  ".cursor/skills/" \
   || ((ERRORS++))
 
 create_link \

@@ -12,6 +12,7 @@ A centralized, version-controlled source of truth for AI agent configurations, c
 - [Repository Structure](#repository-structure)
 - [Planning System Architecture](#planning-system-architecture)
 - [Implementation Hub Architecture](#implementation-hub-architecture)
+- [Cursor Architecture](#cursor-architecture)
 - [Checkpoint and Resume System](#checkpoint-and-resume-system)
 - [Quick Start](#quick-start)
 - [Git Safety — Global Gitignore](#git-safety--global-gitignore)
@@ -73,9 +74,19 @@ The **AI Registry** solves this by storing all agent configurations in a single 
 ```
 ai-registry/
 ├── cursor/                             # Cursor IDE configurations
-│   └── .cursor/
-│       └── rules/
-│           └── general.mdc             # Rule files (.mdc) for Cursor
+│   ├── .cursor/
+│   │   ├── rules/
+│   │   │   ├── general.mdc             # General coding standards
+│   │   │   ├── sdlc-coordinator.mdc    # Phase routing orchestrator rule
+│   │   │   ├── sdlc-planning-orchestrator.mdc  # 7-phase planning rule
+│   │   │   └── sdlc-execution-orchestrator.mdc # Implementation lifecycle rule
+│   │   ├── agents/                     # 17 SDLC subagents (dispatched via Task tool)
+│   │   │   ├── sdlc-planner-prd.md ... sdlc-planner-testing.md  # 10 planning
+│   │   │   ├── sdlc-plan-validator.md                            # 1 validator
+│   │   │   ├── sdlc-implementer.md ... sdlc-acceptance-validator.md  # 4 execution
+│   │   │   └── sdlc-project-research.md, sdlc-documentation-writer.md  # 2 utility
+│   │   └── skills -> ../../common-skills/  # Symlink to shared skills
+│   └── ROO-MIGRATION-PROTOCOL.md      # Guide for migrating Roo Code modes to Cursor
 │
 ├── roo-code/                           # Roo-Code configurations (symlinked as .roo/)
 │   ├── .roomodes                       # Custom modes/agents (YAML)
@@ -414,9 +425,58 @@ tech_stack: [react-native, typescript, expo]
 ---
 ```
 
-### IDE Migration Note
+---
 
-The implementation hub is currently built for **Roo-Code** only. Migration to Cursor, Claude Code, and Codex is planned as a future task.
+## Cursor Architecture
+
+The Cursor implementation mirrors the Roo Code SDLC system but adapts to Cursor's single-level nesting constraint (main agent → subagent). The 3-level Roo Code hierarchy (coordinator → hub → worker) is flattened by promoting orchestrators to rules.
+
+### How It Works
+
+```
+User message
+  → Main Chat Agent (loads orchestrator rules automatically)
+    → Dispatches subagents via Task tool
+```
+
+**Orchestrator rules** (`.cursor/rules/*.mdc`) teach the main agent how to coordinate. They load via Cursor's "Apply Intelligently" mechanism when SDLC work is detected. **Subagents** (`.cursor/agents/*.md`) are leaf workers dispatched by the main agent using the Task tool.
+
+### Dispatch Protocol
+
+Roo Code's `new_task` / `attempt_completion` / `switch_mode` primitives are translated:
+
+| Roo Code | Cursor |
+|---|---|
+| `new_task(mode="X", message="Y")` | Task tool: `/X Y` |
+| `attempt_completion(result="Z")` | Subagent returns final message |
+| `switch_mode(mode="X")` | Rules auto-load; or `/X` |
+| `groups: [read]` | `readonly: true` in subagent frontmatter |
+| `fileRegex` restrictions | Prompt-level "You may ONLY write to..." |
+
+### Orchestrator Rules (3)
+
+| Rule | Purpose |
+|---|---|
+| `sdlc-coordinator.mdc` | State-aware phase router: determines planning vs execution |
+| `sdlc-planning-orchestrator.mdc` | 7-phase planning workflow with validation gates |
+| `sdlc-execution-orchestrator.mdc` | Implementation lifecycle: readiness → dev loop → acceptance |
+
+### Subagents (17)
+
+| Category | Subagents | Model |
+|---|---|---|
+| **Planning** (10) | prd, architecture, stories, hld, security, api, data, devops, design, testing | inherit |
+| **Validation** (1) | plan-validator | inherit |
+| **Execution** (4) | implementer, code-reviewer, qa, acceptance-validator | inherit / fast |
+| **Utility** (2) | project-research, documentation-writer | fast / inherit |
+
+### Skills
+
+Skills are shared with Roo Code via symlink: `cursor/.cursor/skills → ../../common-skills/`. No skill migration is needed — the same Agent Skills standard works across both IDEs.
+
+### Adding New Cursor Agents
+
+See [cursor/ROO-MIGRATION-PROTOCOL.md](cursor/ROO-MIGRATION-PROTOCOL.md) for the full step-by-step guide, decision tree, templates, and checklist.
 
 ---
 
@@ -499,6 +559,7 @@ The script will create symlinks for:
 | Source (Registry)              | Link (Project)       |
 | ------------------------------ | -------------------- |
 | `cursor/.cursor/rules/`       | `.cursor/rules/`     |
+| `cursor/.cursor/agents/`      | `.cursor/agents/`    |
 | `roo-code/.roomodes`          | `.roomodes`          |
 | `roo-code/`                   | `.roo/`              |
 | `claude/CLAUDE.md`            | `CLAUDE.md`          |
@@ -524,6 +585,7 @@ cat >> ~/.gitignore_global << 'EOF'
 # AI Registry — Symlinked Configuration Files
 # ===========================================
 .cursor/rules
+.cursor/agents
 .roomodes
 .roo
 CLAUDE.md
@@ -559,7 +621,7 @@ From this point forward, Git will ignore these files in **every** repository on 
 
 | Provider     | Config Files                         | Docs |
 | ------------ | ------------------------------------ | ---- |
-| **Cursor**   | `.cursor/rules/*.mdc`                | [Cursor Docs](https://docs.cursor.com) |
+| **Cursor**   | `.cursor/rules/*.mdc`, `.cursor/agents/*.md` | [Cursor Docs](https://docs.cursor.com) |
 | **Roo-Code** | `.roomodes`, `.roo/`                 | [Roo-Code Docs](https://docs.roocode.com) |
 | **Claude Code** | `CLAUDE.md`                       | [Claude Code Docs](https://docs.anthropic.com/en/docs/claude-code) |
 | **Codex / Windsurf** | `AGENTS.md`                 | — |
@@ -592,7 +654,7 @@ From this point forward, Git will ignore these files in **every** repository on 
 ### Adding a New Agent / Mode
 
 1. **Roo-Code**: Add a new entry to the `customModes` array in `roo-code/.roomodes`. Each mode needs a `slug`, `name`, `roleDefinition`, `groups` (permissions), and `customInstructions`.
-2. **Cursor**: Add a new `.mdc` file under `cursor/.cursor/rules/` with a frontmatter block specifying `description`, `globs`, and `alwaysApply`.
+2. **Cursor**: For orchestrators, add a `.mdc` rule under `cursor/.cursor/rules/`. For leaf workers, add a `.md` subagent under `cursor/.cursor/agents/`. See [cursor/ROO-MIGRATION-PROTOCOL.md](cursor/ROO-MIGRATION-PROTOCOL.md) for the decision tree and templates.
 3. **Claude**: Update `claude/CLAUDE.md` with additional context or behavioral instructions.
 4. **Codex**: Update `codex/AGENTS.md` with new agent directives.
 
