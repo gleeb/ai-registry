@@ -37,8 +37,9 @@ The **AI Registry** solves this by storing all agent configurations in a single 
 │                                                       │
 │  cursor/        roo-code/      claude/     codex/     │
 │  └─ .cursor/     ├─ .roomodes   ├─ CLAUDE.md ├─ AGENTS.md
-│     └─ rules/    ├─ rules-sdlc-*/             │       │
-│                  └─ skills/ → ../common-skills/       │
+│     └─ rules/    └─ .roo/                    │       │
+│                     ├─ rules-sdlc-*/                  │
+│                     └─ skills/ → ../../common-skills/ │
 │                                                       │
 │  common-skills/                                       │
 │  ├─ planning-hub/                                     │
@@ -86,32 +87,33 @@ ai-registry/
 │   │   │   ├── sdlc-implementer.md ... sdlc-acceptance-validator.md  # 4 execution
 │   │   │   └── sdlc-project-research.md, sdlc-documentation-writer.md  # 2 utility
 │   │   └── skills -> ../../common-skills/  # Symlink to shared skills
-│   └── ROO-MIGRATION-PROTOCOL.md      # Guide for migrating Roo Code modes to Cursor
+│   └── MIGRATION-PROTOCOL.md           # Guide for migrating Roo Code modes to Cursor
 │
-├── roo-code/                           # Roo-Code configurations (symlinked as .roo/)
-│   ├── .roomodes                       # Custom modes/agents (YAML)
-│   ├── mcp.json                        # MCP server configurations
-│   ├── rules-sdlc-planner/            # Planning Hub rules (6 .md files)
-│   ├── rules-sdlc-planner-prd/        # PRD Agent rules
-│   ├── rules-sdlc-planner-architecture/ # Architecture Agent rules
-│   ├── rules-sdlc-planner-stories/    # Story Decomposer rules
-│   ├── rules-sdlc-planner-hld/        # HLD Agent rules
-│   ├── rules-sdlc-planner-security/   # Security Agent rules
-│   ├── rules-sdlc-planner-api/        # API Design Agent rules
-│   ├── rules-sdlc-planner-data/       # Data Architecture Agent rules
-│   ├── rules-sdlc-planner-devops/     # DevOps Agent rules
-│   ├── rules-sdlc-planner-design/     # Design/UI-UX Agent rules
-│   ├── rules-sdlc-planner-testing/    # Testing Strategy Agent rules
-│   ├── rules-sdlc-plan-validator/     # Plan Validator rules
-│   ├── rules-sdlc-coordinator/        # Coordinator rules
-│   ├── rules-sdlc-architect/          # Architect rules
-│   ├── rules-sdlc-implementer/        # Implementer rules
-│   ├── rules-sdlc-code-reviewer/      # Code Reviewer rules
-│   ├── rules-sdlc-qa/                 # QA Verifier rules
-│   ├── rules-sdlc-acceptance-validator/ # Acceptance Validator rules
-│   ├── rules-skill-writer/            # Skill Writer rules
-│   ├── rules-mode-writer/             # Mode Writer rules
-│   └── skills/ → ../common-skills/    # Symlink to shared skills
+├── roo-code/                           # Roo-Code configurations
+│   ├── .roomodes                       # Custom modes/agents (YAML, symlinked to project root)
+│   └── .roo/                           # Roo-Code workspace content (symlinked as .roo/)
+│       ├── mcp.json                    # MCP server configurations
+│       ├── rules-sdlc-planner/         # Planning Hub rules (6 .md files)
+│       ├── rules-sdlc-planner-prd/     # PRD Agent rules
+│       ├── rules-sdlc-planner-architecture/ # Architecture Agent rules
+│       ├── rules-sdlc-planner-stories/ # Story Decomposer rules
+│       ├── rules-sdlc-planner-hld/     # HLD Agent rules
+│       ├── rules-sdlc-planner-security/ # Security Agent rules
+│       ├── rules-sdlc-planner-api/     # API Design Agent rules
+│       ├── rules-sdlc-planner-data/    # Data Architecture Agent rules
+│       ├── rules-sdlc-planner-devops/  # DevOps Agent rules
+│       ├── rules-sdlc-planner-design/  # Design/UI-UX Agent rules
+│       ├── rules-sdlc-planner-testing/ # Testing Strategy Agent rules
+│       ├── rules-sdlc-plan-validator/  # Plan Validator rules
+│       ├── rules-sdlc-coordinator/     # Coordinator rules
+│       ├── rules-sdlc-architect/       # Architect rules
+│       ├── rules-sdlc-implementer/     # Implementer rules
+│       ├── rules-sdlc-code-reviewer/   # Code Reviewer rules
+│       ├── rules-sdlc-qa/              # QA Verifier rules
+│       ├── rules-sdlc-acceptance-validator/ # Acceptance Validator rules
+│       ├── rules-skill-writer/         # Skill Writer rules
+│       ├── rules-mode-writer/          # Mode Writer rules
+│       └── skills/ → ../../common-skills/  # Symlink to shared skills
 │
 ├── common-skills/                      # Shared skills (accessible via .roo/skills/)
 │   ├── planning-hub/                   # Planning orchestration hub + dispatch templates
@@ -338,7 +340,7 @@ Each planning sub-agent has:
 |---|---|---|
 | **Skill** | `common-skills/planning-[domain]/SKILL.md` | Agent contract, workflow, templates |
 | **References** | `common-skills/planning-[domain]/references/` | Templates, rubrics, checklists |
-| **Rules** | `roo-code/rules-sdlc-planner-[domain]/` | 4–6 Markdown files per agent |
+| **Rules** | `roo-code/.roo/rules-sdlc-planner-[domain]/` | 4–6 Markdown files per agent |
 | **Mode** | Entry in `roo-code/.roomodes` | Roo-Code mode definition |
 | **Dispatch Template** | `common-skills/planning-hub/references/dispatch-templates/` | Hub dispatch format |
 
@@ -476,7 +478,7 @@ Skills are shared with Roo Code via symlink: `cursor/.cursor/skills → ../../co
 
 ### Adding New Cursor Agents
 
-See [cursor/ROO-MIGRATION-PROTOCOL.md](cursor/ROO-MIGRATION-PROTOCOL.md) for the full step-by-step guide, decision tree, templates, and checklist.
+See [cursor/MIGRATION-PROTOCOL.md](cursor/MIGRATION-PROTOCOL.md) for the full step-by-step guide, decision tree, templates, and checklist.
 
 ---
 
@@ -561,7 +563,7 @@ The script will create symlinks for:
 | `cursor/.cursor/rules/`       | `.cursor/rules/`     |
 | `cursor/.cursor/agents/`      | `.cursor/agents/`    |
 | `roo-code/.roomodes`          | `.roomodes`          |
-| `roo-code/`                   | `.roo/`              |
+| `roo-code/.roo/`              | `.roo/`              |
 | `claude/CLAUDE.md`            | `CLAUDE.md`          |
 | `codex/AGENTS.md`             | `AGENTS.md`          |
 
@@ -640,7 +642,7 @@ From this point forward, Git will ignore these files in **every** repository on 
 
 1. Create a skill in `common-skills/planning-[domain]/` with `SKILL.md` and `references/`.
 2. Create a dispatch template in `common-skills/planning-hub/references/dispatch-templates/`.
-3. Create rules in `roo-code/rules-sdlc-planner-[domain]/` (4–6 Markdown files following the pattern above).
+3. Create rules in `roo-code/.roo/rules-sdlc-planner-[domain]/` (4–6 Markdown files following the pattern above).
 4. Add a mode entry in `roo-code/.roomodes`.
 5. Update the Planning Hub skill to include the new agent in its phase ordering and dispatch workflow.
 
@@ -653,8 +655,8 @@ From this point forward, Git will ignore these files in **every** repository on 
 
 ### Adding a New Agent / Mode
 
-1. **Roo-Code**: Add a new entry to the `customModes` array in `roo-code/.roomodes`. Each mode needs a `slug`, `name`, `roleDefinition`, `groups` (permissions), and `customInstructions`.
-2. **Cursor**: For orchestrators, add a `.mdc` rule under `cursor/.cursor/rules/`. For leaf workers, add a `.md` subagent under `cursor/.cursor/agents/`. See [cursor/ROO-MIGRATION-PROTOCOL.md](cursor/ROO-MIGRATION-PROTOCOL.md) for the decision tree and templates.
+1. **Roo-Code**: Add a new entry to the `customModes` array in `roo-code/.roomodes`. Create corresponding rules in `roo-code/.roo/rules-{slug}/`. Each mode needs a `slug`, `name`, `roleDefinition`, `groups` (permissions), and `customInstructions`.
+2. **Cursor**: For orchestrators, add a `.mdc` rule under `cursor/.cursor/rules/`. For leaf workers, add a `.md` subagent under `cursor/.cursor/agents/`. See [cursor/MIGRATION-PROTOCOL.md](cursor/MIGRATION-PROTOCOL.md) for the decision tree and templates.
 3. **Claude**: Update `claude/CLAUDE.md` with additional context or behavioral instructions.
 4. **Codex**: Update `codex/AGENTS.md` with new agent directives.
 

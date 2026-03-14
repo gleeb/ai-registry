@@ -157,7 +157,7 @@ create_link \
   || ((ERRORS++))
 
 create_link \
-  "$REGISTRY_DIR/roo-code" \
+  "$REGISTRY_DIR/roo-code/.roo" \
   "$TARGET_DIR/.roo" \
   ".roo/" \
   || ((ERRORS++))

@@ -107,7 +107,7 @@ The script creates these symlinks:
 | `cursor/.cursor/agents/` | `.cursor/agents/` |
 | `common-skills/` | `.cursor/skills/` |
 | `roo-code/.roomodes` | `.roomodes` |
-| `roo-code/` | `.roo/` |
+| `roo-code/.roo/` | `.roo/` |
 
 To add a single skill to a project:
 ```bash
@@ -158,7 +158,7 @@ To extend the SDLC with a new planning domain:
 
 2. **Create a dispatch template** in `common-skills/planning-hub/references/dispatch-templates/[domain]-dispatch.md`.
 
-3. **For Roo-Code**: Create rules in `roo-code/rules-sdlc-planner-[domain]/` (4-6 Markdown files following the pattern: workflow, best practices, sparring patterns, decision guidance, validation, error handling). Add a mode entry in `roo-code/.roomodes`.
+3. **For Roo-Code**: Create rules in `roo-code/.roo/rules-sdlc-planner-[domain]/` (4-6 Markdown files following the pattern: workflow, best practices, sparring patterns, decision guidance, validation, error handling). Add a mode entry in `roo-code/.roomodes`.
 
 4. **For Cursor**: Create an agent file at `cursor/.cursor/agents/sdlc-planner-[domain].md` with frontmatter (name, description, model) and agent instructions.
 
@@ -170,7 +170,7 @@ To extend the SDLC with a new planning domain:
 
 ## Add a New Execution Agent
 
-1. **Create an agent file** in `cursor/.cursor/agents/` (Cursor) or add a mode in `roo-code/.roomodes` (Roo-Code).
+1. **Create an agent file** in `cursor/.cursor/agents/` (Cursor) or add a mode in `roo-code/.roomodes` with rules in `roo-code/.roo/rules-{slug}/` (Roo-Code).
 
 2. **Create a dispatch template** in `common-skills/architect-execution-hub/references/`.
 

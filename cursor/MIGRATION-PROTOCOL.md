@@ -46,7 +46,7 @@ graph TD
 
 3. **Add the role definition** from `.roomodes` as the opening section.
 
-4. **Inline all files** from `roo-code/rules-{slug}/` in numbered order. Each file becomes a section in the rule.
+4. **Inline all files** from `roo-code/.roo/rules-{slug}/` in numbered order. Each file becomes a section in the rule.
 
 5. **Add the Cursor Dispatch Protocol section:**
 
@@ -62,9 +62,24 @@ graph TD
    - Mode slugs map to subagent names (e.g., `sdlc-planner-prd` → `/sdlc-planner-prd`)
    ```
 
-6. **Reference the associated skill's dispatch templates** (e.g., `common-skills/planning-hub/references/dispatch-templates/`).
+6. **Add a Path Translation subsection** to the dispatch protocol:
 
-7. **Verify** the rule's `description` field accurately summarizes when the agent should load it.
+   ```markdown
+   ### Path Translation
+   Shared skills and dispatch templates use Roo Code paths. When reading or composing dispatch messages, translate:
+   - `.roo/skills/` → `.cursor/skills/`
+   - `common-skills/` → `.cursor/skills/`
+   ```
+
+7. **Reference the associated skill's dispatch templates** (e.g., `.cursor/skills/planning-hub/references/dispatch-templates/`).
+
+8. **If the orchestrator uses the `sdlc-checkpoint` skill**, add a **Checkpoint Integration** section with:
+   - Script paths using `.cursor/skills/sdlc-checkpoint/scripts/`
+   - Write-ahead REQUIRE rules (before every dispatch, after every completion)
+   - A resume protocol (check YAML, run verify.sh, follow recommendation)
+   - Per-phase checkpoint call examples
+
+9. **Verify** the rule's `description` field accurately summarizes when the agent should load it.
 
 ### Template
 
@@ -87,23 +102,27 @@ Dispatch work to specialized subagents using the Task tool.
 - `attempt_completion` → Subagent returns its final message to you
 - Mode slugs map to subagent names
 
+### Path Translation
+- `.roo/skills/` → `.cursor/skills/`
+- `common-skills/` → `.cursor/skills/`
+
 Load dispatch templates from {skill path}.
 
 ## Workflow
 
-{Inlined from roo-code/rules-{slug}/1_workflow.md}
+{Inlined from roo-code/.roo/rules-{slug}/1_workflow.md}
 
 ## Best Practices
 
-{Inlined from roo-code/rules-{slug}/2_best_practices.md}
+{Inlined from roo-code/.roo/rules-{slug}/2_best_practices.md}
 
 ## Decision Guidance
 
-{Inlined from roo-code/rules-{slug}/4_decision_guidance.md}
+{Inlined from roo-code/.roo/rules-{slug}/4_decision_guidance.md}
 
 ## Error Handling
 
-{Inlined from roo-code/rules-{slug}/6_error_handling.md}
+{Inlined from roo-code/.roo/rules-{slug}/6_error_handling.md}
 ```
 
 ---
@@ -146,21 +165,20 @@ Load dispatch templates from {skill path}.
    Do not create or modify any other files.
    ```
 
-5. **For inline rules (recommended for most agents):** Concatenate all files from `roo-code/rules-{slug}/` into the prompt body, each under its own heading. This ensures the subagent has all instructions in its context.
+5. **Inline rules (required):** Concatenate all files from `roo-code/.roo/rules-{slug}/` into the prompt body, each under its own heading. Cursor agents cannot reference `roo-code/` or `.roo/` at runtime — those paths don't exist in Cursor's world. All rule content must be inlined.
 
-6. **For reference rules (for frequently-dispatched leaf agents):** Add:
+6. **For skill references**, use `.cursor/skills/{skill-name}/` (the symlink resolves to `common-skills/` in the registry). Never reference `common-skills/` directly in agent prompts.
 
-   ```markdown
-   ## Detailed Instructions
-   Read the files in `roo-code/rules-{slug}/` for your detailed workflow,
-   best practices, and error handling instructions.
-   ```
-
-   Use reference rules when the inline content would be excessively long and the agent has file-reading capability.
-
-7. **Replace all `attempt_completion` references** with: "Return your final summary to the parent agent."
+7. **Replace all `attempt_completion` references** with: "Return your final summary to the parent agent with: [list completion contract items]"
 
 8. **Add a Completion Contract** listing what the subagent must return.
+
+### Model Selection
+
+| Workload | Model | Rationale |
+|---|---|---|
+| Complex reasoning, planning, drafting | `inherit` | Needs full parent model capability |
+| Focused verification, review, research | `fast` | Scoped task, speed over depth |
 
 ### Template
 
@@ -191,23 +209,23 @@ Do not create or modify any other files.
 
 ## Workflow
 
-{Inlined from roo-code/rules-{slug}/1_workflow.md}
+{Inlined from roo-code/.roo/rules-{slug}/1_workflow.md}
 
 ## Best Practices
 
-{Inlined from roo-code/rules-{slug}/2_best_practices.md}
+{Inlined from roo-code/.roo/rules-{slug}/2_best_practices.md}
 
 ## Sparring Patterns
 
-{Inlined from roo-code/rules-{slug}/3_sparring_patterns.md, if applicable}
+{Inlined from roo-code/.roo/rules-{slug}/3_sparring_patterns.md, if applicable}
 
 ## Self-Validation
 
-{Inlined from roo-code/rules-{slug}/5_validation.md}
+{Inlined from roo-code/.roo/rules-{slug}/5_validation.md}
 
 ## Error Handling
 
-{Inlined from roo-code/rules-{slug}/6_error_handling.md}
+{Inlined from roo-code/.roo/rules-{slug}/6_error_handling.md}
 
 ## Completion Contract
 
@@ -223,9 +241,10 @@ Return your final summary with:
 
 No migration needed. Skills use the same Agent Skills standard across Roo Code and Cursor.
 
-1. Add the skill to `common-skills/{skill-name}/SKILL.md`.
-2. It is automatically available via the `cursor/.cursor/skills → ../../common-skills/` symlink.
-3. If the skill's dispatch templates reference `new_task` or `attempt_completion`, the orchestrator rules' Cursor Dispatch Protocol handles the translation.
+1. Add the skill to `common-skills/{skill-name}/SKILL.md` in the registry.
+2. It is automatically available to Cursor agents at `.cursor/skills/{skill-name}/` via the symlink.
+3. It is automatically available to Roo Code agents at `.roo/skills/{skill-name}/` via their symlink.
+4. If the skill's dispatch templates reference `new_task` or `attempt_completion`, the orchestrator rules' Cursor Dispatch Protocol handles the translation.
 
 ---
 
@@ -235,14 +254,15 @@ Use this checklist for every Roo Code mode migrated to Cursor:
 
 - [ ] Identify the mode in `roo-code/.roomodes` (slug, roleDefinition, whenToUse, groups, customInstructions)
 - [ ] Decide: rule or subagent? (use decision tree above)
-- [ ] Identify the associated `roo-code/rules-{slug}/` directory
-- [ ] Identify any associated skill in `common-skills/`
+- [ ] Identify the associated `roo-code/.roo/rules-{slug}/` directory (source material to inline)
+- [ ] Identify any associated skill in `common-skills/` (referenced at runtime as `.cursor/skills/`)
 - [ ] Create the Cursor artifact (rule or subagent) following the template above
 - [ ] Translate `new_task` → Task tool, `attempt_completion` → return message, `switch_mode` → N/A
 - [ ] Translate `fileRegex` → prompt-level file restrictions ("You may ONLY write to...")
 - [ ] Translate `groups` → `readonly: true` if read-only, otherwise omit (full access)
 - [ ] Choose model: `inherit` for complex work, `fast` for focused tasks
-- [ ] If orchestrator rule: add Cursor Dispatch Protocol section
+- [ ] If orchestrator rule: add Cursor Dispatch Protocol section with Path Translation
+- [ ] If orchestrator rule using checkpoints: add Checkpoint Integration section
 - [ ] If subagent: add Completion Contract section
 - [ ] Verify the description field accurately describes when to use this agent
 - [ ] Test: invoke the new rule/subagent and verify it behaves as expected
@@ -263,6 +283,8 @@ Use this checklist for every Roo Code mode migrated to Cursor:
 | `whenToUse: "..."` | Merge into `description` field |
 | `customInstructions: "..."` | Inline into prompt body or reference rule files |
 | `rules-{slug}/*.md` (auto-loaded) | Inlined into subagent prompt or referenced via Read |
+| `.roo/skills/{name}/` | `.cursor/skills/{name}/` (path translation in dispatch protocol) |
+| `common-skills/{name}/` | `.cursor/skills/{name}/` (path translation in dispatch protocol) |
 
 ---
 
@@ -293,6 +315,36 @@ Main Agent → Subagent (no further nesting)
 
 **Solution:** Orchestrators become rules that teach the main agent how to coordinate. The main agent then dispatches leaf workers directly as subagents.
 
+### Cursor Architecture Summary
+
+```
+cursor/
+  .cursor/
+    rules/                              # Orchestrator rules (loaded by main agent)
+      sdlc-coordinator.mdc              # Phase routing: planning vs execution
+      sdlc-planning-orchestrator.mdc    # 7-phase planning workflow
+      sdlc-execution-orchestrator.mdc   # Implementation lifecycle
+    agents/                             # Leaf-worker subagents (dispatched via Task tool)
+      sdlc-planner-prd.md              # 10 planning subagents
+      sdlc-planner-architecture.md
+      sdlc-planner-stories.md
+      sdlc-planner-hld.md
+      sdlc-planner-security.md
+      sdlc-planner-api.md
+      sdlc-planner-data.md
+      sdlc-planner-devops.md
+      sdlc-planner-design.md
+      sdlc-planner-testing.md
+      sdlc-plan-validator.md            # Validator
+      sdlc-implementer.md              # 4 execution subagents
+      sdlc-code-reviewer.md
+      sdlc-qa.md
+      sdlc-acceptance-validator.md
+      sdlc-project-research.md          # 2 utility subagents
+      sdlc-documentation-writer.md
+    skills -> ../../common-skills/      # Shared skills (symlink)
+```
+
 ---
 
 ## 8. Examples
@@ -304,7 +356,7 @@ A new planning sub-agent added to `.roomodes`:
 1. **Decision**: Does not dispatch other modes → **Subagent**
 2. **Create**: `cursor/.cursor/agents/sdlc-planner-foo.md`
 3. **Frontmatter**: `name: sdlc-planner-foo`, `model: inherit`
-4. **Content**: Role definition + inlined rules from `roo-code/rules-sdlc-planner-foo/`
+4. **Content**: Role definition + inlined rules from `roo-code/.roo/rules-sdlc-planner-foo/`
 5. **File restrictions**: "You may ONLY write to: `plan/user-stories/US-NNN-name/foo.md`"
 6. **Completion contract**: What the agent returns
 7. **Update orchestrator**: Add the new agent to `sdlc-planning-orchestrator.mdc`'s sub-agents table and dispatch logic
