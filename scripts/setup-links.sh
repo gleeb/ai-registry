@@ -55,6 +55,9 @@ clean_registry_links() {
     "$TARGET_DIR/.cursor/skills"
     "$TARGET_DIR/.roomodes"
     "$TARGET_DIR/.roo"
+    "$TARGET_DIR/.kilocodemodes"
+    "$TARGET_DIR/.kilo"
+    "$TARGET_DIR/.kilocode"
     "$TARGET_DIR/CLAUDE.md"
     "$TARGET_DIR/AGENTS.md"
     # Legacy / previously created — cleaned up even if no longer in the script
@@ -172,6 +175,24 @@ create_link \
   "$REGISTRY_DIR/codex/AGENTS.md" \
   "$TARGET_DIR/AGENTS.md" \
   "AGENTS.md" \
+  || ((ERRORS++))
+
+create_link \
+  "$REGISTRY_DIR/kilo-code/.kilocodemodes" \
+  "$TARGET_DIR/.kilocodemodes" \
+  ".kilocodemodes" \
+  || ((ERRORS++))
+
+create_link \
+  "$REGISTRY_DIR/kilo-code/.kilo" \
+  "$TARGET_DIR/.kilo" \
+  ".kilo/" \
+  || ((ERRORS++))
+
+create_link \
+  "$REGISTRY_DIR/common-skills" \
+  "$TARGET_DIR/.kilocode/skills" \
+  ".kilocode/skills/" \
   || ((ERRORS++))
 
 echo ""

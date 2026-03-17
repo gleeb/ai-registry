@@ -18,6 +18,7 @@ set -euo pipefail
 #   codex     → .codex/skills/<skill>
 #   roo       → .roo/skills/<skill>
 #   windsurf  → .windsurf/skills/<skill>
+#   kilo      → .kilocode/skills/<skill>
 #   all       → symlinks into every provider directory above
 #
 # The skill must exist as a folder under common-skills/ in the registry.
@@ -39,7 +40,7 @@ usage() {
   echo "Arguments:"
   echo "  skill-name     Name of the skill folder under common-skills/ (e.g. scaffold-project)"
   echo "  project-path   Path to the target project root (use . for current directory)"
-  echo "  provider       One of: cursor, claude, codex, roo, windsurf, all"
+  echo "  provider       One of: cursor, claude, codex, roo, windsurf, kilo, all"
   echo ""
   echo "Available skills:"
   for dir in "$SKILLS_DIR"/*/; do
@@ -64,6 +65,7 @@ provider_skills_dir() {
     codex)    echo ".codex/skills" ;;
     roo)      echo ".roo/skills" ;;
     windsurf) echo ".windsurf/skills" ;;
+    kilo)     echo ".kilocode/skills" ;;
     *) return 1 ;;
   esac
 }
@@ -125,7 +127,7 @@ PROJECT_PATH="$2"
 PROVIDER="$3"
 
 SKILL_SOURCE="$SKILLS_DIR/$SKILL_NAME"
-ALL_PROVIDERS=(cursor claude codex roo windsurf)
+ALL_PROVIDERS=(cursor claude codex roo windsurf kilo)
 
 if [ ! -d "$SKILL_SOURCE" ] || [ ! -f "$SKILL_SOURCE/SKILL.md" ]; then
   echo -e "${RED}Error:${NC} Skill '$SKILL_NAME' not found in $SKILLS_DIR"
