@@ -13,7 +13,8 @@ description: >
 
 - **Planning Hub**: Load at hub initialization. Call `checkpoint.sh` before and after every sub-agent dispatch.
 - **Execution Hub**: Load at architect initialization. Call `checkpoint.sh` before and after every task dispatch.
-- **Coordinator**: Load when handling `/sdlc-continue`. Call `verify.sh` to determine routing.
+- **Coordinator**: Load when handling `/sdlc-continue` or `/sdlc-continue-checkpoint`. Call `verify.sh` to determine routing.
+- **Any Agent**: Load when receiving `/sdlc-continue-checkpoint` command. Call `checkpoint.sh continue` for actionable instructions.
 
 ## When NOT to Use
 
@@ -49,6 +50,7 @@ Scripts are bundled at `scripts/` relative to this skill. From a linked project,
 
 ```
 checkpoint.sh <hub> [flags]
+checkpoint.sh continue
 ```
 
 | Hub | Flags | Example |
@@ -57,12 +59,15 @@ checkpoint.sh <hub> [flags]
 | `planning` | `--phase`, `--story`, `--agents-done`, `--agents-pending`, `--dispatch`, `--completed`, `--story-done` | `checkpoint.sh planning --dispatch sdlc-planner-hld` |
 | `execution` | `--story`, `--phase`, `--tasks-total`, `--task`, `--step`, `--iteration`, `--task-done`, `--staging-doc` | `checkpoint.sh execution --step review --iteration 1` |
 | `init` | (none) | `checkpoint.sh init` |
+| `continue` | (none) | `checkpoint.sh continue` |
 
 **Incremental updates**: Each call patches only the specified fields. Unspecified fields are preserved. The script regenerates `resume_hint` and appends to `history.log` on every call.
 
 **Auto-create**: If `.sdlc/` does not exist, it is created on the first call to any subcommand.
 
 **Init subcommand**: `checkpoint.sh init` scans `plan/` and `docs/staging/` to derive full state from existing artifacts. Use this when adopting checkpoints into an already-in-progress workflow.
+
+**Continue subcommand**: `checkpoint.sh continue` reads the current checkpoint state and provides clear, actionable instructions for resuming work. Use this when handling `/sdlc-continue-checkpoint` commands.
 
 #### Coordinator Examples
 
@@ -151,3 +156,37 @@ Each hub adds checkpoint calls at these points:
 5. **At every loop iteration** (next story, next task)
 
 Minimal token cost per call: ~20-30 tokens for the shell command.
+
+## `/sdlc-continue-checkpoint` Command
+
+When an agent receives a `/sdlc-continue-checkpoint` user command:
+
+1. **Load this skill** if not already loaded
+2. **Run**: `checkpoint.sh continue` 
+3. **Follow the output instructions** exactly as provided
+
+The `continue` subcommand outputs structured, actionable instructions including:
+- Current workflow state (hub, phase, story)
+- Specific next action to take 
+- Context needed for the action
+- Routing instructions if delegation is required
+
+**Example output**:
+```
+SDLC Checkpoint Resume Instructions
+================================== 
+
+Status: Planning Hub Active
+Phase: 3 (Per-story planning)
+Story: US-003-settings
+Progress: HLD done, API done, Data pending
+
+INSTRUCTION: Dispatch sdlc-planner-data agent for story US-003-settings
+Context: Load sdlc-checkpoint skill and run verify.sh planning for detailed state
+After completion: Update checkpoint with --completed data flag
+
+READY TO EXECUTE: Use Task tool with subagent_type="generalPurpose" and prompt:
+"You are the Data Planning agent for story US-003-settings. Load the sdlc-checkpoint skill and run verify.sh planning to get current context. Then proceed with data architecture planning."
+```
+
+This command bridges the gap between checkpoint state and actionable agent instructions, making resume operations seamless across different conversation contexts.

@@ -93,11 +93,11 @@ cmd_coordinator() {
     fi
     # Remove from remaining list
     cur_remaining="$(echo "$cur_remaining" | tr ' ' '\n' | grep -v "^${story_done}$" | tr '\n' ' ')"
-    cur_remaining="$(echo "$cur_remaining" | xargs)"
+    cur_remaining="$(echo "$cur_remaining" | sed 's/^ *//;s/ *$//;s/  */ /g')"
   fi
 
-  cur_done="$(echo "$cur_done" | xargs)"
-  cur_remaining="$(echo "$cur_remaining" | xargs)"
+  cur_done="$(echo "$cur_done" | sed 's/^ *//;s/ *$//;s/  */ /g')"
+  cur_remaining="$(echo "$cur_remaining" | sed 's/^ *//;s/ *$//;s/  */ /g')"
 
   # Generate resume hint
   local hint="No active work."
@@ -214,9 +214,9 @@ cmd_planning() {
     cur_in_progress=""
   fi
 
-  cur_done="$(echo "$cur_done" | xargs)"
-  cur_pending="$(echo "$cur_pending" | xargs)"
-  cur_completed_phases="$(echo "$cur_completed_phases" | xargs)"
+  cur_done="$(echo "$cur_done" | sed 's/^ *//;s/ *$//;s/  */ /g')"
+  cur_pending="$(echo "$cur_pending" | sed 's/^ *//;s/ *$//;s/  */ /g')"
+  cur_completed_phases="$(echo "$cur_completed_phases" | sed 's/^ *//;s/ *$//;s/  */ /g')"
 
   # Generate resume hint
   local hint="Planning not started."
@@ -336,7 +336,7 @@ cmd_execution() {
     cur_iteration=""
   fi
 
-  cur_completed_phases="$(echo "$cur_completed_phases" | xargs)"
+  cur_completed_phases="$(echo "$cur_completed_phases" | sed 's/^ *//;s/ *$//;s/  */ /g')"
 
   # Generate resume hint
   local hint="Execution not started."
@@ -486,11 +486,155 @@ cmd_init() {
 }
 
 # ---------------------------------------------------------------------------
+# CONTINUE subcommand — provide actionable resume instructions
+# ---------------------------------------------------------------------------
+
+cmd_continue() {
+  local script_dir="$(dirname "$0")"
+  local verify_script="$script_dir/verify.sh"
+  
+  if [ ! -f "$verify_script" ]; then
+    echo "ERROR: verify.sh not found at $verify_script" >&2
+    exit 1
+  fi
+
+  echo "SDLC Checkpoint Resume Instructions"
+  echo "=================================="
+  echo
+
+  # Get coordinator state first
+  local coord_output
+  coord_output="$("$verify_script" 2>&1)"
+  
+  if [ $? -ne 0 ]; then
+    echo "ERROR: Failed to read checkpoint state"
+    echo "INSTRUCTION: Run 'checkpoint.sh init' to bootstrap from existing artifacts"
+    return 1
+  fi
+
+  # Parse coordinator output
+  local hub status recommendation
+  hub="$(echo "$coord_output" | grep "^hub:" | cut -d' ' -f2- || echo "none")"
+  status="$(echo "$coord_output" | grep "^status:" | cut -d' ' -f2- || echo "unknown")"
+  recommendation="$(echo "$coord_output" | grep "^recommendation:" | cut -d' ' -f2- || echo "none")"
+
+  case "$status" in
+    "NO_CHECKPOINT"|"NO_CHECKPOINT_DIR")
+      echo "Status: No checkpoint found"
+      echo "INSTRUCTION: Run 'checkpoint.sh init' to scan existing artifacts and bootstrap state"
+      echo "             OR start a new SDLC workflow from the beginning"
+      return 0
+      ;;
+    "IDLE")
+      echo "Status: No active work"
+      echo "INSTRUCTION: Ask user what work to start, or check project status"
+      return 0
+      ;;
+    "ACTIVE")
+      ;;
+    *)
+      echo "Status: Unknown ($status)"
+      echo "INSTRUCTION: Check .sdlc/ directory manually or re-run checkpoint.sh init"
+      return 0
+      ;;
+  esac
+
+  # Get detailed hub state
+  if [ "$hub" != "none" ] && [ "$hub" != "null" ]; then
+    echo "Status: ${hub^} Hub Active"
+    
+    # Get detailed verification
+    local hub_output
+    hub_output="$("$verify_script" "$hub" 2>&1)"
+    
+    if [ $? -eq 0 ]; then
+      # Parse hub-specific output
+      local phase story current_story tasks recommendation_detail
+      phase="$(echo "$hub_output" | grep "^phase:" | cut -d' ' -f2- || echo "unknown")"
+      story="$(echo "$hub_output" | grep "^story:" | cut -d' ' -f2- || echo "none")"
+      current_story="$(echo "$coord_output" | grep "^current_story:" | cut -d' ' -f2- || echo "none")"
+      tasks="$(echo "$hub_output" | grep "^tasks:" | cut -d' ' -f2- || echo "")"
+      recommendation_detail="$(echo "$hub_output" | grep "^recommendation:" | cut -d' ' -f2- || echo "$recommendation")"
+
+      echo "Phase: $phase"
+      [ "$story" != "none" ] && echo "Story: $story"
+      [ -n "$tasks" ] && echo "Tasks: $tasks"
+      echo
+
+      # Show verification details if available
+      local verification_section=""
+      if echo "$hub_output" | grep -q "^verification:"; then
+        verification_section="$(echo "$hub_output" | sed -n '/^verification:/,/^recommendation:/p' | sed '$d')"
+        if [ -n "$verification_section" ]; then
+          echo "$verification_section"
+          echo
+        fi
+      fi
+
+      # Provide actionable instruction
+      echo "INSTRUCTION: $recommendation_detail"
+      echo
+
+      # Convert recommendation to specific dispatch instructions
+      if echo "$recommendation_detail" | grep -q "route to sdlc-planner"; then
+        echo "Context: Load sdlc-checkpoint skill and run verify.sh planning for detailed planning state"
+        echo "After routing: Planning hub will run verify.sh planning and act on specific agent dispatch"
+        echo
+        echo "READY TO EXECUTE: Use Task tool with subagent_type=\"generalPurpose\" and prompt:"
+        echo "\"You are the SDLC Planning Hub. Load the sdlc-checkpoint skill immediately and run verify.sh planning to get current state, then follow the specific recommendation for dispatching planning agents.\""
+      elif echo "$recommendation_detail" | grep -q "route to sdlc-architect"; then
+        echo "Context: Load sdlc-checkpoint skill and run verify.sh execution for detailed execution state"
+        echo "After routing: Execution hub will run verify.sh execution and act on specific task dispatch"
+        echo
+        echo "READY TO EXECUTE: Use Task tool with subagent_type=\"generalPurpose\" and prompt:"
+        echo "\"You are the SDLC Execution Hub (Architect). Load the sdlc-checkpoint skill immediately and run verify.sh execution to get current state, then follow the specific recommendation for dispatching execution agents.\""
+      elif echo "$recommendation_detail" | grep -q "dispatch sdlc-planner-"; then
+        local agent_type
+        agent_type="$(echo "$recommendation_detail" | sed -n 's/.*dispatch sdlc-planner-\([^ ]*\).*/\1/p')"
+        local target_story
+        target_story="$(echo "$recommendation_detail" | sed -n 's/.* for \([^ ]*\).*/\1/p')"
+        echo "Context: ${agent_type^} planning agent needed for story $target_story"
+        echo "After completion: Update checkpoint with 'checkpoint.sh planning --completed $agent_type'"
+        echo
+        echo "READY TO EXECUTE: Use Task tool with subagent_type=\"generalPurpose\" and prompt:"
+        echo "\"You are the ${agent_type^} Planning agent for story $target_story. Load the sdlc-checkpoint skill and run verify.sh planning to get current context. Then proceed with ${agent_type} planning for this story.\""
+      elif echo "$recommendation_detail" | grep -q "dispatch sdlc-implementer"; then
+        local task_info
+        task_info="$(echo "$recommendation_detail" | sed -n 's/.*dispatch sdlc-implementer for task \([^"]*\) "\([^"]*\)".*/\1 "\2"/p')"
+        echo "Context: Implementation needed for task $task_info"
+        echo "After completion: Update checkpoint accordingly"
+        echo
+        echo "READY TO EXECUTE: Use Task tool with subagent_type=\"generalPurpose\" and prompt:"
+        echo "\"You are the SDLC Implementer for task $task_info. Load the sdlc-checkpoint skill and run verify.sh execution to get current context. Then proceed with implementation.\""
+      elif echo "$recommendation_detail" | grep -q "dispatch.*validator"; then
+        echo "Context: Validation step required"
+        echo "After completion: Update checkpoint with next phase or story completion"
+        echo
+        echo "READY TO EXECUTE: Use Task tool with subagent_type=\"generalPurpose\" and prompt:"
+        echo "\"You are the SDLC Validator. Load the sdlc-checkpoint skill and run verify.sh to get current context. Then proceed with validation according to the recommendation.\""
+      else
+        echo "Context: Custom action required - see recommendation above"
+        echo "After action: Update checkpoint as appropriate"
+        echo
+        echo "READY TO EXECUTE: Review recommendation and take action accordingly"
+      fi
+    else
+      echo "Status: Active but unable to get detailed state"
+      echo "INSTRUCTION: $recommendation"
+      echo "Context: Try running verify.sh $hub manually for more details"
+    fi
+  else
+    echo "Status: No active hub"
+    echo "INSTRUCTION: Ask user what work to start, or run checkpoint.sh init"
+  fi
+}
+
+# ---------------------------------------------------------------------------
 # Main dispatch
 # ---------------------------------------------------------------------------
 
 if [ $# -lt 1 ]; then
-  echo "Usage: checkpoint.sh <coordinator|planning|execution|init> [flags]" >&2
+  echo "Usage: checkpoint.sh <coordinator|planning|execution|init|continue> [flags]" >&2
   exit 1
 fi
 
@@ -502,5 +646,6 @@ case "$SUBCMD" in
   planning)    cmd_planning "$@" ;;
   execution)   cmd_execution "$@" ;;
   init)        cmd_init "$@" ;;
+  continue)    cmd_continue "$@" ;;
   *)           echo "Unknown subcommand: $SUBCMD" >&2; exit 1 ;;
 esac
