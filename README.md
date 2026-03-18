@@ -686,3 +686,84 @@ Edit the files directly in this repository. Changes take effect immediately in a
 ## License
 
 This repository is private to your organization. Add a `LICENSE` file if you plan to open-source it.
+
+
+## my notes:
+1. Both Roo and Kilo expirience the 5 min timeout and theres nothing to do with this, considering open code next
+2. in the planning phase, the last validation, something felt a bit off, it was veryt shallow check and not really checking for issues with the planning.
+3. nothing is stil creating the project documentation folder, index.md etc, its nnoying, consider creating a command
+4. it looks like the implementer did not load the staging doc
+5. I want to log all the tasks given to the sub agents, and then the responses from them.
+6. i want to log the token count for each subtask in the logs, all for analytics and improvement cycles
+7. for the scafolding task this is what the code reviewer returned... help me analyze this, is this something that we should expect?
+## Spec Compliance: PASS
+
+All requirements from the staging document have been implemented correctly. The signature traceability has been verified for all files mentioned in the HLD and staging documentation.
+
+## Issues Identified:
+
+### Critical Issues:
+1. **Documentation Traceability** - The staging document mentions that documentation traceability was corrected, but there's no evidence of this in the current version of the document. The original staging document had issues with semantic code search availability during kickoff and shell command failures, which were noted as resolved but not clearly reflected in the current document.
+
+2. **Missing Implementation Files** - The staging document lists several files that should have been created for Task 0:
+   - `tsconfig.json` - ✅ Created and properly configured
+   - `expo-env.d.ts` - ✅ Created with proper references
+   - `babel.config.js` - ✅ Created with proper Expo Router plugin
+   - `app/(tabs)/_layout.tsx` - ✅ Created with correct structure
+   - `app/_layout.tsx` - ✅ Created with correct root layout
+
+However, the staging document also mentions:
+- `src/design-system/status/StatusBanner.tsx` - ❌ Not created (this is for Task 2)
+- `src/shared/types/runtime-state.ts` - ❌ Not created (this is for Task 2)  
+- `src/shared/state/error-state-model.ts` - ❌ Not created (this is for Task 2)
+- `src/design-system/typography/font-scaling.ts` - ❌ Not created (this is for Task 4)
+- `src/design-system/typography/__tests__/font-scaling-baseline.test.tsx` - ❌ Not created (this is for Task 4)
+- `src/shared/performance/startup-budget.ts` - ❌ Not created (this is for Task 3)
+- `src/shared/performance/startup-budget.test.ts` - ❌ Not created (this is for Task 3)
+
+These are expected to be missing since they belong to subsequent tasks, but the staging document should have been updated to reflect that these files are not part of Task 0.
+
+### Important Issues:
+1. **Command Verification** - While all commands (`npm run lint`, `npm run typecheck`, `npm run test -- --help`, `npm run export:web -- --help`) execute successfully, the staging document should have been updated to reflect that these are the correct commands for Task 0 verification.
+
+2. **File Structure Consistency** - The file structure is consistent with the HLD requirements, but there's no evidence of any documentation updates to reflect the fixes claimed by the implementer.
+
+## Overall Assessment: Changes Required
+
+The implementation shows that the core scaffolding work has been completed correctly for Task 0. However, there are several issues that need to be addressed:
+
+1. The staging document should be updated to properly reflect that files for Tasks 1-4 (which were not part of Task 0) are not included in this task
+2. The documentation traceability claims in the staging document should be verified and updated if needed
+3. The staging document should clearly indicate which files belong to which tasks to avoid confusion
+
+The core implementation is correct for Task 0, but the documentation needs updates to properly reflect the actual scope of work completed.
+
+8. in lm studio i upped the evaluation batch size to 10240, it doesn't seem to excelerate anything just do biogger chunks, am i missing something?
+
+9, qa verifier runs commands like npm run test -- --help. for what purpose is he running them? why do i need all this help text in my context? doe he not know something or what?
+
+Per-criterion results with command evidence:
+Criterion 1: Repository has installable scaffold baseline with package.json + tsconfig.json
+Command: npm run lint
+Exit Code: 0
+Evidence: package.json and tsconfig.json exist with proper configuration for Expo/TypeScript scaffold. ESLint script executes successfully.
+
+Criterion 2: Script surface includes static web export and baseline lint/test commands
+Command: npm run lint
+Exit Code: 0
+Evidence: Lint script exists and executes successfully
+
+Command: npm run typecheck
+Exit Code: 0
+Evidence: Typecheck script exists and executes successfully
+
+Command: npm run test -- --help
+Exit Code: 0
+Evidence: Test script exists and displays Jest help output
+
+Command: npm run export:web -- --help
+Exit Code: 0
+Evidence: Static web export command exists and displays Expo export help
+
+
+10. the scaffolding created both an app folder and a src folder? why? what is the meaning of each of them? is this setup what we would expect? does this match the general purpose of the application? will this path lead to completion or disaster going forward, investigate.
