@@ -34,7 +34,7 @@ All state lives in `.sdlc/` at the target project root:
 |------|-------|----------|
 | `coordinator.yaml` | Coordinator / Hubs | Active hub, current story, stories progress |
 | `planning.yaml` | Planning Hub | Phase, story loop position, per-story agent progress |
-| `execution.yaml` | Execution Hub | Phase, task, dev-loop step, iteration counts |
+| `execution.yaml` | Execution Hub | Phase, task, dev-loop step, iteration counts, acceptance_iteration (0-2), acceptance_verdict (COMPLETE/INCOMPLETE/null) |
 | `dispatch-log.jsonl` | Planning & Execution Hubs | Structured dispatch/response audit trail (append-only JSONL) |
 | `history.log` | All (append-only) | Timestamped action log for debugging |
 
@@ -59,7 +59,7 @@ checkpoint.sh continue
 |-----|-------|---------|
 | `coordinator` | `--hub`, `--story`, `--story-done` | `checkpoint.sh coordinator --hub planning --story US-003` |
 | `planning` | `--phase`, `--story`, `--agents-done`, `--agents-pending`, `--dispatch`, `--completed`, `--story-done` | `checkpoint.sh planning --dispatch sdlc-planner-hld` |
-| `execution` | `--story`, `--phase`, `--tasks-total`, `--task`, `--step`, `--iteration`, `--task-done`, `--staging-doc` | `checkpoint.sh execution --step review --iteration 1` |
+| `execution` | `--story`, `--phase`, `--tasks-total`, `--task`, `--step`, `--iteration`, `--task-done`, `--staging-doc`, `--acceptance-iteration`, `--acceptance-verdict` | `checkpoint.sh execution --step review --iteration 1` |
 | `dispatch-log` | `--event`, `--story`, `--hub`, `--phase`, `--task`, `--agent`, `--model-profile`, `--dispatch-id`, `--iteration`, `--verdict`, `--duration`, `--summary` | `checkpoint.sh dispatch-log --event dispatch --agent sdlc-implementer --dispatch-id exec-US001-t3-impl-i1` |
 | `init` | (none) | `checkpoint.sh init` |
 | `continue` | (none) | `checkpoint.sh continue` |
@@ -118,6 +118,11 @@ checkpoint.sh execution --task-done 4
 
 # Phase transition
 checkpoint.sh execution --phase 3
+
+# Tracking acceptance revalidation (Phase 4)
+checkpoint.sh execution --phase 4 --acceptance-iteration 0
+checkpoint.sh execution --acceptance-iteration 1 --acceptance-verdict INCOMPLETE
+checkpoint.sh execution --acceptance-verdict COMPLETE
 ```
 
 ### verify.sh — Read State and Recommend Next Action
@@ -156,7 +161,11 @@ Appends structured JSONL entries to `.sdlc/dispatch-log.jsonl`. Call once before
 
 **Response event flags**: `--event response --dispatch-id ID --agent slug --verdict V --duration S --summary "text"`
 
-The `--dispatch-id` correlates dispatch/response pairs. Recommended format: `{hub}-{story}-t{task-id}-{agent-short}-i{iteration}`.
+The `--dispatch-id` correlates dispatch/response pairs. Format: `{hub}-{story}-t{task-id}-{agent-short}-i{iteration}`.
+
+**REQUIRE**: Dispatch IDs MUST be globally unique within a story's execution. For acceptance revalidation, use: `exec-{story}-phase4-acceptance-r{round}` where round is a monotonically increasing integer (r1, r2, r3).
+
+**DENY**: Reusing a dispatch-id that already appears in `dispatch-log.jsonl`. If in doubt, include a timestamp suffix: `exec-US001-phase4-acceptance-r2-1711100000`.
 
 #### Dispatch Log Examples
 

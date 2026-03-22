@@ -101,12 +101,29 @@ After dispatched work completes:
 - If execution reports blocker: dispatch `/sdlc-project-research` for investigation, then resume execution.
 - If planning reports artifacts ready: transition to execution phase.
 
+### Trust Hierarchy
+
+When the execution orchestrator returns a completion result:
+1. The subtask's completion result is the **AUTHORITATIVE** source of truth.
+2. If it reports acceptance COMPLETE with close recommendation, proceed to the next phase or next story. Do NOT re-read the checkpoint to second-guess the result.
+3. Only re-read the checkpoint if the result is ambiguous or reports an error requiring state verification.
+
+**DENY**: Re-dispatching execution for the same story after receiving a COMPLETE verdict with close recommendation. This is the #1 cause of acceptance death loops.
+
+### Acceptance Loop Detection
+
+If you have dispatched execution for the same story's Phase 4 acceptance more than 2 times in the same session:
+1. STOP dispatching.
+2. Present the user with a summary of the acceptance history.
+3. Ask ONE question: "Acceptance validation has run [N] times for [story]. Should I (a) accept the current state and move to the next phase, or (b) investigate the specific blocker?"
+
 ## Best Practices
 
 - Always check project state via Linear MCP before routing. Never route based on keyword matching alone.
-- Keep dispatch messages focused on scope, boundaries, and contracts.
+- Keep dispatch messages focused on scope, boundaries, and contracts. Include ONLY: story identifier, staging doc path, specific action required, and relevant blocker context. Do NOT include full workspace file listings, open tab lists, or environment metadata.
 - When state is ambiguous, ask exactly ONE disambiguating question.
 - Never dispatch directly to implementer, code-reviewer, or qa — the execution orchestrator manages those.
+- Never re-dispatch execution for a story after receiving a COMPLETE/closeable verdict. Once execution says "close US-NNN," close it.
 
 ## Error Handling
 

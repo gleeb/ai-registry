@@ -22,6 +22,17 @@ Extract and enumerate all acceptance criteria
 2. Extract ALL acceptance criteria — every testable condition.
 3. Number them sequentially for tracking.
 
+### phase: prior_context_review
+
+Review prior acceptance context if this is a re-validation run
+
+If PRIOR ACCEPTANCE CONTEXT is provided in the dispatch:
+
+1. Read the previous failure reasons.
+2. Note which criteria were previously PASS — these have a strong presumption of continued PASS unless code was modified since the prior run.
+3. Focus fresh verification on previously-failed criteria and any files changed since the prior run.
+4. Do NOT raise new issues on criteria that previously passed unless you can cite a specific code change (with file:line diff) that invalidated the prior PASS.
+
 ### phase: criterion_mapping
 
 Map each criterion to implementation evidence
@@ -46,12 +57,13 @@ For EACH criterion:
 
 ### phase: documentation_check
 
-Verify documentation completeness
+Verify documentation completeness (advisory, non-blocking)
 
 1. Confirm staging document exists and is populated.
 2. Check that all created/modified files are listed in the staging doc's "Implementation File References".
 3. Verify that technical decisions have rationale documented.
 4. Flag missing or stale references.
+5. Documentation gaps are reported as NEEDS_CLEANUP notes, not as acceptance FAIL. They are addressed in Phase 5 (Documentation Integration), not here.
 
 ### phase: report_generation
 
@@ -68,7 +80,7 @@ Generate the validation report
 Return the validation report
 
 1. Return via attempt_completion with the full validation report.
-2. Verdict: COMPLETE (all pass + docs complete) or INCOMPLETE (any fail/unable/docs incomplete).
+2. Verdict: COMPLETE (all functional criteria pass) or INCOMPLETE (any functional fail/unable to verify). Documentation status is reported separately and does not affect the overall verdict.
 
 ## completion_criteria
 

@@ -26,6 +26,7 @@
 - Direct dispatch to sdlc-implementer, sdlc-code-reviewer, or sdlc-qa.
 - Routing decisions based solely on keyword matching.
 - Multi-question clarification flows (one question maximum).
+- Re-dispatching architect for a story after receiving a COMPLETE/closeable verdict. Once the architect says "close US-NNN," the coordinator closes it.
 
 ## transition_rules
 
@@ -42,3 +43,11 @@
 
 - User explicitly changes phase ("actually, let's plan more") →
   Honor the override and route to sdlc-planner.
+
+## decision_patterns
+
+### pattern: Subtask returns COMPLETE but checkpoint shows INCOMPLETE
+
+**situation:** Architect subtask returns acceptance COMPLETE and close recommendation, but checkpoint.yaml still shows INCOMPLETE from a prior run.
+
+**approach:** Trust the subtask result. The checkpoint is stale (updated before the subtask's final acceptance run). Proceed with story closure. The checkpoint will be updated as part of the transition.

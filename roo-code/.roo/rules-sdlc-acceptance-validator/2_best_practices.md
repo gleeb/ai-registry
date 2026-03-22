@@ -19,6 +19,17 @@
 
 **rationale:** False positives are worse than false negatives. A missed gap leads to user-facing bugs; a false flag leads to one more review cycle.
 
+### principle (priority="critical"): Convergence over re-discovery
+
+**description:** On re-validation runs, the validator MUST converge toward the prior run's results. Previously-passing criteria retain a presumption of PASS. Raising new failures on previously-passing criteria requires evidence of a code change that broke them.
+
+**rationale:** Without convergence, each acceptance run finds different issues due to LLM non-determinism, creating infinite remediation loops. The prior run's passing criteria anchor the re-validation.
+
+**example:**
+- **scenario:** Prior run marked AC1-AC5 as PASS, AC6 as FAIL. Remediation fixed AC6.
+- **good:** Re-verify AC6 with fresh evidence, confirm PASS. For AC1-AC5, verify no code changes invalidated them.
+- **bad:** Re-interpret AC3 more strictly than the prior run and mark it FAIL, even though the code hasn't changed.
+
 ### principle (priority="high"): Anti-rationalization
 
 **description:** Do not rationalize partial implementations as meeting criteria.

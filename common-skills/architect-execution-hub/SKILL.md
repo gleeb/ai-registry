@@ -35,6 +35,8 @@ Load the `sdlc-checkpoint` skill at architect initialization. The checkpoint scr
 
 Dispatch ID format: `exec-{story}-t{task-id}-{agent-short}-i{iteration}` (e.g., `exec-US001-t3-impl-i1`).
 
+**REQUIRE**: Before logging a dispatch event, verify the dispatch_id does not already exist in `dispatch-log.jsonl`. If it does, append a disambiguating suffix (e.g., timestamp). For acceptance revalidation rounds, use `exec-{story}-phase4-acceptance-r{round}` with a monotonically increasing round number.
+
 See the `sdlc-checkpoint` skill for the full `dispatch-log` API and flags.
 
 ## Lifecycle Phases
@@ -158,7 +160,24 @@ Independent verification that every acceptance criterion was implemented.
 2. Validator maps every criterion to code + evidence.
 3. Read the validation report.
 
-**GATE**: Verdict is COMPLETE. If INCOMPLETE, identify failing criteria and re-enter Phase 2 with targeted fix dispatches. Max 2 acceptance re-validations before escalating.
+**GATE**: Verdict is COMPLETE. If INCOMPLETE:
+
+1. Read `acceptance_iteration` from `execution.yaml` (tracked via `checkpoint.sh execution --acceptance-iteration N`).
+2. If `acceptance_iteration >= 2`: **STOP.** Do NOT dispatch another remediation or acceptance run. Return to coordinator with ESCALATE verdict, all acceptance reports attached, and recommendation for user review.
+3. If `acceptance_iteration < 2`: Create targeted remediation tasks for **FUNCTIONAL failures only** (ignore NEEDS_CLEANUP doc notes). Increment `acceptance_iteration` via `checkpoint.sh execution --acceptance-iteration {N+1}`. Re-run acceptance with PRIOR ACCEPTANCE CONTEXT from the dispatch template.
+
+**HARD LIMIT**: The architect MUST NOT run more than 2 acceptance re-validations (3 total runs). This limit is non-negotiable. Violating it is a protocol error.
+
+### Doc-Only Remediation (fast path)
+
+If the acceptance verdict is COMPLETE but `doc_status` is NEEDS_CLEANUP:
+
+1. The architect applies documentation fixes directly (staging doc edits only).
+2. No implementer dispatch, no code review, no QA required for doc-only changes.
+3. Log the fix in the staging document's Issues & Resolutions table.
+4. Proceed directly to Phase 5.
+
+This avoids full remediation cycles for markdown formatting issues.
 
 ---
 

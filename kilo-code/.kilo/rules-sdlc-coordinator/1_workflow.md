@@ -71,6 +71,16 @@ Process completion results from dispatched modes.
 - If architect reports blocker: dispatch sdlc-project-research investigation, then re-dispatch architect.
 - If planner reports artifacts ready: transition to execution phase (dispatch architect).
 
+#### trust_hierarchy
+
+When the architect subtask returns a completion result:
+
+1. The subtask's attempt_completion result is the **AUTHORITATIVE** source of truth.
+2. If the subtask reports acceptance COMPLETE with close recommendation, the coordinator MUST proceed to the next phase (Phase 5 / doc integration) or next story. Do NOT re-read the checkpoint to second-guess the result.
+3. Only re-read the checkpoint if the subtask result is ambiguous or reports an error that requires state verification.
+
+**DENY**: Re-dispatching the architect for the same story after receiving a COMPLETE verdict with close recommendation. This is the #1 cause of acceptance death loops.
+
 ### phase: checkpoint_resume
 
 When the user sends `/sdlc-continue` or when falling back to checkpoint (MCP unavailable):

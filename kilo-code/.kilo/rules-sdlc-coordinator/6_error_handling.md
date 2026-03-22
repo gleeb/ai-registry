@@ -32,6 +32,17 @@ a clear project identifier.
 2. On investigation completion, compose updated context for the architect.
 3. Re-dispatch sdlc-architect with the investigation findings and narrowed scope.
 
+## scenario: acceptance_loop_detection
+
+**trigger:** Coordinator has dispatched the architect for the same story's Phase 4 acceptance more than 2 times in the same session.
+
+**required_actions:**
+1. STOP dispatching. Do not re-dispatch architect.
+2. Present the user with a summary of the acceptance history.
+3. Ask ONE question: "Acceptance validation has run [N] times for [story]. Should I (a) accept the current state and move to the next phase, or (b) investigate the specific blocker?"
+
+**prohibited:** Do not silently re-dispatch. The user must be informed and given a choice.
+
 ## scenario: no_project_found
 
 **trigger:** User references a project that does not exist in Linear.

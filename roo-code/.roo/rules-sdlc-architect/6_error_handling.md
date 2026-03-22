@@ -57,6 +57,20 @@
 - After implementer fix, re-dispatch sdlc-code-reviewer, then sdlc-qa again.
 - If QA fails twice for the same task, mark as blocked and escalate.
 
+## scenario: acceptance_validation_limit_reached
+
+**Trigger:** Acceptance validator returns INCOMPLETE for the 3rd time (acceptance_iteration >= 2).
+
+**required_actions:**
+- Mark story as acceptance-blocked in staging document.
+- Return to coordinator with all 3 acceptance reports and remediation history.
+- Include specific recommendation: which criteria keep failing and why.
+
+**prohibited_actions:**
+- Do not dispatch another remediation cycle.
+- Do not dispatch another acceptance validator.
+- Do not attempt to "fix it one more time."
+
 ## scenario: sub_mode_dispatch_failure
 
 **Trigger:** new_task dispatch to a sub-mode fails or sub-mode returns unexpected result.

@@ -95,6 +95,15 @@ SEMANTIC GUIDANCE (from commercial semantic review):
 
 This propagates commercial-model reasoning and documentation guidance into the local model's context, improving the quality of its next attempt.
 
+## Doc-Only Changes
+
+Changes that ONLY modify documentation files (`docs/staging/*.md`, `docs/**/*.md`) and do not touch any source code:
+
+- Do NOT require code review dispatch.
+- Do NOT require QA verification dispatch.
+- The architect applies them directly and logs the change in the staging document.
+- This reduces a 3-dispatch cycle to a single edit.
+
 ## Resume Support
 
 On resume (Phase 0), the architect reads the staging document and:

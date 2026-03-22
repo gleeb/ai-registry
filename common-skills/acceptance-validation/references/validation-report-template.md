@@ -52,8 +52,14 @@ Use this template when generating the acceptance validation report.
 - **PASS**: [N]
 - **FAIL**: [N]
 - **UNABLE TO VERIFY**: [N]
-- **Documentation**: [COMPLETE / INCOMPLETE]
+- **Functional verdict**: COMPLETE / INCOMPLETE
+- **Documentation status**: COMPLETE / NEEDS_CLEANUP
 - **Overall verdict**: COMPLETE / INCOMPLETE
+
+## Documentation Notes
+
+[If doc_status is NEEDS_CLEANUP, list specific gaps here. These are informational notes
+for Phase 5 (Documentation Integration), not acceptance blockers.]
 
 ## Deviations from Plan
 
@@ -62,7 +68,8 @@ Use this template when generating the acceptance validation report.
 
 ## Verdict Rules
 
-- ALL criteria PASS + documentation COMPLETE → COMPLETE
-- ANY criterion FAIL → INCOMPLETE
-- ANY criterion UNABLE TO VERIFY → INCOMPLETE (escalate for manual check)
-- Documentation INCOMPLETE → INCOMPLETE
+- ALL functional criteria PASS → **COMPLETE** (regardless of documentation status)
+- ANY functional criterion FAIL → INCOMPLETE
+- ANY functional criterion UNABLE TO VERIFY → INCOMPLETE (escalate for manual check)
+- Documentation issues → doc_status: COMPLETE / NEEDS_CLEANUP (non-blocking)
+- Documentation NEEDS_CLEANUP is reported as advisory notes for Phase 5, not a gate failure

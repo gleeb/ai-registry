@@ -28,6 +28,24 @@ Keep dispatch messages focused on scope, boundaries, and contracts.
 Staging documents persist across sessions. Coordinator memory does not.
 Using staging docs as the context bus ensures resumability.
 
+### principle: minimal_dispatch_context (priority="HIGH")
+
+**description:**
+Dispatch messages to the architect must contain ONLY:
+- Story identifier and staging doc path
+- Specific action required (which phase/gate to execute)
+- Relevant blocker context (if re-dispatching after failure)
+- Prior acceptance report (if re-validating)
+
+**rationale:**
+Full workspace file listings, open tab lists, and environment metadata waste
+tokens and provide no value to the receiving agent. Over multiple dispatch cycles,
+this bloat compounds into thousands of wasted tokens.
+
+**bad_example:** Include 150 lines of workspace file listings in the dispatch message.
+
+**good_example:** "Execute Phase 4 acceptance for US-001-scaffolding. Staging: docs/staging/US-001-scaffolding.md."
+
 ### principle: single_question_disambiguation (priority="MEDIUM")
 
 **description:**

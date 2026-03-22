@@ -126,8 +126,13 @@ Commercial-model semantic validation of local model outputs with guidance produc
 ## Phase 4: Acceptance Validation
 
 1. Dispatch `/sdlc-acceptance-validator` with story path and acceptance criteria.
-2. If COMPLETE → proceed to Phase 5.
-3. If INCOMPLETE → identify failing criteria, re-enter Phase 2 with targeted fixes. Max 2 re-validations.
+2. If COMPLETE → proceed to Phase 5. If `doc_status` is NEEDS_CLEANUP, apply doc fixes directly (no implementer/review/QA needed for doc-only changes) then proceed.
+3. If INCOMPLETE:
+   a. Read `acceptance_iteration` from `execution.yaml`.
+   b. If `acceptance_iteration >= 2`: **STOP.** Do NOT dispatch another remediation or acceptance run. Return to coordinator with ESCALATE verdict, all acceptance reports attached, and recommendation for user review.
+   c. If `acceptance_iteration < 2`: Create targeted remediation tasks for **FUNCTIONAL failures only** (ignore NEEDS_CLEANUP doc notes). Increment `acceptance_iteration` via `checkpoint.sh execution --acceptance-iteration {N+1}`. Re-run acceptance with PRIOR ACCEPTANCE CONTEXT including previous failures and remediation applied.
+
+**HARD LIMIT**: Max 2 acceptance re-validations (3 total runs). This is non-negotiable. Violating it is a protocol error.
 
 ## Phase 5: Documentation Integration
 
@@ -184,3 +189,4 @@ Load the `sdlc-checkpoint` skill at initialization. The checkpoint script is at 
 - Review iteration limit reached: Mark task blocked, escalate.
 - QA failure after review pass: Re-dispatch implementer with QA details.
 - Sub-agent dispatch failure: Retry once, then mark blocked and escalate.
+- Acceptance validation limit reached (3rd INCOMPLETE): Mark story as acceptance-blocked, return to coordinator with all acceptance reports and remediation history. Do NOT dispatch another remediation or acceptance run.

@@ -52,7 +52,13 @@ Use [`references/validation-report-template.md`](references/validation-report-te
 - Map every acceptance criterion to specific code (file:line reference)
 - Run every verification command fresh in this session
 - Include full evidence (command output, exit codes) in the report
-- Default to INCOMPLETE until proven otherwise
+- Default to INCOMPLETE for functional criteria until proven otherwise
+- Documentation completeness is reported but does not block a COMPLETE functional verdict
+
+### DOC_CLEANUP
+- Documentation gaps (missing file references, stale sections, formatting drift) are surfaced as NEEDS_CLEANUP notes in the report
+- These notes are addressed in Phase 5 (Documentation Integration), not during acceptance validation
+- Documentation status does not affect the overall COMPLETE/INCOMPLETE verdict
 
 ### DENY
 - Marking any criterion as N/A without explicit user approval

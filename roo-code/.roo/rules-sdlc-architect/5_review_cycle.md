@@ -50,6 +50,14 @@ After 2 QA failures for the same task:
 - Mark task as blocked in staging with QA failure evidence.
 - Return to coordinator with blocker details.
 
+### limit: acceptance_revalidations (max: 2)
+
+After 2 acceptance re-validations (3 total runs) for the same story:
+- Mark story acceptance as blocked in staging.
+- Return to coordinator with all acceptance reports.
+- Include the specific criteria that keep failing and all remediation attempts.
+- Do NOT continue dispatching acceptance validators or remediation tasks.
+
 ### limit: semantic_review_iterations (max: 2)
 
 After 2 semantic review NEEDS WORK verdicts for the same story:

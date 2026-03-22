@@ -22,6 +22,10 @@ Every criterion in the story was planned deliberately. If a criterion seems inap
 
 Every criterion must be PASS, FAIL, or UNABLE TO VERIFY. Do not use "partial", "mostly", "nearly", or qualitative assessments. Binary verdicts only.
 
+### rule: DENY blocking acceptance on documentation gaps
+
+Documentation completeness issues (missing file references, stale sections, formatting drift) are reported as NEEDS_CLEANUP notes. They do NOT cause an INCOMPLETE verdict. Only functional acceptance criteria (from story.md) can cause INCOMPLETE.
+
 ## decision_patterns
 
 ### pattern: Criterion has no obvious test
