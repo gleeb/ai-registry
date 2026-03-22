@@ -21,6 +21,7 @@ customModes:
     groups:
       - read
       - command
+      - mcp
     customInstructions: >-
       Detailed workflow, best practices, decision guidance, and error handling
       are in rules-sdlc-coordinator/. State-aware routing replaces keyword-based
@@ -53,6 +54,7 @@ customModes:
     groups:
       - read
       - command
+      - mcp
     customInstructions: >-
       Detailed workflow, phase management, dispatch protocol, validation gates,
       and error handling are in rules-sdlc-planner/. Load the planning-hub skill
@@ -82,6 +84,7 @@ customModes:
     groups:
       - read
       - command
+      - mcp
       - - edit
         - fileRegex: (plan/prd\.md$)
           description: PRD document
@@ -112,6 +115,7 @@ customModes:
     groups:
       - read
       - command
+      - mcp
       - - edit
         - fileRegex: (plan/system-architecture\.md$)
           description: System architecture document
@@ -143,6 +147,7 @@ customModes:
     groups:
       - read
       - command
+      - mcp
       - - edit
         - fileRegex: (plan/(user-stories/.*|contracts/.*)$)
           description: Story outlines and shared contracts
@@ -173,6 +178,7 @@ customModes:
     groups:
       - read
       - command
+      - mcp
       - - edit
         - fileRegex: (plan/user-stories/.*/hld\.md$)
           description: Per-story HLD documents
@@ -206,6 +212,7 @@ customModes:
     groups:
       - read
       - command
+      - mcp
       - - edit
         - fileRegex: (plan/(user-stories/.*/security\.md|cross-cutting/security-overview\.md)$)
           description: Per-story security and cross-cutting security overview
@@ -236,6 +243,7 @@ customModes:
     groups:
       - read
       - command
+      - mcp
       - - edit
         - fileRegex: (plan/user-stories/.*/api\.md$)
           description: Per-story API design documents
@@ -266,6 +274,7 @@ customModes:
     groups:
       - read
       - command
+      - mcp
       - - edit
         - fileRegex: (plan/user-stories/.*/data\.md$)
           description: Per-story data architecture documents
@@ -295,6 +304,7 @@ customModes:
     groups:
       - read
       - command
+      - mcp
       - - edit
         - fileRegex: (plan/cross-cutting/devops\.md$)
           description: Cross-cutting DevOps plan
@@ -328,6 +338,7 @@ customModes:
     groups:
       - read
       - command
+      - mcp
       - - edit
         - fileRegex: (plan/(user-stories/.*/design/.*|design/.*)$)
           description: Per-story design artifacts, mockups, and shared brand/IA
@@ -359,6 +370,7 @@ customModes:
     groups:
       - read
       - command
+      - mcp
       - - edit
         - fileRegex: (plan/cross-cutting/testing-strategy\.md$)
           description: Cross-cutting testing strategy
@@ -394,6 +406,7 @@ customModes:
     groups:
       - read
       - command
+      - mcp
       - - edit
         - fileRegex: (plan/validation/.*)
           description: Validation reports
@@ -401,8 +414,12 @@ customModes:
       Detailed workflow, best practices, and error handling are in
       rules-sdlc-plan-validator/. Load the planning-validator skill for
       traceability matrix, cross-domain checks, conflict detection, per-story
-      validation, and impact analysis references. Reality Checker: default to
-      NEEDS WORK, require evidence to pass.
+      validation, impact analysis, semantic spot-checks, terminology enforcement,
+      and pattern detection references. context7 MCP is available — use it to
+      fetch docs when needed, or provide fetch instructions for local models
+      to retrieve docs themselves. Reality Checker
+      and Mentor: default to NEEDS WORK, require evidence to pass, and produce
+      guidance packages with reasoned corrections for re-dispatch.
 
   - slug: sdlc-architect
     name: 📐 SDLC Architect
@@ -429,6 +446,7 @@ customModes:
     groups:
       - read
       - command
+      - mcp
       - - edit
         - fileRegex: (docs/.*\.md$|todo\.md$)
           description: Architecture staging and planning markdown files
@@ -459,6 +477,7 @@ customModes:
     groups:
       - read
       - command
+      - mcp
       - edit
     customInstructions: >-
       Detailed workflow, best practices, decision guidance, and error handling
@@ -545,6 +564,55 @@ customModes:
       rules-sdlc-acceptance-validator/. Load the acceptance-validation skill for
       report template and criterion mapping template. Default to INCOMPLETE —
       require evidence to pass. Evidence before assertions, always.
+
+  - slug: sdlc-semantic-reviewer
+    name: 🧠 SDLC Semantic Reviewer
+    description: Commercial-model mentor that validates local model outputs, reasons about better results, identifies knowledge gaps, provides documentation guidance (fetched excerpts or fetch instructions), and produces guidance packages for re-dispatch
+    roleDefinition: |
+      You are the SDLC Semantic Reviewer, a commercial-model mentor that independently verifies
+      the quality of local model outputs during the execution lifecycle.
+
+      Core responsibility:
+      - Validate local model outputs via 5 checks: verdict consistency, work verification,
+        plan-to-code spot-checks, terminology consistency, and cross-report coherence.
+      - On NEEDS WORK: reason about the better result, identify knowledge gaps in the local
+        model's output, provide documentation guidance (fetch docs directly when needed for your
+        own validation, or provide specific fetch instructions for the local model to retrieve
+        via context7 itself), and compose a structured guidance package that the Architect feeds
+        into local model re-dispatches.
+      - On PASS: provide proactive observations — terminology corrections, useful documentation
+        references, and quality notes that benefit future dispatches.
+
+      Mentor philosophy:
+      - Every correction includes reasoning ("why"), not just the fix ("what").
+      - Identify what the local model seems to misunderstand, not just what it got wrong.
+      - For knowledge gaps: fetch docs yourself when you need them to validate your reasoning,
+        or provide fetch instructions (search terms, library, section) for the local model to
+        retrieve via context7. Choose whichever is most effective.
+      - Guidance must be structured for direct inclusion in re-dispatch messages.
+
+      Explicit boundaries:
+      - Do not modify any code — this is a read-only verification and mentoring role.
+      - Do not modify plan artifacts or staging documents.
+      - Return only to sdlc-architect via attempt_completion with verdict + guidance package.
+    whenToUse: |
+      Use this mode after story-level integration (Phase 3) passes, before acceptance validation
+      (Phase 4). Dispatched by sdlc-architect as a commercial-model quality gate that validates
+      local model outputs and produces guidance for re-dispatch if issues are found.
+    groups:
+      - read
+      - command
+      - mcp
+    customInstructions: >-
+      Detailed workflow, best practices, and decision guidance are in
+      rules-sdlc-semantic-reviewer/. Load the semantic-review skill for the
+      5-check validation process, verdict consistency rules, evidence
+      verification protocol, and guidance package format. context7 MCP is
+      available — use it when you need docs to validate your own reasoning,
+      or provide fetch instructions (search terms, library, section) for the
+      local model to retrieve docs itself via context7. Two-phase process:
+      Phase A validates (5 checks), Phase B produces guidance (on NEEDS WORK)
+      or proactive observations (on PASS).
 
   - slug: sdlc-project-research
     name: 🔍 SDLC Project Research

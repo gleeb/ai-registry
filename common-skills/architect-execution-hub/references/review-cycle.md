@@ -31,6 +31,7 @@ The security review is part of the code review step, not a separate dispatch. Wh
 |------|---------------|------------------|
 | Code Review (incl. security) | 3 rejections | Mark task BLOCKED. Return to coordinator with all 3 review verdicts. |
 | QA Verification | 2 failures | Mark task BLOCKED. Return to coordinator with QA failure evidence. |
+| Semantic Review (Phase 3b) | 2 NEEDS WORK | Escalate to coordinator. Include both review reports and all guidance packages. |
 
 ## Status Tracking
 
@@ -69,7 +70,30 @@ After all individual tasks are `done` (Phase 3):
 1. Dispatch sdlc-code-reviewer for full-story holistic review (with `SECURITY_REVIEW: true` if any task had security review).
 2. If Approved → dispatch sdlc-qa for full-story verification.
 3. If Changes Required → identify affected tasks, re-dispatch implementer for those only.
-4. If final QA passes → proceed to Phase 4 (Acceptance Validation).
+4. If final QA passes → proceed to Phase 3b (Semantic Review).
+
+## Semantic Review (Phase 3b)
+
+After full-story review + QA passes:
+1. Dispatch sdlc-semantic-reviewer using `semantic-reviewer-dispatch-template.md`.
+2. Include all local review verdicts, QA verdicts, and implementer summaries.
+3. If PASS → proceed to Phase 4 (Acceptance Validation).
+4. If NEEDS WORK → extract the guidance package. Re-dispatch implementer for affected tasks with `SEMANTIC GUIDANCE` section (see Guidance-Aware Re-dispatch below). After fixes, restart from Final Story Review.
+5. If NEEDS WORK with escalation flag → halt and escalate to coordinator + user.
+6. Track semantic review iteration count (max 2).
+
+## Guidance-Aware Re-dispatch
+
+When re-dispatching implementer after semantic review NEEDS WORK, add a `SEMANTIC GUIDANCE` section:
+
+```
+SEMANTIC GUIDANCE (from commercial semantic review):
+[Reasoned corrections — what should be different and why]
+[Documentation — fetched excerpts and/or fetch instructions for the local model to retrieve via context7]
+[Specific improvement instructions]
+```
+
+This propagates commercial-model reasoning and documentation guidance into the local model's context, improving the quality of its next attempt.
 
 ## Resume Support
 

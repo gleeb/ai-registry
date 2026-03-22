@@ -28,6 +28,15 @@ Load the `sdlc-checkpoint` skill at architect initialization. The checkpoint scr
 **REQUIRE**: Before every sub-agent dispatch, call `checkpoint.sh execution` with the current state (write-ahead pattern).
 **REQUIRE**: After every sub-agent completion, call `checkpoint.sh execution` to record progress.
 
+## Dispatch Logging
+
+**REQUIRE**: Before every sub-agent dispatch, call `checkpoint.sh dispatch-log --event dispatch` with story, hub, phase, task, agent, model profile, dispatch ID, and iteration.
+**REQUIRE**: After every sub-agent completion, call `checkpoint.sh dispatch-log --event response` with dispatch ID, agent, verdict, duration, and summary excerpt.
+
+Dispatch ID format: `exec-{story}-t{task-id}-{agent-short}-i{iteration}` (e.g., `exec-US001-t3-impl-i1`).
+
+See the `sdlc-checkpoint` skill for the full `dispatch-log` API and flags.
+
 ## Lifecycle Phases
 
 ```
@@ -38,6 +47,8 @@ Phase 1: Task Decomposition + Staging Doc (existing Phase 0/1)
 Phase 2: Per-Task Dev Loop (implement → review → QA)
     ↓
 Phase 3: Story-Level Integration
+    ↓
+Phase 3b: Semantic Review (Commercial Mentor)
     ↓
 Phase 4: Acceptance Validation
     ↓
@@ -82,12 +93,18 @@ This is the existing Phase 0 (resume check) and Phase 1 (context gathering, arch
 For each implementation unit in the task checklist:
 
 1. `checkpoint.sh execution --task "{id}:{name}" --step implement` (write-ahead)
-2. **Implement** → dispatch `sdlc-implementer` using [`references/implementer-dispatch-template.md`](references/implementer-dispatch-template.md)
-3. `checkpoint.sh execution --step review --iteration 1`
-4. **Review** → dispatch `sdlc-code-reviewer` using [`references/reviewer-dispatch-template.md`](references/reviewer-dispatch-template.md)
-5. On review pass: `checkpoint.sh execution --step qa`
-6. **Verify** → dispatch `sdlc-qa` using [`references/qa-dispatch-template.md`](references/qa-dispatch-template.md)
-7. On QA pass: `checkpoint.sh execution --task-done {id}`
+2. `checkpoint.sh dispatch-log --event dispatch --story {US-NNN} --hub execution --phase 2 --task "{id}:{name}" --agent sdlc-implementer --model-profile {profile} --dispatch-id exec-{story}-t{id}-impl-i{N} --iteration {N}`
+3. **Implement** → dispatch `sdlc-implementer` using [`references/implementer-dispatch-template.md`](references/implementer-dispatch-template.md)
+4. `checkpoint.sh dispatch-log --event response --dispatch-id exec-{story}-t{id}-impl-i{N} --agent sdlc-implementer --duration {seconds} --summary "{excerpt}"`
+5. `checkpoint.sh execution --step review --iteration 1`
+6. `checkpoint.sh dispatch-log --event dispatch ... --agent sdlc-code-reviewer --dispatch-id exec-{story}-t{id}-review-i{N}`
+7. **Review** → dispatch `sdlc-code-reviewer` using [`references/reviewer-dispatch-template.md`](references/reviewer-dispatch-template.md)
+8. `checkpoint.sh dispatch-log --event response --dispatch-id exec-{story}-t{id}-review-i{N} --agent sdlc-code-reviewer --verdict "{Approved|Changes Required}"`
+9. On review pass: `checkpoint.sh execution --step qa`
+10. `checkpoint.sh dispatch-log --event dispatch ... --agent sdlc-qa --dispatch-id exec-{story}-t{id}-qa-i{N}`
+11. **Verify** → dispatch `sdlc-qa` using [`references/qa-dispatch-template.md`](references/qa-dispatch-template.md)
+12. `checkpoint.sh dispatch-log --event response --dispatch-id exec-{story}-t{id}-qa-i{N} --agent sdlc-qa --verdict "{PASS|FAIL}"`
+13. On QA pass: `checkpoint.sh execution --task-done {id}`
 
 On review fail (re-dispatch implementer): `checkpoint.sh execution --step implement` then increment iteration on next review: `checkpoint.sh execution --step review --iteration {N}`
 
@@ -107,6 +124,27 @@ After all per-task dev loops pass:
 4. **Accessibility check** — if story has `design` in `candidate_domains`, verify accessibility requirements.
 
 **GATE**: Full-story review passes + full-story QA passes. If not, re-enter Phase 2 for affected tasks.
+
+---
+
+## Phase 3b: Semantic Review (Commercial Mentor)
+
+`checkpoint.sh execution --phase 3b`
+
+Commercial-model semantic validation of local model outputs with guidance production.
+
+1. `checkpoint.sh execution --phase 3b --step semantic-review`
+2. Dispatch `sdlc-semantic-reviewer` using [`references/semantic-reviewer-dispatch-template.md`](references/semantic-reviewer-dispatch-template.md).
+3. Include all local review verdicts, QA verdicts, and implementer summaries from the story.
+4. Include the tech stack for documentation fetching context via context7 MCP.
+5. Read the semantic review result:
+   - **PASS:** `checkpoint.sh execution --phase 3b --verdict pass`. Proceed to Phase 4. Optionally attach proactive observations to the acceptance validator dispatch.
+   - **NEEDS WORK:** Extract the guidance package. Re-enter Phase 2 for affected tasks with guidance-aware re-dispatch — include the `SEMANTIC GUIDANCE` section in the implementer dispatch containing reasoned corrections, documentation (fetched excerpts and/or fetch instructions for the local model to retrieve via context7), and improvement instructions. After fixes, restart from Phase 3 (full-story review + QA) then re-dispatch semantic reviewer (iteration 2).
+   - **NEEDS WORK with escalation flag (work unreliable):** Halt execution. Escalate to coordinator and user — the local model may not be capable of this task and it may need reassignment.
+
+**GATE**: Semantic review PASS. Max 2 iterations before escalating to coordinator.
+
+**Guidance propagation:** When re-dispatching implementer after semantic review NEEDS WORK, include the guidance package in a `SEMANTIC GUIDANCE` section. This propagates commercial-model reasoning into the local model's next attempt. See [`references/review-cycle.md`](references/review-cycle.md) for the re-dispatch pattern.
 
 ---
 
@@ -167,14 +205,18 @@ When the architect detects a greenfield project (no package manager config, no s
 2. Dispatch `sdlc-implementer` with:
    - Reference to the `scaffold-project` skill (located in the skills directory).
    - Initiative and user story context so the implementer can determine project type and make technology decisions.
-   - Acceptance criteria: project builds, lints, and `docs/` structure exists.
+   - Acceptance criteria:
+     - Project builds and lints successfully.
+     - `docs/` structure exists per the scaffold-project skill's Step 4 ("Scaffold Project Documentation"): `docs/index.md`, domain folders matching project type (e.g., `docs/mobile/` for React Native, `docs/frontend/` for web), `docs/staging/README.md`, `docs/specs/.gitkeep`, `docs/archive/.gitkeep`.
 3. Run the standard review + QA cycle on the scaffold output.
-4. After scaffold is complete, proceed with normal architecture planning (Phase 1) against the scaffolded codebase.
+4. **GATE**: Verify `docs/index.md` exists before proceeding to Phase 1. If missing, re-dispatch implementer to complete documentation scaffolding.
+5. After scaffold is complete and gate passes, proceed with normal architecture planning (Phase 1) against the scaffolded codebase.
 
 ## Key Rules
 
 - Max 3 review iterations per task before escalating to coordinator
 - Max 2 QA retries per task before escalating
+- Max 2 semantic review iterations per story before escalating
 - Max 2 acceptance re-validations before escalating
 - Update task status in staging doc after each cycle (pending | in-progress | done | blocked)
 - Final full-story review + QA after all tasks complete (Phase 3)
@@ -188,6 +230,7 @@ When the architect detects a greenfield project (no package manager config, no s
 - [`references/implementer-dispatch-template.md`](references/implementer-dispatch-template.md) — Implementer dispatch
 - [`references/reviewer-dispatch-template.md`](references/reviewer-dispatch-template.md) — Reviewer dispatch
 - [`references/qa-dispatch-template.md`](references/qa-dispatch-template.md) — QA dispatch
+- [`references/semantic-reviewer-dispatch-template.md`](references/semantic-reviewer-dispatch-template.md) — Semantic reviewer dispatch (Phase 3b)
 - [`references/acceptance-validation-dispatch-template.md`](references/acceptance-validation-dispatch-template.md) — Acceptance validator dispatch
 - [`references/review-cycle.md`](references/review-cycle.md) — Iteration limits and escalation
 - [`references/doc-integration-protocol.md`](references/doc-integration-protocol.md) — Phase 5 documentation integration

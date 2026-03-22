@@ -51,6 +51,15 @@ Load the `sdlc-checkpoint` skill at hub initialization. The checkpoint script is
 **REQUIRE**: Before every dispatch, call `checkpoint.sh planning` with the current state (write-ahead pattern).
 **REQUIRE**: After every agent completion, call `checkpoint.sh planning` to record progress.
 
+## Dispatch Logging
+
+**REQUIRE**: Before every sub-agent dispatch, call `checkpoint.sh dispatch-log --event dispatch` with story, hub (`planning`), phase, agent, model profile, and dispatch ID.
+**REQUIRE**: After every sub-agent completion, call `checkpoint.sh dispatch-log --event response` with dispatch ID, agent, verdict, duration, and summary excerpt.
+
+Dispatch ID format: `plan-{story}-{agent-short}-i{iteration}` (e.g., `plan-US003-hld-i1`). For non-story phases, use `plan-p{phase}-{agent-short}` (e.g., `plan-p1-prd`).
+
+See the `sdlc-checkpoint` skill for the full `dispatch-log` API and flags.
+
 ### Phase 0: Resume Check
 
 Before starting any planning work:

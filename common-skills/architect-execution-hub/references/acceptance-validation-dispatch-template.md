@@ -2,6 +2,8 @@
 
 Use this template when dispatching `sdlc-acceptance-validator` via `new_task` in Phase 4.
 
+**Architect**: Before sending this dispatch, log it via `checkpoint.sh dispatch-log --event dispatch`. After the acceptance validator returns, log the response via `checkpoint.sh dispatch-log --event response`.
+
 ## Required Message Structure
 
 ```

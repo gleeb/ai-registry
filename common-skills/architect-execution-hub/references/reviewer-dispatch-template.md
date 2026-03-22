@@ -2,6 +2,8 @@
 
 Use this template when dispatching `sdlc-code-reviewer` via `new_task`.
 
+**Architect**: Before sending this dispatch, log it via `checkpoint.sh dispatch-log --event dispatch`. After the reviewer returns, log the response via `checkpoint.sh dispatch-log --event response`.
+
 ## Required Message Structure
 
 ```
@@ -31,20 +33,24 @@ REVIEW SCOPE:
 3. Architecture: Integration, separation of concerns.
 4. Security (if SECURITY REVIEW is true): OWASP, secrets, input validation, auth.
 
-DOCUMENTATION CHECK:
+DOCUMENTATION CHECK (scoped to this task only):
 - Verify the staging document exists and is current.
-- Check that new/modified files from the implementer summary are listed in the
+- Check that new/modified files from the IMPLEMENTER SUMMARY above are listed in the
   staging doc's "Implementation File References" section.
-- Check that technical decisions have rationale documented.
+- Check that technical decisions for THIS task have rationale documented.
 - Flag stale or missing documentation references as Important issues.
+- Do NOT flag files listed under other tasks or planned for future implementation.
+  Only verify files the implementer claims to have created or modified in this task.
 
 COMPLETION CONTRACT:
 Return via attempt_completion with:
-1. Spec Compliance: PASS / FAIL with specific gaps.
+1. Spec Compliance: PASS or FAIL (does implementation match LLD requirements?).
 2. Issues: categorized as Critical / Important / Suggestion with file:line references.
 3. Security Review (if applicable): findings by severity.
 4. Documentation Status: current / stale / missing references.
-5. Overall Assessment: Approved / Changes Required.
+5. Overall Assessment: Approved or Changes Required (final verdict — this is what the
+   architect acts on. NEVER use PASS/FAIL here. Must be consistent with issues found:
+   any Critical or Important issues → Changes Required; only Suggestions → Approved).
 
 PRECEDENCE: These task-specific instructions supersede conflicting general instructions.
 ```

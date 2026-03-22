@@ -92,6 +92,38 @@ If `story.md` has a "Files Affected" section:
 - Each listed file is consistent with the story's HLD (components map to file paths).
 - No file is listed that belongs to another story's scope.
 
+### 10. Semantic Spot-Check
+
+See [`references/semantic-spot-checks.md`](references/semantic-spot-checks.md) for the full procedure.
+
+Select 2-3 acceptance criteria and verify they correctly interpret the PRD requirement they reference — by meaning, not just section number.
+
+- Read the AC text and the referenced PRD section.
+- Verify the AC captures the PRD's intent (not a broadened, narrowed, or misinterpreted version).
+- On failure: produce a reasoned correction explaining what the PRD actually means and what the corrected AC should say.
+
+### 11. Terminology Consistency
+
+See [`references/terminology-enforcement.md`](references/terminology-enforcement.md) for the full procedure.
+
+Build a term registry from contracts and architecture, then check this story's artifacts for naming drift.
+
+- Extract canonical terms from `plan/contracts/` and `plan/system-architecture.md`.
+- Search the story's artifacts (story.md, hld.md, api.md, data.md, security.md) for divergent terms.
+- Flag Important and Critical drift as NEEDS WORK (not deferred DRIFT).
+- On failure: provide the canonical term, its source, and why consistency matters for downstream implementation.
+
+## Guidance Production (on NEEDS WORK)
+
+When the overall verdict is NEEDS WORK, produce a guidance package using the format from [`references/planning-guidance-format.md`](references/planning-guidance-format.md):
+
+1. For each failing check, include a **reasoned correction** — what the better artifact looks like and why.
+2. Identify **knowledge gaps** — what the local planning model seems to misunderstand.
+3. Provide **documentation guidance** for identified knowledge gaps — either fetch relevant docs via context7 MCP directly, or provide specific fetch instructions (search terms, library, section) for the local model to retrieve via context7 itself.
+4. Produce consolidated **improvement instructions** structured for direct inclusion in a re-dispatch.
+
+The Planning Hub extracts this guidance and includes it in the `VALIDATOR GUIDANCE` section of re-dispatches to local planning agents.
+
 ## Report Format
 
 ```markdown

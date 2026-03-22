@@ -47,7 +47,19 @@ and coding standards, returning a structured review verdict to sdlc-architect.
 - Verify integration with existing systems and interfaces.
 - Assess scalability and extensibility considerations.
 
-### phase issue_categorization_and_report (order="4")
+### phase documentation_verification (order="4")
+
+**description:** Cross-reference implementer's documentation claims against the actual staging doc.
+
+**actions:**
+- Read the staging document and compare it against the implementer's claimed updates
+  from the IMPLEMENTER SUMMARY.
+- Verify that claimed sections were actually modified and contain the described content.
+- Check that files listed in the implementer summary appear in the staging doc's
+  "Implementation File References" section.
+- Flag discrepancies between claimed and actual documentation as Important issues.
+
+### phase issue_categorization_and_report (order="5")
 
 **description:** Categorize findings and produce structured review output.
 
@@ -58,10 +70,22 @@ and coding standards, returning a structured review verdict to sdlc-architect.
 
 **output:**
 Structured review with:
-1. Spec Compliance: PASS/FAIL with gaps.
+1. Spec Compliance: PASS or FAIL with gaps (never use Approved/Changes Required here).
 2. Code Quality: strengths and issues by severity.
-3. Overall Assessment: Approved or Changes Required.
+3. Overall Assessment: Approved or Changes Required (never use PASS/FAIL here).
 4. If Changes Required: each issue with file:line and recommended fix.
+
+### phase verdict_consistency_check (order="6")
+
+**description:** Verify verdict fields are internally consistent before returning.
+
+**actions:**
+- Confirm Spec Compliance uses only PASS or FAIL.
+- Confirm Overall Assessment uses only Approved or Changes Required.
+- If any Critical or Important issues are listed, Overall Assessment must be Changes Required.
+- If zero Critical and zero Important issues, Overall Assessment must be Approved.
+- If Spec Compliance is PASS but Overall Assessment is Changes Required, include a note
+  explaining that spec is met but quality issues require fixes.
 
 ## completion_criteria
 

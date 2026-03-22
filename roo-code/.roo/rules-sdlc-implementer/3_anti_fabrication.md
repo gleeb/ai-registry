@@ -30,6 +30,14 @@ The acceptance criteria come from the plan. The implementation must match the cr
 
 Everything in the dispatch scope must be completed in this task. "This can be done later" for in-scope items is a violation. Only out-of-scope improvements discovered during implementation may be deferred.
 
+### DENY: Beginning implementation without reading required context
+
+Do not write any code before reading the staging document and the story's plan artifacts (at minimum story.md and hld.md). These contain architecture decisions, acceptance criteria, and constraints that are prerequisites for correct implementation.
+
+### DENY: Claiming staging document was updated without specifics
+
+"Staging doc updated" or "documentation was updated" without listing specific sections and changes is a violation. Every documentation claim must name the section and describe what was added or changed.
+
 ## require_rules
 
 ### REQUIRE: Map every acceptance criterion to specific code
@@ -44,6 +52,14 @@ Before marking a criterion as verified, run the verification command in this ses
 
 Do not skip, simplify, or defer. Return to the architect with a clear explanation of what's blocking the criterion and what options exist.
 
+### REQUIRE: Load project documentation, story plan artifacts, and staging document before coding
+
+These are prerequisites, not optional context. Read docs/index.md (if it exists), the staging document, and the story's plan artifacts via the staging doc's "Plan References" section before writing any code.
+
 ### REQUIRE: Update staging document with all changes
 
 Every created file, modified file, technical decision, and issue resolution must be recorded in the staging document. An implementation without documentation updates is incomplete.
+
+### REQUIRE: Include concrete staging doc update summary in completion result
+
+The completion result must list each staging doc section that was updated and what was added or changed. This allows the reviewer to cross-reference claims against actual content.

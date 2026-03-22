@@ -129,6 +129,8 @@ Load the `sdlc-checkpoint` skill at initialization. The checkpoint script is at 
 
 **REQUIRE**: Before every dispatch, call `checkpoint.sh planning` with current state (write-ahead pattern).
 **REQUIRE**: After every agent completion, call `checkpoint.sh planning` to record progress.
+**REQUIRE**: Before every sub-agent dispatch, call `checkpoint.sh dispatch-log --event dispatch` with story, hub (`planning`), phase, agent, model profile, dispatch ID, and iteration.
+**REQUIRE**: After every sub-agent completion, call `checkpoint.sh dispatch-log --event response` with dispatch ID, agent, verdict, duration, and summary excerpt.
 
 ### Resume Protocol
 

@@ -46,3 +46,30 @@ Return via attempt_completion with:
 
 PRECEDENCE: These task-specific instructions supersede conflicting general instructions.
 ```
+
+## Re-dispatch (after validation feedback)
+
+When re-dispatching after Plan Validator returns NEEDS WORK, add:
+
+```
+VALIDATOR GUIDANCE (from Plan Validator):
+
+REASONED CORRECTIONS:
+[Paste the corrections section from the Plan Validator's guidance package.
+Each correction includes what's wrong, what the better artifact looks like,
+and the reasoning chain explaining why.]
+
+DOCUMENTATION:
+[Paste any fetched documentation excerpts from the guidance package.]
+[Paste any documentation fetch instructions — if included, use context7 MCP
+to retrieve the specified docs before revising. Search for the exact terms,
+library, and sections specified.]
+
+IMPROVEMENT INSTRUCTIONS:
+[Paste the consolidated improvement instructions from the guidance package.
+These are specific, actionable steps to follow.]
+
+Apply the corrections and follow the improvement instructions. If documentation
+fetch instructions are included, retrieve the docs via context7 first — they
+contain the context needed to produce the correct artifact.
+```

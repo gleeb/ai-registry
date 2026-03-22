@@ -72,7 +72,8 @@ The Plan Validator is a cross-plan validation agent with a Reality Checker philo
 
 1. Read all artifacts in `plan/user-stories/US-NNN-name/`.
 2. Read consumed contracts listed in the story's dependency manifest.
-3. Run all 9 checks from `references/per-story-validation.md`:
+3. Build a term registry from `plan/contracts/` and `plan/system-architecture.md` for terminology checks.
+4. Run all 11 checks from `references/per-story-validation.md`:
    - Dependency Manifest Completeness
    - Acceptance Criteria Traceability
    - HLD-to-Story Alignment
@@ -82,13 +83,21 @@ The Plan Validator is a cross-plan validation agent with a Reality Checker philo
    - Contract Compliance
    - Design Coverage (if UI story)
    - Files Affected Completeness
-4. **Each check defaults to FAIL** — prove PASS with explicit evidence.
-5. Write report (append to `plan/validation/cross-validation-report.md` or per-story section).
+   - **Semantic Spot-Check** — verify 2-3 ACs correctly interpret their PRD references by meaning (see `references/semantic-spot-checks.md`)
+   - **Terminology Consistency** — check for naming drift between story artifacts and canonical terms (see `references/terminology-enforcement.md`)
+5. **Each check defaults to FAIL** — prove PASS with explicit evidence.
+6. On NEEDS WORK: produce a **guidance package** (see `references/planning-guidance-format.md`):
+   - Reasoned corrections for each failing check (what the better artifact looks like and why)
+   - Knowledge gaps identified in the local model's output
+   - Documentation: fetched excerpts (when needed to validate reasoning) and/or fetch instructions (search terms, library, section) for the local model to retrieve via context7 itself
+   - Consolidated improvement instructions for re-dispatch
+7. Write report (append to `plan/validation/cross-validation-report.md` or per-story section).
 
 ### Output
 
 - Per-story validation report with PASS / NEEDS WORK verdict.
-- Check results for all 9 checks with evidence and findings.
+- Check results for all 11 checks with evidence and findings.
+- **Guidance package** (on NEEDS WORK): corrections, knowledge gaps, documentation (fetched excerpts and/or fetch instructions), improvement instructions.
 - Observations section (non-blocking items).
 
 ---
@@ -113,8 +122,10 @@ The Plan Validator is a cross-plan validation agent with a Reality Checker philo
    - **Dependency graph integrity** — no cycles, execution order consistent, all deps satisfied.
    - **Contract compliance** — all providers and consumers aligned; no conflicting extensions.
    - **Cross-cutting coverage** — security overview covers all per-story controls; testing strategy maps all ACs; DevOps covers all services.
+   - **Pattern detection** — aggregate findings from all per-story validations; flag recurring issues (3+ stories) as systemic; recommend root-cause fixes (see `references/pattern-detection.md`).
 5. For each check: document evidence and findings.
-6. Write report to `plan/validation/cross-validation-report.md`.
+6. On NEEDS WORK: produce a guidance package with systemic pattern analysis.
+7. Write report to `plan/validation/cross-validation-report.md`.
 
 ### Output
 
@@ -123,6 +134,7 @@ The Plan Validator is a cross-plan validation agent with a Reality Checker philo
 - Contract compliance summary.
 - Cross-cutting coverage summary.
 - Full traceability: PRD → stories → artifacts chain.
+- **Systemic pattern analysis** (from pattern detection): recurring issues, root causes, recommended fixes.
 
 ---
 

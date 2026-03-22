@@ -31,13 +31,14 @@ Few dispatches (1-2 each), but errors here cascade into everything downstream.
 | `sdlc-planner-prd` | SDLC PRD Agent | **Commercial** | Foundational — weak PRD cascades everywhere |
 | `sdlc-planner-architecture` | SDLC Architecture Agent | **Commercial** | Foundational — sets technical direction |
 
-### Validation — Commercial
+### Validation & Mentoring — Commercial
 
-The quality backstop. Catches mistakes from local models at every gate.
+The quality backstop and mentor layer. Catches mistakes from local models and produces guidance that propagates commercial-grade reasoning back into local model re-dispatches.
 
 | Mode Slug | Mode Name | Profile | Rationale |
 |-----------|-----------|---------|-----------|
-| `sdlc-plan-validator` | SDLC Plan Validator | **Commercial** | Runs after every phase; Reality Checker philosophy |
+| `sdlc-plan-validator` | SDLC Plan Validator | **Commercial** | Runs after every planning phase; Reality Checker + Mentor; uses context7 MCP for doc fetching |
+| `sdlc-semantic-reviewer` | SDLC Semantic Reviewer | **Commercial** | Runs after story integration (Phase 3b); validates local execution outputs, reasons about better results, provides documentation guidance (fetched excerpts or fetch instructions for local models), produces guidance packages for re-dispatch |
 
 ### Domain Planning Workers — Local-Planning
 
@@ -78,12 +79,12 @@ Lower stakes, on-demand.
 
 | Profile | Modes | Dispatches per Project |
 |---------|-------|----------------------|
-| **Commercial** | 6 modes | ~25-30 dispatches |
+| **Commercial** | 7 modes | ~35-40 dispatches |
 | **Local-Planning** | 9 modes | ~20-25 dispatches |
 | **Local-Coder** | 5 modes | ~80-100 dispatches |
-| **Total** | 20 modes | ~125-155 dispatches |
+| **Total** | 21 modes | ~135-165 dispatches |
 
-Commercial usage reduction: **~80%** of all dispatches move to local models.
+Commercial usage: **~25%** of all dispatches. The semantic reviewer adds ~10 dispatches (1 per story) but each produces guidance that amplifies local model quality in subsequent iterations.
 
 ## Escalation Triggers
 
@@ -97,6 +98,8 @@ When a local agent's output fails validation, the orchestrator (Commercial) deci
 | Code Reviewer rejects same task 2x | Escalate that task's Implementer dispatch to Commercial |
 | QA finds false-pass from Code Reviewer | Re-run review on Commercial |
 | Acceptance Validator on security-critical story | Run on Commercial directly |
+| Semantic Reviewer finds work fundamentally unreliable | Halt story execution, escalate to coordinator + user |
+| Semantic Reviewer NEEDS WORK persists after 2 iterations | Escalate affected tasks to Commercial implementer |
 
 ## LM Studio Setup
 

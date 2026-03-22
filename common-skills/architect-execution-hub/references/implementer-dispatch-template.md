@@ -2,6 +2,8 @@
 
 Use this template when dispatching `sdlc-implementer` via `new_task`.
 
+**Architect**: Before sending this dispatch, log it via `checkpoint.sh dispatch-log --event dispatch`. After the implementer returns, log the response via `checkpoint.sh dispatch-log --event response`.
+
 ## Required Message Structure
 
 ```
@@ -22,9 +24,21 @@ TECH SKILLS:
   Load and apply patterns from this skill during implementation.
 [Include all tech skills identified in Phase 0. Omit section if no tech skills apply.]
 
-STAGING DOCUMENT: [exact path to docs/staging/US-NNN-*.md]
+REQUIRED CONTEXT (read before writing any code):
+1. Project documentation: Read docs/index.md and the relevant domain docs
+   (e.g., docs/frontend/, docs/backend/) for project structure and conventions.
+   If docs/index.md does not exist, skip to step 2.
+2. Staging document: Read [exact path to docs/staging/US-NNN-*.md].
+   Then follow the "Plan References" section to read the story's plan artifacts:
+   - story.md — requirements and acceptance criteria
+   - hld.md — architecture and design decisions
+   - Any domain artifacts relevant to this task (api.md, data.md, security.md, design/)
+3. Prior task context: Review the staging doc's "Implementation Progress" and
+   "Technical Decisions" sections for decisions from earlier tasks that affect
+   this task.
+[Any additional context from prior tasks]
 
-DOCUMENTATION:
+DOCUMENTATION (update throughout implementation):
 - Update the staging document with progress after each significant change.
 - Document all technical decisions with rationale in the staging doc's
   "Technical Decisions & Rationale" section.
@@ -38,10 +52,6 @@ BOUNDARIES:
 - OUT OF SCOPE: [what NOT to implement]
 - Do not expand scope beyond this task specification.
 
-CONTEXT:
-- Read the staging document for architecture rationale and decisions.
-- [Any additional context from prior tasks]
-
 SELF-VERIFICATION:
 Before attempt_completion:
 1. Load the verification-before-completion skill (common-skills/verification-before-completion/).
@@ -53,7 +63,10 @@ COMPLETION CONTRACT:
 Return via attempt_completion with:
 1. Code-change summary: files created/modified with brief description.
 2. Verification evidence: per-criterion command + output + PASS/FAIL.
-3. Staging doc updates: confirm documentation was updated.
+3. Staging doc updates: list each section updated and what was added/changed.
+   Example: "Technical Decisions: added rationale for X. Implementation File
+   References: added src/foo.ts, src/bar.ts. Issues & Resolutions: added row
+   for dependency conflict."
 4. Any blockers encountered.
 
 PRECEDENCE: These task-specific instructions supersede conflicting general instructions.
@@ -71,4 +84,32 @@ The following issues were identified by code review. Fix ONLY these issues:
 
 Do not make changes beyond the listed issues.
 Update the staging document with the review feedback and fixes applied.
+```
+
+## Re-dispatch (after semantic review guidance)
+
+When re-dispatching after semantic review NEEDS WORK, add the guidance package:
+
+```
+SEMANTIC GUIDANCE (from commercial semantic review):
+
+REASONED CORRECTIONS:
+[Paste the corrections section from the semantic reviewer's guidance package.
+Each correction includes what's wrong, what the better result looks like, and
+the reasoning chain explaining why.]
+
+DOCUMENTATION:
+[Paste any fetched documentation excerpts from the guidance package.]
+[Paste any documentation fetch instructions — if included, use context7 MCP
+to retrieve the specified docs before implementing fixes. Search for the
+exact terms, library, and sections specified.]
+
+IMPROVEMENT INSTRUCTIONS:
+[Paste the consolidated improvement instructions from the guidance package.
+These are specific, actionable steps to follow.]
+
+Apply the corrections and follow the improvement instructions. If documentation
+fetch instructions are included, retrieve the docs via context7 first — they
+contain the framework/library context needed to implement the fixes correctly.
+Update the staging document with fixes applied.
 ```

@@ -81,6 +81,10 @@ uv run pytest                    # Tests pass (if any)
 # Monorepo
 turbo dev                   # All apps start
 turbo build                 # All apps build
+
+# All project types — documentation structure
+test -f docs/index.md       # Root index exists
+test -f docs/staging/README.md  # Staging workflow exists
 ```
 
 ## Defaults & Opinions

@@ -29,6 +29,7 @@ Shared skills and dispatch templates use Roo Code paths. When reading or composi
 | Implementer | `/sdlc-implementer` | Code implementation within architecture scope |
 | Code Reviewer | `/sdlc-code-reviewer` | Plan-aligned code review |
 | QA Verifier | `/sdlc-qa` | Independent verification |
+| Semantic Reviewer | `/sdlc-semantic-reviewer` | Commercial-model validation of local model outputs (Phase 3b) |
 | Acceptance Validator | `/sdlc-acceptance-validator` | Per-criterion verification with evidence |
 
 ## Core Principles
@@ -45,6 +46,7 @@ Phase 0: Resume Check + Readiness
 Phase 1: Context Gathering + Task Decomposition + Staging Doc
 Phase 2: Per-Task Dev Loop (implement → review → QA)
 Phase 3: Story-Level Integration
+Phase 3b: Semantic Review (Commercial Mentor)
 Phase 4: Acceptance Validation
 Phase 5: Documentation Integration
 Phase 6: User Acceptance
@@ -65,8 +67,10 @@ Phase 6: User Acceptance
 If the project is greenfield (no package manager config, no source directories):
 1. Create scaffolding as Task 0 in the staging document.
 2. Dispatch `/sdlc-implementer` with the scaffold-project skill reference.
+   - Acceptance criteria: project builds, lints, and `docs/` structure exists per scaffold-project skill's Step 4 (`docs/index.md`, domain folders, `docs/staging/README.md`).
 3. Run standard review + QA cycle on scaffold output.
-4. Proceed to Phase 1 with scaffolded codebase.
+4. **GATE**: Verify `docs/index.md` exists before proceeding. If missing, re-dispatch implementer to complete documentation scaffolding.
+5. Proceed to Phase 1 with scaffolded codebase.
 
 ## Phase 1: Context Gathering + Task Decomposition
 
@@ -104,7 +108,20 @@ After all per-task loops pass:
 1. Dispatch `/sdlc-code-reviewer` for full-story holistic review.
 2. If Approved → dispatch `/sdlc-qa` for full-story verification.
 3. If Changes Required → identify affected tasks, re-dispatch `/sdlc-implementer`.
-4. **GATE**: Full-story review + QA must pass.
+4. **GATE**: Full-story review + QA must pass. Proceed to Phase 3b.
+
+## Phase 3b: Semantic Review (Commercial Mentor)
+
+Commercial-model semantic validation of local model outputs with guidance production.
+
+1. Dispatch `/sdlc-semantic-reviewer` with all local review verdicts, QA verdicts, implementer summaries, and tech stack.
+2. Handle verdict:
+   - **PASS**: Proceed to Phase 4. Optionally attach proactive observations to acceptance validator dispatch.
+   - **NEEDS WORK**: Extract the guidance package. Re-enter Phase 2 for affected tasks with guidance-aware re-dispatch — include the `SEMANTIC GUIDANCE` section in the implementer dispatch containing reasoned corrections, documentation (fetched excerpts and/or fetch instructions for the local model to retrieve via context7), and improvement instructions. After fixes, restart from Phase 3.
+   - **NEEDS WORK with escalation flag (work unreliable)**: Halt execution. Escalate to coordinator and user.
+3. Max 2 semantic review iterations before escalating to coordinator.
+
+**GATE**: Semantic review PASS required before Phase 4.
 
 ## Phase 4: Acceptance Validation
 
@@ -140,6 +157,8 @@ Load the `sdlc-checkpoint` skill at initialization. The checkpoint script is at 
 
 **REQUIRE**: Before every sub-agent dispatch, call `checkpoint.sh execution` with current state (write-ahead pattern).
 **REQUIRE**: After every sub-agent completion, call `checkpoint.sh execution` to record progress.
+**REQUIRE**: Before every sub-agent dispatch, call `checkpoint.sh dispatch-log --event dispatch` with story, hub, phase, task, agent, model profile, dispatch ID, and iteration.
+**REQUIRE**: After every sub-agent completion, call `checkpoint.sh dispatch-log --event response` with dispatch ID, agent, verdict, duration, and summary excerpt.
 
 ### Resume Protocol
 
@@ -152,8 +171,9 @@ Load the `sdlc-checkpoint` skill at initialization. The checkpoint script is at 
 
 - **Phase 0**: `checkpoint.sh execution --story {US-NNN-name} --phase 0`, `checkpoint.sh coordinator --hub execution --story {US-NNN-name}`
 - **Phase 1**: `--phase 1`, after staging doc creation: `--staging-doc "{path}" --tasks-total {N}`
-- **Phase 2** (per task): `--task "{id}:{name}" --step implement` (before implementer), `--step review --iteration {N}` (before reviewer), `--step qa` (before QA), `--task-done {id}` (after QA pass). On review fail: `--step implement` then increment iteration on next review.
+- **Phase 2** (per task): `--task "{id}:{name}" --step implement` (before implementer), `--step review --iteration {N}` (before reviewer), `--step qa` (before QA), `--task-done {id}` (after QA pass). On review fail: `--step implement` then increment iteration on next review. For each dispatch/response, also call `checkpoint.sh dispatch-log` with `--event dispatch` (before) and `--event response` (after).
 - **Phase 3**: `--phase 3` at transition
+- **Phase 3b**: `--phase 3b` at transition. `--step semantic-review` before semantic reviewer dispatch. On PASS: `--verdict pass`. On NEEDS WORK: re-enter Phase 2.
 - **Phase 4**: `--phase 4` at transition
 - **Phase 5**: `--phase 5` at transition
 - **Phase 6**: `--phase 6` at transition. On user approval: `checkpoint.sh coordinator --story-done {US-NNN-name}`

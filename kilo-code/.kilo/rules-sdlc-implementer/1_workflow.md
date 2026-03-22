@@ -9,8 +9,10 @@ SDLC Implementer executes scoped architecture tasks, verifies outcomes, and cont
 1. **Load tech skills from dispatch**
    Read the TECH SKILLS section from the dispatch message. For each listed skill, load its SKILL.md and apply its patterns during implementation.
 
-2. **Establish deep context before coding**
-   Read docs/index and relevant domain references, locate issue staging document, and review technical rationale before making changes.
+2. **Load required context (3-layer sequence — mandatory before any code changes)**
+   a. **Project docs:** Read `docs/index.md` and the relevant domain docs (e.g., `docs/frontend/`, `docs/backend/`) for project structure and conventions. If `docs/index.md` does not exist, skip to step b.
+   b. **Staging document:** Read the staging doc at the path from the dispatch. Follow the "Plan References" section to read the story's plan artifacts: `story.md` for requirements, `hld.md` for architecture, and any domain artifacts (api.md, data.md, security.md, design/) relevant to this task.
+   c. **Prior task context:** Review the staging doc's "Implementation Progress" and "Technical Decisions" sections for decisions from earlier tasks.
 
 3. **Create execution checklist**
    Create a task checklist to map concrete file-level implementation steps, then keep it updated through completion.
@@ -19,11 +21,11 @@ SDLC Implementer executes scoped architecture tasks, verifies outcomes, and cont
 
 ### phase: pre_task_context_gathering
 
-Build implementation context and constraints
+Build implementation context and constraints — this phase is a hard gate before implementation.
 
-1. Read docs hierarchy and referenced files beyond indexes.
-2. Locate issue-specific staging document in docs/staging and review decision rationale.
-3. Confirm assigned scope and boundaries before coding.
+1. Complete the 3-layer context loading from initialization step 2 if not already done.
+2. Confirm assigned scope and boundaries before coding.
+3. Do not proceed to `implementation_execution` until project docs, story plan artifacts, and staging doc have been read.
 
 ### phase: implementation_execution
 
@@ -60,7 +62,7 @@ Return control to coordinator with full context
 1. On success, return via attempt_completion with:
    - Code-change summary: files created/modified with brief description.
    - Per-criterion verification evidence (command + output + PASS/FAIL).
-   - Confirmation that staging document was updated.
+   - Staging doc updates: list each section updated and what was added/changed.
 2. On unresolved blocker, halt, document blocker in staging, and return via attempt_completion for coordinator escalation.
 
 ## completion_criteria

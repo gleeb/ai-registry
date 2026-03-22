@@ -2,6 +2,8 @@
 
 Use this template when dispatching `sdlc-qa` via `new_task`.
 
+**Architect**: Before sending this dispatch, log it via `checkpoint.sh dispatch-log --event dispatch`. After the QA verifier returns, log the response via `checkpoint.sh dispatch-log --event response`.
+
 ## Required Message Structure
 
 ```

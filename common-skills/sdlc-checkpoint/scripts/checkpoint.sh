@@ -11,11 +11,13 @@ set -euo pipefail
 #   checkpoint.sh coordinator [flags]
 #   checkpoint.sh planning [flags]
 #   checkpoint.sh execution [flags]
+#   checkpoint.sh dispatch-log [flags]
 #   checkpoint.sh init
 # =============================================================================
 
 SDLC_DIR=".sdlc"
 HISTORY_LOG="$SDLC_DIR/history.log"
+DISPATCH_LOG="$SDLC_DIR/dispatch-log.jsonl"
 TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
 ensure_sdlc_dir() {
@@ -630,11 +632,86 @@ cmd_continue() {
 }
 
 # ---------------------------------------------------------------------------
+# DISPATCH-LOG subcommand — structured dispatch/response audit trail
+# ---------------------------------------------------------------------------
+
+json_escape() {
+  local str="$1"
+  str="${str//\\/\\\\}"
+  str="${str//\"/\\\"}"
+  str="${str//$'\n'/\\n}"
+  str="${str//$'\r'/}"
+  str="${str//$'\t'/\\t}"
+  printf '%s' "$str"
+}
+
+cmd_dispatch_log() {
+  ensure_sdlc_dir
+
+  local event="" story="" hub="" phase="" task="" agent="" model_profile=""
+  local dispatch_id="" iteration="" verdict="" duration="" summary=""
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --event)         event="$2"; shift 2 ;;
+      --story)         story="$2"; shift 2 ;;
+      --hub)           hub="$2"; shift 2 ;;
+      --phase)         phase="$2"; shift 2 ;;
+      --task)          task="$2"; shift 2 ;;
+      --agent)         agent="$2"; shift 2 ;;
+      --model-profile) model_profile="$2"; shift 2 ;;
+      --dispatch-id)   dispatch_id="$2"; shift 2 ;;
+      --iteration)     iteration="$2"; shift 2 ;;
+      --verdict)       verdict="$2"; shift 2 ;;
+      --duration)      duration="$2"; shift 2 ;;
+      --summary)       summary="$2"; shift 2 ;;
+      *) echo "Unknown dispatch-log flag: $1" >&2; exit 1 ;;
+    esac
+  done
+
+  if [ -z "$event" ]; then
+    echo "dispatch-log requires --event (dispatch|response)" >&2
+    exit 1
+  fi
+
+  local json="{"
+  json="$json\"timestamp\":\"${TIMESTAMP}\""
+  json="$json,\"event\":\"$(json_escape "$event")\""
+
+  [ -n "$dispatch_id" ]   && json="$json,\"dispatch_id\":\"$(json_escape "$dispatch_id")\""
+  [ -n "$agent" ]         && json="$json,\"agent\":\"$(json_escape "$agent")\""
+
+  if [ "$event" = "dispatch" ]; then
+    [ -n "$story" ]         && json="$json,\"story\":\"$(json_escape "$story")\""
+    [ -n "$hub" ]           && json="$json,\"hub\":\"$(json_escape "$hub")\""
+    [ -n "$phase" ]         && json="$json,\"phase\":\"$(json_escape "$phase")\""
+    [ -n "$task" ]          && json="$json,\"task\":\"$(json_escape "$task")\""
+    [ -n "$model_profile" ] && json="$json,\"model_profile\":\"$(json_escape "$model_profile")\""
+    [ -n "$iteration" ]     && json="$json,\"iteration\":${iteration}"
+  fi
+
+  if [ "$event" = "response" ]; then
+    [ -n "$verdict" ]  && json="$json,\"verdict\":\"$(json_escape "$verdict")\""
+    [ -n "$duration" ] && json="$json,\"duration_seconds\":${duration}"
+    if [ -n "$summary" ]; then
+      local excerpt
+      excerpt="$(printf '%.200s' "$summary")"
+      json="$json,\"summary_excerpt\":\"$(json_escape "$excerpt")\""
+    fi
+  fi
+
+  json="$json}"
+
+  echo "$json" >> "$DISPATCH_LOG"
+  append_history "dispatch-log" "event:${event}|agent:${agent:-?}|id:${dispatch_id:-?}"
+}
+
+# ---------------------------------------------------------------------------
 # Main dispatch
 # ---------------------------------------------------------------------------
 
 if [ $# -lt 1 ]; then
-  echo "Usage: checkpoint.sh <coordinator|planning|execution|init|continue> [flags]" >&2
+  echo "Usage: checkpoint.sh <coordinator|planning|execution|dispatch-log|init|continue> [flags]" >&2
   exit 1
 fi
 
@@ -642,10 +719,11 @@ SUBCMD="$1"
 shift
 
 case "$SUBCMD" in
-  coordinator) cmd_coordinator "$@" ;;
-  planning)    cmd_planning "$@" ;;
-  execution)   cmd_execution "$@" ;;
-  init)        cmd_init "$@" ;;
-  continue)    cmd_continue "$@" ;;
-  *)           echo "Unknown subcommand: $SUBCMD" >&2; exit 1 ;;
+  coordinator)  cmd_coordinator "$@" ;;
+  planning)     cmd_planning "$@" ;;
+  execution)    cmd_execution "$@" ;;
+  dispatch-log) cmd_dispatch_log "$@" ;;
+  init)         cmd_init "$@" ;;
+  continue)     cmd_continue "$@" ;;
+  *)            echo "Unknown subcommand: $SUBCMD" >&2; exit 1 ;;
 esac

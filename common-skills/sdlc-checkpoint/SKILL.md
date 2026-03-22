@@ -35,6 +35,7 @@ All state lives in `.sdlc/` at the target project root:
 | `coordinator.yaml` | Coordinator / Hubs | Active hub, current story, stories progress |
 | `planning.yaml` | Planning Hub | Phase, story loop position, per-story agent progress |
 | `execution.yaml` | Execution Hub | Phase, task, dev-loop step, iteration counts |
+| `dispatch-log.jsonl` | Planning & Execution Hubs | Structured dispatch/response audit trail (append-only JSONL) |
 | `history.log` | All (append-only) | Timestamped action log for debugging |
 
 ## Script API
@@ -44,6 +45,7 @@ Scripts are bundled at `scripts/` relative to this skill. From a linked project,
 ```
 .roo/skills/sdlc-checkpoint/scripts/checkpoint.sh
 .roo/skills/sdlc-checkpoint/scripts/verify.sh
+.roo/skills/sdlc-checkpoint/scripts/dispatch-summary.sh
 ```
 
 ### checkpoint.sh — Write/Update State
@@ -58,6 +60,7 @@ checkpoint.sh continue
 | `coordinator` | `--hub`, `--story`, `--story-done` | `checkpoint.sh coordinator --hub planning --story US-003` |
 | `planning` | `--phase`, `--story`, `--agents-done`, `--agents-pending`, `--dispatch`, `--completed`, `--story-done` | `checkpoint.sh planning --dispatch sdlc-planner-hld` |
 | `execution` | `--story`, `--phase`, `--tasks-total`, `--task`, `--step`, `--iteration`, `--task-done`, `--staging-doc` | `checkpoint.sh execution --step review --iteration 1` |
+| `dispatch-log` | `--event`, `--story`, `--hub`, `--phase`, `--task`, `--agent`, `--model-profile`, `--dispatch-id`, `--iteration`, `--verdict`, `--duration`, `--summary` | `checkpoint.sh dispatch-log --event dispatch --agent sdlc-implementer --dispatch-id exec-US001-t3-impl-i1` |
 | `init` | (none) | `checkpoint.sh init` |
 | `continue` | (none) | `checkpoint.sh continue` |
 
@@ -144,6 +147,72 @@ next_after: per-story-validation for US-003-settings
 The agent reads the `recommendation` line and follows it directly. See [`references/resume-protocol.md`](references/resume-protocol.md) for how each hub should act on the output.
 
 The artifact-to-path mapping used by verify.sh is documented in [`references/artifact-map.md`](references/artifact-map.md).
+
+### checkpoint.sh dispatch-log — Dispatch Audit Trail
+
+Appends structured JSONL entries to `.sdlc/dispatch-log.jsonl`. Call once before each sub-agent dispatch (`--event dispatch`) and once after the sub-agent returns (`--event response`).
+
+**Dispatch event flags**: `--event dispatch --story X --hub H --phase N --task "id:name" --agent slug --model-profile profile --dispatch-id ID --iteration N`
+
+**Response event flags**: `--event response --dispatch-id ID --agent slug --verdict V --duration S --summary "text"`
+
+The `--dispatch-id` correlates dispatch/response pairs. Recommended format: `{hub}-{story}-t{task-id}-{agent-short}-i{iteration}`.
+
+#### Dispatch Log Examples
+
+```bash
+# Before dispatching implementer (write-ahead)
+checkpoint.sh dispatch-log \
+  --event dispatch \
+  --story US-001-scaffolding \
+  --hub execution \
+  --phase 2 \
+  --task "3:Startup budget baseline" \
+  --agent sdlc-implementer \
+  --model-profile local-coder \
+  --dispatch-id exec-US001-t3-impl-i1 \
+  --iteration 1
+
+# After implementer returns
+checkpoint.sh dispatch-log \
+  --event response \
+  --dispatch-id exec-US001-t3-impl-i1 \
+  --agent sdlc-implementer \
+  --duration 342 \
+  --summary "Implemented startup budget baseline with performance monitoring hooks"
+
+# Before dispatching reviewer
+checkpoint.sh dispatch-log \
+  --event dispatch \
+  --story US-001-scaffolding \
+  --hub execution \
+  --phase 2 \
+  --task "3:Startup budget baseline" \
+  --agent sdlc-code-reviewer \
+  --model-profile local-coder \
+  --dispatch-id exec-US001-t3-review-i1 \
+  --iteration 1
+
+# After reviewer returns
+checkpoint.sh dispatch-log \
+  --event response \
+  --dispatch-id exec-US001-t3-review-i1 \
+  --agent sdlc-code-reviewer \
+  --verdict "Approved" \
+  --duration 120
+```
+
+### dispatch-summary.sh — Dispatch Analytics
+
+Reads `.sdlc/dispatch-log.jsonl` and produces a human-readable summary.
+
+```
+dispatch-summary.sh                  # Full summary
+dispatch-summary.sh --story US-001   # Filter to one story
+dispatch-summary.sh --timeline       # Timeline only
+```
+
+Output includes: dispatch counts by agent and model profile, duration statistics, review iteration counts, verdict pass/fail ratios, and a chronological timeline.
 
 ## Integration Pattern
 

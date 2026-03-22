@@ -23,6 +23,10 @@ All project documentation is designed for AI agent consumption. The goal is to e
 - Architect integrating staging docs into permanent docs (Phase 5)
 - Scaffolding a new project's `docs/` directory
 
+## Bootstrapping
+
+For new projects, the `docs/` directory is created during scaffolding (Task 0) using the `scaffold-project` skill. See [`scaffold-project/references/project-docs.md`](../scaffold-project/references/project-docs.md) for the full directory structure, domain selection by project type, and file templates. The architect-execution-hub gates Phase 1 on `docs/index.md` existing.
+
 ## Workflow
 
 ### 1. Create Staging Document

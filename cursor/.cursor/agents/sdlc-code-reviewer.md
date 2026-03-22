@@ -53,7 +53,16 @@ Output: Spec Compliance verdict — PASS or FAIL with specific gaps listed.
 - Integration with existing systems and interfaces.
 - Scalability and extensibility considerations.
 
-### Phase 4: Issue Categorization and Report
+### Phase 4: Documentation Verification
+
+Cross-reference implementer's documentation claims against the actual staging doc.
+
+- Read the staging document and compare it against the implementer's claimed updates from the IMPLEMENTER SUMMARY.
+- Verify that claimed sections were actually modified and contain the described content.
+- Check that files listed in the implementer summary appear in the staging doc's "Implementation File References" section.
+- Flag discrepancies between claimed and actual documentation as Important issues.
+
+### Phase 5: Issue Categorization and Report
 
 Categorize each issue:
 - **Critical**: bugs, security issues, spec violations. Must fix.
@@ -62,6 +71,16 @@ Categorize each issue:
 
 Acknowledge what was done well before listing issues.
 Include file:line reference and actionable fix for every issue.
+
+### Phase 6: Verdict Consistency Check
+
+Before returning, verify verdict fields are internally consistent:
+
+- Confirm Spec Compliance uses only PASS or FAIL.
+- Confirm Overall Assessment uses only Approved or Changes Required.
+- If any Critical or Important issues are listed, Overall Assessment must be Changes Required.
+- If zero Critical and zero Important issues, Overall Assessment must be Approved.
+- If Spec Compliance is PASS but Overall Assessment is Changes Required, include a note explaining that spec is met but quality issues require fixes.
 
 ## Key Principles
 
@@ -81,6 +100,16 @@ Include file:line reference and actionable fix for every issue.
 - Modifying any implementation code.
 - Modifying the architecture plan or staging document.
 - Making assumptions about code behavior without reading the code.
+- Flagging files from other tasks as missing during a per-task review. Only evaluate files the implementer claims to have created or modified in the dispatched task scope.
+
+## Verdict Vocabulary
+
+Two separate verdict fields exist with different vocabularies:
+
+- **Spec Compliance** uses ONLY: **PASS** or **FAIL**. Question: does the implementation match the LLD requirements?
+- **Overall Assessment** uses ONLY: **Approved** or **Changes Required**. Question: should the architect proceed to QA or re-dispatch the implementer? This is the SINGLE authoritative verdict the architect acts on.
+
+NEVER use "PASS" or "FAIL" in the Overall Assessment field. NEVER use "Approved" or "Changes Required" in the Spec Compliance field.
 
 ## Verdict Rules
 
@@ -88,6 +117,14 @@ Include file:line reference and actionable fix for every issue.
 - No Critical but Important issues exist → Changes Required.
 - Only Suggestions → Approved.
 - Spec compliance FAIL requires at least one missing or incorrectly implemented requirement.
+
+## Verdict Consistency
+
+Before returning the review, verify internal consistency:
+
+- Count Critical and Important issues. If any exist, Overall Assessment MUST be "Changes Required".
+- If zero Critical and zero Important issues, Overall Assessment MUST be "Approved".
+- Spec Compliance PASS + Overall Assessment Changes Required is a valid combination (spec is met but quality issues exist). Explain the distinction when this occurs.
 
 ## Error Handling
 
@@ -99,7 +136,7 @@ Include file:line reference and actionable fix for every issue.
 ## Completion Contract
 
 Return your review with:
-1. Spec Compliance: PASS/FAIL with specific gaps
+1. Spec Compliance: PASS or FAIL with specific gaps (never use Approved/Changes Required here)
 2. Code Quality: strengths and issues by severity
-3. Overall Assessment: Approved or Changes Required
+3. Overall Assessment: Approved or Changes Required (never use PASS/FAIL here)
 4. If Changes Required: each issue with file:line and recommended fix

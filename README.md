@@ -732,38 +732,3 @@ These are expected to be missing since they belong to subsequent tasks, but the 
 
 The implementation shows that the core scaffolding work has been completed correctly for Task 0. However, there are several issues that need to be addressed:
 
-1. The staging document should be updated to properly reflect that files for Tasks 1-4 (which were not part of Task 0) are not included in this task
-2. The documentation traceability claims in the staging document should be verified and updated if needed
-3. The staging document should clearly indicate which files belong to which tasks to avoid confusion
-
-The core implementation is correct for Task 0, but the documentation needs updates to properly reflect the actual scope of work completed.
-
-8. in lm studio i upped the evaluation batch size to 10240, it doesn't seem to excelerate anything just do biogger chunks, am i missing something?
-
-9, qa verifier runs commands like npm run test -- --help. for what purpose is he running them? why do i need all this help text in my context? doe he not know something or what?
-
-Per-criterion results with command evidence:
-Criterion 1: Repository has installable scaffold baseline with package.json + tsconfig.json
-Command: npm run lint
-Exit Code: 0
-Evidence: package.json and tsconfig.json exist with proper configuration for Expo/TypeScript scaffold. ESLint script executes successfully.
-
-Criterion 2: Script surface includes static web export and baseline lint/test commands
-Command: npm run lint
-Exit Code: 0
-Evidence: Lint script exists and executes successfully
-
-Command: npm run typecheck
-Exit Code: 0
-Evidence: Typecheck script exists and executes successfully
-
-Command: npm run test -- --help
-Exit Code: 0
-Evidence: Test script exists and displays Jest help output
-
-Command: npm run export:web -- --help
-Exit Code: 0
-Evidence: Static web export command exists and displays Expo export help
-
-
-10. the scaffolding created both an app folder and a src folder? why? what is the meaning of each of them? is this setup what we would expect? does this match the general purpose of the application? will this path lead to completion or disaster going forward, investigate.

@@ -62,9 +62,10 @@ SDLC Architect is the execution hub. It converts a scoped issue into an executio
   - C. Dispatch sdlc-implementer with:
     - The scaffold-project skill path for execution guidance.
     - Initiative and user story context so technology decisions align with requirements.
-    - Acceptance criteria: project builds, lints, and docs/ structure exists.
+    - Acceptance criteria: project builds, lints, and `docs/` structure exists per scaffold-project skill's Step 4 (`docs/index.md`, domain folders matching project type, `docs/staging/README.md`, `docs/specs/.gitkeep`, `docs/archive/.gitkeep`).
   - D. Run the standard review + QA cycle on the scaffold output.
-  - E. After scaffold completes, proceed to Phase 1 with the scaffolded codebase as context.
+  - E. GATE: Verify `docs/index.md` exists before proceeding. If missing, re-dispatch implementer to complete documentation scaffolding.
+  - F. After scaffold completes and gate passes, proceed to Phase 1 with the scaffolded codebase as context.
 
 **key_principle:** Scaffolding is a prerequisite, not architecture work. Detect early, dispatch once, then proceed with normal planning against the scaffolded structure.
 
@@ -107,12 +108,15 @@ SDLC Architect is the execution hub. It converts a scoped issue into an executio
 
 **Steps:**
 - For each implementation unit in sequence:
-  - A. Dispatch sdlc-implementer via new_task using the implementer dispatch template. Include TECH SKILLS, DOCUMENTATION, and SELF-VERIFICATION sections.
-  - B. On implementer success, dispatch sdlc-code-reviewer via new_task using the reviewer dispatch template. Include SECURITY REVIEW flag and DOCUMENTATION CHECK.
-  - C. Handle review: PASS then dispatch sdlc-qa. FAIL then re-dispatch implementer with feedback (max 3 iterations, then escalate blocker to coordinator).
-  - D. On review pass, dispatch sdlc-qa via new_task using the QA dispatch template. Include DOCUMENTATION VERIFICATION.
-  - E. Handle QA: PASS then mark task done in staging and proceed to next unit. FAIL then re-dispatch implementer with QA details (max 2 retries).
+  - A. Log dispatch: `checkpoint.sh dispatch-log --event dispatch` with story, hub, phase, task, agent, model profile, dispatch ID, and iteration.
+  - B. Dispatch sdlc-implementer via new_task using the implementer dispatch template. Include TECH SKILLS, DOCUMENTATION, and SELF-VERIFICATION sections.
+  - C. Log response: `checkpoint.sh dispatch-log --event response` with dispatch ID, agent, duration, and summary excerpt.
+  - D. On implementer success, log dispatch then dispatch sdlc-code-reviewer via new_task using the reviewer dispatch template. Include SECURITY REVIEW flag and DOCUMENTATION CHECK. Log response with verdict.
+  - E. Handle review: PASS then dispatch sdlc-qa. FAIL then re-dispatch implementer with feedback (max 3 iterations, then escalate blocker to coordinator).
+  - F. On review pass, log dispatch then dispatch sdlc-qa via new_task using the QA dispatch template. Include DOCUMENTATION VERIFICATION. Log response with verdict.
+  - G. Handle QA: PASS then mark task done in staging and proceed to next unit. FAIL then re-dispatch implementer with QA details (max 2 retries).
 - Update task status in staging document after each dispatch cycle.
+- Log every dispatch and response via `checkpoint.sh dispatch-log` alongside checkpoint state updates.
 
 See common-skills/architect-execution-hub/references/review-cycle.md for iteration limits and escalation rules.
 
@@ -124,7 +128,25 @@ See common-skills/architect-execution-hub/references/review-cycle.md for iterati
 - Dispatch sdlc-code-reviewer for full-story holistic review (with SECURITY_REVIEW: true if any task had security review).
 - If Approved → dispatch sdlc-qa for full-story verification.
 - If Changes Required → identify affected tasks, re-dispatch implementer for those only.
-- If final QA passes → proceed to Phase 4.
+- If final QA passes → proceed to Phase 3b.
+
+### phase: semantic_review (order: 3b)
+
+**Description:** Commercial-model semantic validation of local model outputs with guidance production
+
+**Steps:**
+- Dispatch sdlc-semantic-reviewer via new_task using the semantic reviewer dispatch template (common-skills/architect-execution-hub/references/semantic-reviewer-dispatch-template.md).
+- Include all local review verdicts, QA verdicts, and implementer summaries from the story.
+- Include the tech stack for documentation fetching context.
+- Handle verdict:
+  - **PASS:** Proceed to Phase 4. If proactive observations include useful documentation, optionally attach to the acceptance validator dispatch for richer context.
+  - **NEEDS WORK:** Extract the guidance package from the semantic reviewer's response. Re-enter Phase 2 for affected tasks with guidance-aware re-dispatch:
+    - Include the `SEMANTIC GUIDANCE` section in the implementer re-dispatch containing: reasoned corrections, documentation (fetched excerpts and/or fetch instructions for the local model to retrieve via context7), and specific improvement instructions from the guidance package.
+    - After fixes, re-run the full Phase 3 story integration review, then re-dispatch semantic reviewer (iteration 2).
+  - **NEEDS WORK with escalation flag (work unreliable):** Halt execution. Escalate to coordinator and user — the local model's work is fundamentally unreliable and may need reassignment to a more capable model.
+- Max 2 semantic review iterations before escalating to coordinator.
+
+**key_principle:** The semantic reviewer's guidance package is the core propagation mechanism — the local model's next attempt benefits from the commercial model's reasoning and documentation guidance (whether handed over directly or pointed to for self-retrieval via context7).
 
 ### phase: acceptance_validation (order: 4)
 
