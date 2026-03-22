@@ -1,0 +1,12 @@
+last_updated: "2026-03-22T12:41:59Z"
+story: US-001-scaffolding
+staging_doc: docs/staging/US-001-scaffolding.md
+phase: 4
+completed_phases: [0,1,2,3,4]
+tasks_total: 5
+tasks_completed: 5
+current_task_id: null
+current_task_name: null
+current_step: acceptance
+current_iteration: 2
+resume_hint: "Phase 4, task null (null), step: acceptance. Staging: docs/staging/US-001-scaffolding.md."
