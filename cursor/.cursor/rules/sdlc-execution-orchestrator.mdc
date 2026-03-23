@@ -112,9 +112,9 @@ After all per-task loops pass:
 
 ## Phase 3b: Semantic Review (Commercial Mentor)
 
-Commercial-model semantic validation of local model outputs with guidance production.
+Commercial-model senior-developer quality review with 3 checks (agent report integrity, code quality review, terminology alignment). Uses git diff for scoping, staging doc for context, then drills into the actual implementation. Full sweep, no sampling.
 
-1. Dispatch `/sdlc-semantic-reviewer` with all local review verdicts, QA verdicts, implementer summaries, and tech stack.
+1. Dispatch `/sdlc-semantic-reviewer` with all local review verdicts, QA verdicts, implementer summaries, tech stack, and git context (branch, base commit).
 2. Handle verdict:
    - **PASS**: Proceed to Phase 4. Optionally attach proactive observations to acceptance validator dispatch.
    - **NEEDS WORK**: Extract the guidance package. Re-enter Phase 2 for affected tasks with guidance-aware re-dispatch — include the `SEMANTIC GUIDANCE` section in the implementer dispatch containing reasoned corrections, documentation (fetched excerpts and/or fetch instructions for the local model to retrieve via context7), and improvement instructions. After fixes, restart from Phase 3.
@@ -125,7 +125,7 @@ Commercial-model semantic validation of local model outputs with guidance produc
 
 ## Phase 4: Acceptance Validation
 
-1. Dispatch `/sdlc-acceptance-validator` with story path and acceptance criteria.
+1. Dispatch `/sdlc-acceptance-validator` with story path, acceptance criteria, and git context (branch, base commit). The validator uses git diff for scoping and produces failure guidance on INCOMPLETE.
 2. If COMPLETE → proceed to Phase 5. If `doc_status` is NEEDS_CLEANUP, apply doc fixes directly (no implementer/review/QA needed for doc-only changes) then proceed.
 3. If INCOMPLETE:
    a. Read `acceptance_iteration` from `execution.yaml`.

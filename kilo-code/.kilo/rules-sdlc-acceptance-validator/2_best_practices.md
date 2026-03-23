@@ -41,6 +41,28 @@
 - **good:** Report FAIL — no user-facing error display found, only console logging.
 - **bad:** Report PASS — "errors are handled" (rationalizing console.log as sufficient).
 
+### principle (priority="high"): Scoped search via git diff + staging doc
+
+**description:** Use git diff to identify changed files and staging doc for planned file references. Search these scoped files first when mapping criteria to implementing code. Fall back to full codebase search only when the scoped files don't contain the implementation.
+
+**rationale:** Scoping the search reduces wasted time searching irrelevant files and improves accuracy. The story's changes are concentrated in a known set of files.
+
+**example:**
+- **scenario:** Need to find where AC3 (startup budget assertion) is implemented.
+- **good:** Check git diff for changed files → find `src/shared/performance/startup-budget.ts` → map criterion to file:line.
+- **bad:** Search the entire codebase from scratch, potentially finding unrelated files with similar names.
+
+### principle (priority="high"): Failure guidance over bare evidence
+
+**description:** When a criterion fails, don't just report "FAIL" with evidence. Explain WHY it failed and suggest specific remediation steps.
+
+**rationale:** The architect uses failure guidance to create targeted remediation tasks. Bare evidence requires the architect to re-analyze the failure, wasting a dispatch cycle. Actionable guidance leads to faster fixes.
+
+**example:**
+- **scenario:** AC6 fails because font scaling tests don't cover render-level behavior.
+- **good:** FAIL — tests verify the scaling function but not render-level output. Suggested remediation: add tests in `font-scaling.test.ts` that verify scaled values are applied to component styles.
+- **bad:** FAIL — test output doesn't match expected behavior.
+
 ## common_pitfalls
 
 ### pitfall: Trusting prior verification results
@@ -70,3 +92,5 @@
 - No criterion is marked PASS without command output or inspection evidence.
 - Documentation completeness is checked.
 - Overall verdict accurately reflects individual criterion verdicts.
+- Every FAIL or UNABLE TO VERIFY criterion has failure guidance (why + suggested remediation).
+- Git diff scope is noted in the report header.

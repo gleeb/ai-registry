@@ -19,6 +19,14 @@ ACCEPTANCE CRITERIA:
 2. [Criterion 2]
 3. [Criterion N]
 
+GIT CONTEXT:
+- Branch: [branch name, if applicable]
+- Base commit: [commit hash before story execution started, if available]
+- Diff command: git diff <base>..HEAD
+[If git context is not available, the validator should use git log to identify
+story-related commits and construct the diff independently. Use the diff to
+scope the file search — check changed files first before searching the full codebase.]
+
 PRIOR ACCEPTANCE CONTEXT (include only on re-validation, omit on first run):
 - Iteration: [N] of max 2 re-validations
 - Previous verdict: [INCOMPLETE]
@@ -35,16 +43,20 @@ change (with file:line diff) that invalidated the prior PASS.
 
 INSTRUCTIONS:
 1. Load the acceptance-validation skill (common-skills/acceptance-validation/).
-2. If PRIOR ACCEPTANCE CONTEXT is provided, review it first. Focus fresh verification
+2. Use git diff to identify changed files (scoping), staging doc for planned file
+   references (context). Search these first when mapping criteria to code.
+3. If PRIOR ACCEPTANCE CONTEXT is provided, review it first. Focus fresh verification
    on previously-failed criteria and any files changed since the prior run.
-3. For EACH criterion above:
-   a. Identify the implementing code (file:line).
+4. For EACH criterion above:
+   a. Identify the implementing code (file:line) — search scoped files first.
    b. Determine a verification command or inspection.
    c. Run the verification fresh — do not trust prior results.
    d. Record evidence (command output, exit code).
-4. Check documentation completeness (staging doc populated, file references valid).
+5. Check documentation completeness (staging doc populated, file references valid).
    Documentation gaps are NEEDS_CLEANUP notes, not acceptance blockers.
-5. Generate validation report using the skill's report template.
+6. For any FAIL or UNABLE TO VERIFY criterion, produce failure guidance:
+   why it failed and specific suggested remediation steps.
+7. Generate validation report using the skill's report template.
 
 IRON LAW: Default verdict is INCOMPLETE for functional criteria. Every criterion must
 be individually verified with fresh evidence. No assumptions, no rationalizations.
@@ -61,7 +73,8 @@ Return via attempt_completion with:
 1. Verdict: COMPLETE or INCOMPLETE.
 2. Per-criterion evidence table.
 3. Documentation completeness status.
-4. Any deviations from plan detected.
+4. Failure guidance (on INCOMPLETE): per-criterion root cause and suggested remediation.
+5. Any deviations from plan detected.
 
 PRECEDENCE: These task-specific instructions supersede conflicting general instructions.
 ```

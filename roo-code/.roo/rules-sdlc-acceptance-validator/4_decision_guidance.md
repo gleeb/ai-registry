@@ -26,7 +26,26 @@ Every criterion must be PASS, FAIL, or UNABLE TO VERIFY. Do not use "partial", "
 
 Documentation completeness issues (missing file references, stale sections, formatting drift) are reported as NEEDS_CLEANUP notes. They do NOT cause an INCOMPLETE verdict. Only functional acceptance criteria (from story.md) can cause INCOMPLETE.
 
+### rule: REQUIRE failure guidance on FAIL/UNABLE TO VERIFY
+
+Every criterion that receives a FAIL or UNABLE TO VERIFY verdict must include failure guidance: a brief root cause analysis (why it failed) and suggested remediation steps (what to fix). This guidance is used by the architect to create targeted remediation tasks.
+
+### rule: REQUIRE git diff scoping
+
+Use git diff (from GIT CONTEXT in dispatch) to identify changed files. Search these files first when mapping criteria to implementing code. Fall back to full codebase search only when scoped files don't contain the implementation.
+
 ## decision_patterns
+
+### pattern: Using git diff to locate implementing code
+
+**situation:** Need to find the file:line that implements an acceptance criterion.
+
+**approach:**
+1. Check the git diff output for files related to the criterion (by name, path, or content).
+2. Check the staging doc's "Implementation File References" for planned mappings.
+3. If found in scoped files, read the full file to trace the implementation.
+4. If not found in scoped files, fall back to searching the full codebase.
+5. Record which method found the code ("Found via: git diff / staging doc reference / codebase search").
 
 ### pattern: Criterion has no obvious test
 

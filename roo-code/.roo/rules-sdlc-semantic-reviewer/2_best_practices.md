@@ -28,26 +28,27 @@ Either way:
 - Always explain **why** the documentation is relevant to the specific issue found.
 - The goal is that the local model ends up with the knowledge it needs, whether you hand it over or point the way.
 
-## Sampling Strategy
+## Full Sweep Strategy
 
-The semantic reviewer uses sampling, not exhaustive checking:
+The semantic reviewer does a complete review, not sampling.
 
-### What to sample
+### What full sweep means
 
-- **Work Verification (Check 2):** 2-3 verification commands. Prefer commands with the highest signal for work quality (e.g., test runs over lint runs).
-- **Plan-to-Code Spot-Check (Check 3):** 2-3 acceptance criteria. Prefer criteria with specific behavioral requirements over structural ones.
-- **Terminology (Check 4):** Focus on terms from contracts and the architecture doc — these are the canonical names that matter most.
+- **Agent Report Integrity (Check 1):** Review ALL agent completion results — every task's review verdict, every QA result, full-story review, full-story QA. Compare ALL file lists across all agents.
+- **Code Quality Review (Check 2):** Review ALL files in the git diff. Verify ALL acceptance criteria against the implementation (not 2-3 sampled ones). Re-run ALL verification commands from agent reports.
+- **Terminology (Check 3):** Build the full term registry from all contracts, architecture doc, and story.md. Search ALL changed files for every term.
 
-### Sample selection bias
+### Prioritization within full sweep
 
+Even though everything is checked, weight your attention:
 - Bias toward higher-risk areas: security-related criteria, data persistence, external integrations.
 - Bias toward areas where local models commonly struggle: complex state management, framework-specific patterns, cross-module integration.
-- If a previous semantic review iteration flagged issues, check those areas again plus adjacent ones.
+- If a previous semantic review iteration flagged issues, check those areas with extra scrutiny plus adjacent ones.
 
 ## Evidence Format
 
 All findings must include:
-- **What was checked** — the specific check, the specific item sampled.
+- **What was checked** — the specific check, the specific item.
 - **What was expected** — from the plan, contract, or framework convention.
 - **What was found** — from the code, command output, or agent report.
 - **Assessment** — PASS or NEEDS WORK with rationale.

@@ -2,6 +2,16 @@
 
 Use this structure to systematically map each acceptance criterion to its implementation evidence before generating the final report.
 
+## Git Diff Scope
+
+Before mapping criteria, establish the search scope:
+
+```
+GIT DIFF FILES: [list of files changed during story execution]
+STAGING DOC REFERENCES: [list of files from staging doc's Implementation File References]
+SEARCH STRATEGY: Check git diff files first → staging doc references → full codebase fallback
+```
+
 ## Per-Criterion Mapping
 
 For each acceptance criterion from `story.md`:
@@ -10,6 +20,7 @@ For each acceptance criterion from `story.md`:
 CRITERION [N]: [exact text from story.md]
 
 1. IMPLEMENTING CODE:
+   - Found via: [git diff / staging doc reference / codebase search]
    - Primary file: [file:line range]
    - Supporting files: [file:line range] (if any)
    - How this code satisfies the criterion: [brief explanation]
@@ -28,6 +39,10 @@ CRITERION [N]: [exact text from story.md]
 4. VERDICT: [PASS / FAIL / UNABLE TO VERIFY]
    - If FAIL: [what's wrong — missing, broken, or incomplete]
    - If UNABLE TO VERIFY: [why — no test, ambiguous criterion, infrastructure issue]
+
+5. FAILURE GUIDANCE (only for FAIL / UNABLE TO VERIFY):
+   - Why: [root cause analysis]
+   - Suggested remediation: [specific steps to fix]
 ```
 
 ## Mapping Strategies

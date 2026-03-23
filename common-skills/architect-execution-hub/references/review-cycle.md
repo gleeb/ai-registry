@@ -76,11 +76,12 @@ After all individual tasks are `done` (Phase 3):
 
 After full-story review + QA passes:
 1. Dispatch sdlc-semantic-reviewer using `semantic-reviewer-dispatch-template.md`.
-2. Include all local review verdicts, QA verdicts, and implementer summaries.
-3. If PASS → proceed to Phase 4 (Acceptance Validation).
-4. If NEEDS WORK → extract the guidance package. Re-dispatch implementer for affected tasks with `SEMANTIC GUIDANCE` section (see Guidance-Aware Re-dispatch below). After fixes, restart from Final Story Review.
-5. If NEEDS WORK with escalation flag → halt and escalate to coordinator + user.
-6. Track semantic review iteration count (max 2).
+2. Include all local review verdicts, QA verdicts, implementer summaries, and git context (branch, base commit).
+3. The reviewer runs 3 checks (full sweep, no sampling): agent report integrity, code quality review via git diff drill-down, terminology and contract alignment.
+4. If PASS → proceed to Phase 4 (Acceptance Validation).
+5. If NEEDS WORK → extract the guidance package. Re-dispatch implementer for affected tasks with `SEMANTIC GUIDANCE` section (see Guidance-Aware Re-dispatch below). After fixes, restart from Final Story Review.
+6. If NEEDS WORK with escalation flag → halt and escalate to coordinator + user.
+7. Track semantic review iteration count (max 2).
 
 ## Guidance-Aware Re-dispatch
 

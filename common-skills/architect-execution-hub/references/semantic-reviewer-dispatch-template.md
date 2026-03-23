@@ -19,6 +19,13 @@ ACCEPTANCE CRITERIA:
 2. [Criterion 2]
 3. [Criterion N]
 
+GIT CONTEXT:
+- Branch: [branch name, if applicable]
+- Base commit: [commit hash before story execution started, if available]
+- Diff command: git diff <base>..HEAD
+[If git context is not available, the reviewer should use git log to identify
+story-related commits and construct the diff independently.]
+
 TECH STACK:
 - [framework/library 1] (version)
 - [framework/library 2] (version)
@@ -74,16 +81,22 @@ the docs itself via context7. Choose whichever approach is most effective.
 
 INSTRUCTIONS:
 1. Load the semantic-review skill (common-skills/semantic-review/).
-2. Run Phase A: all 5 validation checks.
-3. If any check fails: run Phase B to produce a guidance package with reasoned
+2. Use git diff to identify changed files (scoping), staging doc for context,
+   then drill into the actual implementation for the real review.
+3. Run Phase A: all 3 validation checks (full sweep, no sampling):
+   - Check 1: Agent Report Integrity (verdict consistency + cross-agent coherence)
+   - Check 2: Code Quality Review (drill into every changed file, verify ALL ACs
+     semantically, re-run ALL verification commands fresh)
+   - Check 3: Terminology and Contract Alignment (full sweep of ALL domain terms)
+4. If any check fails: run Phase B to produce a guidance package with reasoned
    corrections, knowledge gaps, documentation guidance (fetched excerpts and/or
    fetch instructions for the local model), and improvement instructions.
-4. If all checks pass: produce proactive observations.
+5. If all checks pass: produce proactive observations.
 
 COMPLETION CONTRACT:
 Return via attempt_completion with:
 1. Verdict: PASS / NEEDS WORK.
-2. Per-check results (all 5 checks): check name, PASS/NEEDS WORK, evidence summary.
+2. Per-check results (all 3 checks): check name, PASS/NEEDS WORK, evidence summary.
 3. Guidance package (on NEEDS WORK): corrections with reasoning, knowledge gaps,
    documentation (fetched excerpts and/or fetch instructions for the local model),
    and consolidated improvement instructions.
@@ -106,7 +119,7 @@ PREVIOUS GUIDANCE:
 FOCUS:
 1. Verify that the previous guidance was followed.
 2. Check whether the identified knowledge gaps are addressed.
-3. Run all 5 checks again with attention to previously failing areas.
+3. Run all 3 checks again with attention to previously failing areas.
 4. If the same issues persist, recommend escalation to coordinator.
 
 [... rest of template same as above ...]

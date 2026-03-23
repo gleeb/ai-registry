@@ -17,7 +17,7 @@ Structured format for the semantic reviewer's guidance output. This format is de
 ### Corrections
 
 #### [Finding 1 Title]
-- **Check:** [which of the 5 checks found this]
+- **Check:** [which of the 3 checks found this: Agent Report Integrity / Code Quality Review / Terminology and Contract Alignment]
 - **What's wrong:** [specific issue with evidence]
 - **Better result:** [what the correct output looks like]
 - **Reasoning:** [why — the deeper analysis the local model couldn't reach]

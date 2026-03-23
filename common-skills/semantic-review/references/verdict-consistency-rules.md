@@ -1,6 +1,6 @@
-# Verdict Consistency Rules
+# Agent Report Integrity Rules
 
-Enumeration of contradiction patterns to detect in local model review and QA outputs.
+Enumeration of contradiction patterns and coherence rules for Check 1 (Agent Report Integrity).
 
 ---
 
@@ -36,9 +36,24 @@ Enumeration of contradiction patterns to detect in local model review and QA out
 | Implementer claims file created, but reviewer says file doesn't exist | Agent scope mismatch | Critical |
 | Reviewer found issues in files not in implementer's summary | Scope expansion | Important |
 
+## Cross-Agent Coherence Rules
+
+These rules detect scope mismatches across agents — cases where different agents worked on different scopes.
+
+| Pattern | Coherence Issue | Severity |
+|---------|----------------|----------|
+| Files in implementer summary but not in reviewer's reviewed file list | Unreviewed implementation | Critical |
+| Files in reviewer's scope but not in staging document references | Undocumented review scope | Important |
+| Files listed in staging document that don't exist on disk | Phantom staging references | Critical |
+| QA verified different files than what was reviewed | QA-review scope mismatch | Important |
+| Implementer claims file created but file doesn't exist on disk | Phantom implementation | Critical |
+| Staging doc lists more files than implementer's summary | Staging doc scope inflation | Important |
+| Multiple agents report different file counts for the same task | File count mismatch | Important |
+
 ## Interpretation Notes
 
-- A single Critical contradiction triggers NEEDS WORK verdict.
-- Multiple Important contradictions (3+) trigger NEEDS WORK verdict.
-- Individual Important contradictions are flagged as observations unless they form a pattern.
+- A single Critical contradiction or coherence issue triggers NEEDS WORK verdict.
+- Multiple Important issues (3+) trigger NEEDS WORK verdict.
+- Individual Important issues are flagged as observations unless they form a pattern.
 - Verification evasion (running `--help` instead of actual tests) is a strong signal of capability limitations — guide toward correct commands rather than escalating.
+- Scope mismatches between agents suggest the dispatch context was unclear — include scope clarification in the guidance package.

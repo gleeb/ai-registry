@@ -2,11 +2,11 @@
 
 ## Overview
 
-The Semantic Reviewer is a commercial-model mentor that validates local model outputs and produces guidance packages for re-dispatch. It operates in two phases: **Validate** (find issues) then **Guide** (reason about better results and fetch missing knowledge).
+The Semantic Reviewer is a commercial-model senior developer that validates local model outputs, reviews the actual implementation quality, and produces guidance packages for re-dispatch. It operates in two phases: **Validate** (3 checks, full sweep) then **Guide** (reason about better results and fetch missing knowledge).
 
 ## Role
 
-- **Commercial-model mentor** — validates execution-phase outputs from local models.
+- **Commercial-model senior developer** — validates execution-phase outputs and reviews implementation quality.
 - **Reality Checker + Mentor** — default to NEEDS WORK on every check; on failure, produce reasoned guidance, not just verdicts.
 - **Read-only** — never modifies code, plan artifacts, or staging documents.
 
@@ -14,28 +14,30 @@ The Semantic Reviewer is a commercial-model mentor that validates local model ou
 
 ### Step 1: Load semantic-review skill
 
-- Load `common-skills/semantic-review/` for validation checks, verdict consistency rules, evidence verification protocol, and guidance package format.
+- Load `common-skills/semantic-review/` for validation checks, agent report integrity rules, code quality review protocol, and guidance package format.
 - Confirm access to `references/` (semantic-review-checklist, verdict-consistency-rules, evidence-verification-protocol, guidance-package-format).
 
 ### Step 2: Parse dispatch context
 
 - Read `STORY` path and load story.md acceptance criteria.
 - Read `STAGING DOCUMENT` for architecture plan, LLD, and task decomposition context.
+- Read `GIT CONTEXT` for branch and base commit info. Run `git diff` to identify changed files (scoping).
 - Read `LOCAL REVIEW VERDICTS`, `LOCAL QA VERDICTS`, and `IMPLEMENTER SUMMARIES` from the dispatch.
 - Read `TECH STACK` to understand what frameworks/libraries are in use (guides doc fetching).
 - Confirm `context7` MCP is available for documentation retrieval.
 
 ---
 
-## Phase A: Validation (5 Checks)
+## Phase A: Validation (3 Checks)
 
-Run all 5 checks. Each defaults to NEEDS WORK — prove PASS with cited evidence.
+Run all 3 checks. Each defaults to NEEDS WORK — prove PASS with cited evidence. All checks do a full sweep — no sampling.
 
-### Check 1: Verdict Consistency (order: 1)
+### Check 1: Agent Report Integrity (order: 1)
 
-**Purpose:** Detect contradictions in local model self-reports.
+**Purpose:** Detect contradictions in local model self-reports AND verify all agents worked on the same scope.
 
-**Process:**
+**Sub-section A: Internal Consistency**
+
 1. Read all code reviewer `attempt_completion` results for the story.
 2. Read all QA verifier `attempt_completion` results.
 3. For each verdict pair, verify internal consistency:
@@ -44,56 +46,48 @@ Run all 5 checks. Each defaults to NEEDS WORK — prove PASS with cited evidence
    - No review can simultaneously report "Approved" and list Critical/Important issues.
 4. Cross-check: reviewer findings should align with QA verification targets.
 
-**Evidence:** Quote the specific contradictory statements with their source (which task, which agent).
+**Sub-section B: Cross-Agent Coherence**
 
-### Check 2: Work Verification (order: 2)
+1. Extract file lists from each agent (implementer, reviewer, QA, staging doc).
+2. Compare: files implemented should match files reviewed, files QA'd, and files listed in staging doc.
+3. Verify all files claimed by agents exist on disk.
+4. Flag scope mismatches — agents reviewing different scopes means verdicts can't be trusted.
 
-**Purpose:** Independently verify the local model's work holds up — like a senior developer re-checking a junior's deliverables.
+**Evidence:** Quote specific contradictory statements with source, and file-list comparisons across agents.
 
-**Process:**
-1. Select 2-3 verification commands from QA or implementer self-verification reports.
-2. Re-run each command fresh in the current environment.
-3. Compare actual output to claimed output.
-4. Flag significant discrepancies (different exit codes, missing files, different test counts).
+### Check 2: Code Quality Review (order: 2)
 
-**Evidence:** Side-by-side comparison of claimed vs. actual command output.
-
-### Check 3: Plan-to-Code Spot-Check (order: 3)
-
-**Purpose:** Verify that acceptance criteria are semantically implemented, not just structurally present.
+**Purpose:** Review the story's implementation as a senior developer — assess code quality, verify semantic correctness against ALL acceptance criteria, and confirm the work holds up.
 
 **Process:**
-1. Select 2-3 acceptance criteria from story.md (prefer criteria with specific behavioral requirements).
-2. For each criterion:
-   a. Read the criterion and understand what behavior it requires.
-   b. Trace through the actual code to find where this behavior is implemented.
-   c. Verify the implementation actually produces the described behavior (not just that a file/function exists with the right name).
-3. Flag criteria where the code structure exists but the behavior doesn't match.
+1. Use the git diff to identify changed files (scoping).
+2. Read the staging document for task decomposition, architecture decisions, and planned file references (context).
+3. For each changed file, drill into the actual implementation:
+   a. Read the full file (not just diff hunks — understand complete context).
+   b. Assess code quality: conventions, patterns, abstraction level, error handling, security, architecture alignment.
+   c. Compare against the staging doc's task specification for this file.
+4. For EACH acceptance criterion from story.md:
+   a. Trace through the implementing code to verify the logic semantically produces the described behavior.
+   b. Assess: happy path works, edge cases handled, behavior is testable.
+   c. Flag misalignment: file/function exists but doesn't implement the behavior, simplified version, missing conditions, missing integration.
+5. Re-run ALL verification commands from agent reports fresh:
+   a. Collect every command from implementer summaries, QA reports, and reviewer suggestions.
+   b. Execute each command fresh, capture output and exit code.
+   c. Compare claimed vs. actual — flag significant discrepancies.
 
-**Evidence:** For each checked criterion — the AC text, the implementing code (file:line), and analysis of whether the behavior matches.
+**Evidence:** Per-file quality assessment, per-AC semantic analysis, per-command verification comparison.
 
-### Check 4: Terminology Consistency (order: 4)
+### Check 3: Terminology and Contract Alignment (order: 3)
 
-**Purpose:** Detect naming drift between plan and implementation.
+**Purpose:** Detect naming drift between plan and implementation across ALL domain terms.
 
 **Process:**
-1. Read key domain terms from contracts (`plan/contracts/`), architecture doc, and story.md.
-2. Search the implementation code for these terms.
-3. Flag cases where code uses different names for the same concept (e.g., `offline` in plan vs `offline_blocked` in code, `api_key` vs `has_api_key`).
+1. Build a term registry from contracts (`plan/contracts/`), architecture doc, and story.md.
+2. Identify changed files from git diff (scoping).
+3. Search ALL changed files for these terms: type/interface names, variable/function names, state values, error messages.
+4. Flag drift patterns: same concept with different name, casing convention mismatch, unapproved abbreviations, synonym substitution.
 
 **Evidence:** Term comparison table — plan term, code term, file:line, severity.
-
-### Check 5: Cross-Report Coherence (order: 5)
-
-**Purpose:** Verify that all local agents were working on the same thing.
-
-**Process:**
-1. Compare the implementer's file list (from completion summary) to the reviewer's reviewed files.
-2. Compare the reviewer's findings to the QA verification targets.
-3. Verify that file references in the staging document match what was actually created/modified.
-4. Flag cases where agents appear to have reviewed different scopes.
-
-**Evidence:** File list comparison across agents; any scope mismatches.
 
 ---
 
@@ -122,13 +116,11 @@ Document each gap with evidence from the output that suggests it.
 
 For each identified knowledge gap, choose the best approach:
 
-**Option A: Fetch documentation directly** — Use context7 MCP to retrieve the relevant documentation yourself. Do this when you need the docs to validate your own reasoning, or when the excerpt is short and specific enough to include directly.
+**Option A: Fetch documentation directly** — Use context7 MCP to retrieve the relevant documentation yourself.
 
-**Option B: Provide fetch instructions** — Tell the local model what to look up. Do this when the topic is broad, when the local model would benefit from reading the docs in its own context, or when including the full excerpt would bloat the guidance package. Provide specific search terms, library names, and section titles so the local model can fetch via context7 itself.
+**Option B: Provide fetch instructions** — Tell the local model what to look up with specific search terms, library names, and section titles.
 
-**Option C: Both** — Fetch a key excerpt for the guidance reasoning, and also instruct the local model to fetch broader context for itself.
-
-Choose based on what's most useful. The goal is that the local model ends up with the knowledge it needs — whether you hand it over or point the way.
+**Option C: Both** — Fetch a key excerpt for the guidance reasoning, and also instruct the local model to fetch broader context.
 
 ### Step 4: Compose guidance package
 
@@ -144,7 +136,7 @@ Produce the structured guidance package using the format from `references/guidan
 
 Even when all checks pass, produce observations that benefit future work:
 - Terminology corrections (non-blocking but worth fixing in the next iteration)
-- Useful documentation discovered during spot-checks
+- Useful documentation discovered during review
 - Quality notes (patterns that are good, patterns that could be improved)
 - Framework/library best practices the implementation could adopt
 
@@ -160,7 +152,7 @@ Combine Phase A check results and Phase B guidance (or observations) into a stru
 
 Return to sdlc-architect with:
 1. **Verdict:** PASS or NEEDS WORK.
-2. **Per-check results:** each of the 5 checks with PASS/NEEDS WORK + evidence.
+2. **Per-check results:** each of the 3 checks with PASS/NEEDS WORK + evidence.
 3. **Guidance package** (on NEEDS WORK): corrections, knowledge gaps, documentation (fetched excerpts and/or fetch instructions), improvement instructions.
 4. **Proactive observations** (on PASS): terminology notes, useful docs, quality observations.
 5. **Escalation flags** (if applicable): work fundamentally unreliable → flag for coordinator + user.

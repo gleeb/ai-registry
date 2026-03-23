@@ -1,14 +1,16 @@
 # Semantic Review Checklist
 
-Detailed procedures for the 5 validation checks. Each check defaults to NEEDS WORK — prove PASS with cited evidence.
+Detailed procedures for the 3 validation checks. Each check defaults to NEEDS WORK — prove PASS with cited evidence. All checks do a full sweep — no sampling.
 
 ---
 
-## Check 1: Verdict Consistency
+## Check 1: Agent Report Integrity
 
-**Goal:** Detect contradictions in local model self-reports.
+**Goal:** Detect contradictions in local model self-reports AND verify all agents worked on the same scope.
 
-### Procedure
+This check has two sub-sections: internal consistency (are individual reports self-consistent?) and cross-agent coherence (do all agents agree on what was done?).
+
+### Sub-section A: Internal Consistency
 
 1. Collect all `attempt_completion` results from:
    - Per-task code reviewers (each task's Spec Compliance + Overall Assessment)
@@ -27,153 +29,11 @@ Detailed procedures for the 5 validation checks. Each check defaults to NEEDS WO
    - If any criterion is FAIL, Verification Status must be FAIL
    - Verification commands must produce actual output (not just "command exists")
 
-4. Cross-reference:
+4. Cross-reference within reports:
    - If code reviewer flagged issues in specific files, QA should have verified those files
    - If QA found regressions, code reviewer should have flagged related patterns
 
-### Evidence Format
-
-```
-VERDICT CONSISTENCY CHECK:
-- [Task N] Code Review: Spec Compliance=[PASS/FAIL], Assessment=[Approved/Changes Required]
-  Issues: [count by severity]
-  Consistency: [OK / CONTRADICTION: detail]
-- [Task N] QA: Status=[PASS/FAIL], Per-criterion: [N/N pass]
-  Consistency: [OK / CONTRADICTION: detail]
-- Cross-reference: [OK / MISMATCH: detail]
-```
-
----
-
-## Check 2: Work Verification
-
-**Goal:** Independently verify that the local model's work actually holds up — like a senior developer re-checking a junior's deliverables.
-
-### Procedure
-
-1. Select 2-3 verification commands from the local agents' reports:
-   - Prefer test runs (`npm run test`, `jest`, `pytest`) over lint/typecheck
-   - Prefer commands with specific expected output (test count, exit code)
-   - If QA ran verification commands, use those; otherwise use implementer self-verification
-
-2. For each selected command:
-   a. Run the exact same command in the current project directory
-   b. Capture the full output and exit code
-   c. Compare with the claimed output:
-      - Exit code match?
-      - Test count match (if applicable)?
-      - Key output lines match?
-      - File references in output exist?
-
-3. Flag significant discrepancies:
-   - Different exit codes (0 vs non-zero)
-   - Different test counts (e.g., claimed 15 tests, actual 12)
-   - Missing files referenced in claimed output
-   - Output format suggests the command was never actually run
-
-### Evidence Format
-
-```
-WORK VERIFICATION CHECK:
-Command: [exact command]
-Claimed output: [summary of what agent reported]
-Actual output: [summary of fresh run]
-Exit code: claimed=[N] actual=[N]
-Assessment: [VERIFIED / UNRELIABLE: specific discrepancy]
-```
-
-### Important Notes
-
-- Minor output differences (timestamps, order of parallel test results) are acceptable
-- Focus on substantive differences that indicate the work doesn't hold up
-- If the project environment has changed since the agent ran (e.g., new dependencies), note this as context
-- Discrepancies are usually confabulation (the model filled in plausible-sounding results), not intentional deception — guide toward getting it right, don't just flag the gap
-
----
-
-## Check 3: Plan-to-Code Spot-Check
-
-**Goal:** Verify acceptance criteria are semantically implemented, not just structurally present.
-
-### Procedure
-
-1. Read all acceptance criteria from story.md
-
-2. Select 2-3 criteria for spot-checking:
-   - Prefer criteria with specific behavioral requirements
-   - Prefer criteria related to core functionality over documentation/structure
-   - Prefer criteria that touch multiple files or modules
-   - If security is in candidate_domains, include at least one security-related AC
-
-3. For each selected criterion:
-   a. Parse the AC to understand the required behavior (what should happen, under what conditions, with what result)
-   b. Search the codebase for the implementing code
-   c. Read the implementation and trace the logic
-   d. Assess whether the code actually produces the behavior described in the AC:
-      - Does the happy path work?
-      - Are edge cases from the AC handled?
-      - Is the behavior testable as described?
-
-4. Flag misalignment:
-   - File/function exists with the right name but doesn't implement the behavior
-   - Implementation handles a simplified version of the AC
-   - Key conditions from the AC are missing in the code
-   - The AC requires integration between components but the integration is missing
-
-### Evidence Format
-
-```
-PLAN-TO-CODE SPOT-CHECK:
-AC: "[acceptance criterion text]"
-Source: story.md, criterion [N]
-Implementing code: [file:line]
-Behavior analysis:
-  Required: [what the AC says should happen]
-  Implemented: [what the code actually does]
-  Assessment: [ALIGNED / MISALIGNED: specific gap]
-```
-
----
-
-## Check 4: Terminology Consistency
-
-**Goal:** Detect naming drift between plan and implementation.
-
-### Procedure
-
-1. Build a term registry from authoritative sources:
-   - Contract files in `plan/contracts/` (field names, type names, state names)
-   - System architecture doc (`plan/system-architecture.md`) — component names, state names
-   - Story.md — domain terms used in acceptance criteria
-
-2. Search the implementation code for these terms:
-   - Type/interface names
-   - Variable and function names
-   - State values (string literals, enum values)
-   - Error messages and status strings
-
-3. Flag drift patterns:
-   - Same concept, different name (e.g., `offline` vs `offline_blocked`)
-   - Same field, different casing convention (e.g., `api_key` vs `apiKey` vs `has_api_key`)
-   - Abbreviations not in the plan (e.g., `inv` for `inventory`)
-   - Plan uses one term, code uses a synonym (e.g., `stale_status` vs `stale_state`)
-
-### Evidence Format
-
-```
-TERMINOLOGY CONSISTENCY CHECK:
-| Plan Term | Source | Code Term | File:Line | Severity |
-|-----------|--------|-----------|-----------|----------|
-| offline   | CON-001| offline_blocked | src/shared/types/runtime-state.ts:15 | Medium |
-```
-
----
-
-## Check 5: Cross-Report Coherence
-
-**Goal:** Verify all local agents were working on the same scope.
-
-### Procedure
+### Sub-section B: Cross-Agent Coherence
 
 1. Extract file lists from each agent:
    - Implementer: files created/modified (from completion summary)
@@ -196,7 +56,17 @@ TERMINOLOGY CONSISTENCY CHECK:
 ### Evidence Format
 
 ```
-CROSS-REPORT COHERENCE CHECK:
+AGENT REPORT INTEGRITY CHECK:
+
+Internal Consistency:
+- [Task N] Code Review: Spec Compliance=[PASS/FAIL], Assessment=[Approved/Changes Required]
+  Issues: [count by severity]
+  Consistency: [OK / CONTRADICTION: detail]
+- [Task N] QA: Status=[PASS/FAIL], Per-criterion: [N/N pass]
+  Consistency: [OK / CONTRADICTION: detail]
+- Cross-reference: [OK / MISMATCH: detail]
+
+Cross-Agent Coherence:
 Files by agent:
   Implementer: [list]
   Reviewer: [list]
@@ -204,4 +74,123 @@ Files by agent:
   Staging doc: [list]
 Disk check: [all exist / missing: list]
 Scope alignment: [COHERENT / MISMATCH: detail]
+```
+
+See [`verdict-consistency-rules.md`](verdict-consistency-rules.md) for the full enumeration of contradiction and coherence patterns.
+
+---
+
+## Check 2: Code Quality Review
+
+**Goal:** Review the story's implementation as a senior developer — assess code quality, verify semantic correctness against acceptance criteria, and confirm the work holds up.
+
+This is not a surface-level diff scan. The reviewer drills into the actual implementation, traces logic paths, and reasons about behavior.
+
+### Procedure
+
+**Step 1: Scope via git diff**
+
+Run `git diff` (or use the GIT CONTEXT from the dispatch) to identify all files changed during the story's execution cycle. This is the scoping step — it tells you where to look.
+
+**Step 2: Gather context from staging document**
+
+Read the staging document for:
+- Task decomposition (what was planned for each implementation unit)
+- Architecture decisions and rationale
+- Planned file references (what files should have been created/modified)
+- Acceptance criteria mapping
+
+**Step 3: Drill into each changed file**
+
+For each file identified in the git diff:
+1. Read the full file (not just the diff hunks — understand the complete context).
+2. Assess code quality:
+   - Follows project conventions and patterns
+   - Appropriate abstraction level
+   - Error handling is adequate
+   - No security anti-patterns (if applicable)
+   - Architecture alignment with the approved plan
+3. Compare against the staging doc's task specification for this file.
+
+**Step 4: Verify semantic correctness against ALL acceptance criteria**
+
+For EACH acceptance criterion from story.md:
+1. Parse the AC to understand the required behavior (what should happen, under what conditions, with what result).
+2. Trace through the implementing code to verify the logic actually produces the described behavior.
+3. Assess:
+   - Does the happy path work?
+   - Are edge cases from the AC handled?
+   - Is the behavior testable as described?
+4. Flag misalignment:
+   - File/function exists with the right name but doesn't implement the behavior
+   - Implementation handles a simplified version of the AC
+   - Key conditions from the AC are missing in the code
+   - The AC requires integration between components but the integration is missing
+
+**Step 5: Re-run ALL verification commands**
+
+Collect ALL verification commands from agent reports (implementer self-verification, QA commands, reviewer commands). Re-run each one fresh:
+1. Record the claimed result from the agent's report.
+2. Execute the same command from the project root.
+3. Capture output and exit code.
+4. Compare — flag significant discrepancies (different exit codes, different test counts, missing files).
+
+See [`evidence-verification-protocol.md`](evidence-verification-protocol.md) for the full verification procedure, discrepancy analysis, and environmental considerations.
+
+### Evidence Format
+
+```
+CODE QUALITY REVIEW:
+
+Changed files reviewed: [N files from git diff]
+Staging doc context: [task decomposition summary]
+
+Per-file quality:
+- [file:path]: [quality assessment — patterns, conventions, architecture alignment]
+
+Per-AC semantic verification:
+- AC[N]: "[criterion text]"
+  Implementing code: [file:line]
+  Behavior analysis: [ALIGNED / MISALIGNED: specific gap]
+
+Verification commands re-run: [N commands]
+- [command]: claimed=[exit code], actual=[exit code], [VERIFIED / UNRELIABLE: detail]
+
+Overall: [PASS / NEEDS WORK: summary of findings]
+```
+
+---
+
+## Check 3: Terminology and Contract Alignment
+
+**Goal:** Detect naming drift between plan and implementation across ALL domain terms.
+
+### Procedure
+
+1. Build a term registry from authoritative sources:
+   - Contract files in `plan/contracts/` (field names, type names, state names)
+   - System architecture doc (`plan/system-architecture.md`) — component names, state names
+   - Story.md — domain terms used in acceptance criteria
+
+2. Identify changed files from git diff (scoping).
+
+3. Search ALL changed files for these terms:
+   - Type/interface names
+   - Variable and function names
+   - State values (string literals, enum values)
+   - Error messages and status strings
+
+4. Flag drift patterns:
+   - Same concept, different name (e.g., `offline` vs `offline_blocked`)
+   - Same field, different casing convention (e.g., `api_key` vs `apiKey` vs `has_api_key`)
+   - Abbreviations not in the plan (e.g., `inv` for `inventory`)
+   - Plan uses one term, code uses a synonym (e.g., `stale_status` vs `stale_state`)
+
+### Evidence Format
+
+```
+TERMINOLOGY AND CONTRACT ALIGNMENT CHECK:
+| Plan Term | Source | Code Term | File:Line | Severity |
+|-----------|--------|-----------|-----------|----------|
+| offline   | CON-001| offline_blocked | src/shared/types/runtime-state.ts:15 | Medium |
 ```

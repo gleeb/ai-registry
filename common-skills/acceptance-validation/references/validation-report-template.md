@@ -9,6 +9,7 @@ Use this template when generating the acceptance validation report.
 
 **Story**: `plan/user-stories/US-NNN-name/story.md`
 **Staging Doc**: `docs/staging/US-NNN-name.md`
+**Git Diff Scope**: [N files changed — list key files or reference the full diff]
 **Verdict**: COMPLETE / INCOMPLETE
 
 ## Criteria Verification
@@ -60,6 +61,17 @@ Use this template when generating the acceptance validation report.
 
 [If doc_status is NEEDS_CLEANUP, list specific gaps here. These are informational notes
 for Phase 5 (Documentation Integration), not acceptance blockers.]
+
+## Failure Guidance
+
+[For each FAIL or UNABLE TO VERIFY criterion, provide actionable remediation guidance.]
+
+### Criterion [N]: [criterion text]
+- **Why it failed:** [root cause — missing implementation, incorrect logic, test gap, etc.]
+- **Suggested remediation:** [specific steps the implementer should take]
+- **Files to modify:** [file paths involved]
+
+[Repeat for each failing criterion. Omit this section if all criteria PASS.]
 
 ## Deviations from Plan
 

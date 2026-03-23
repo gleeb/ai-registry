@@ -133,13 +133,14 @@ After all per-task dev loops pass:
 
 `checkpoint.sh execution --phase 3b`
 
-Commercial-model semantic validation of local model outputs with guidance production.
+Commercial-model senior-developer quality review with 3 checks (agent report integrity, code quality review, terminology alignment). Uses git diff for scoping, staging doc for context, then drills into the actual implementation.
 
 1. `checkpoint.sh execution --phase 3b --step semantic-review`
 2. Dispatch `sdlc-semantic-reviewer` using [`references/semantic-reviewer-dispatch-template.md`](references/semantic-reviewer-dispatch-template.md).
 3. Include all local review verdicts, QA verdicts, and implementer summaries from the story.
-4. Include the tech stack for documentation fetching context via context7 MCP.
-5. Read the semantic review result:
+4. Include git context (branch, base commit) for diff scoping.
+5. Include the tech stack for documentation fetching context via context7 MCP.
+6. Read the semantic review result:
    - **PASS:** `checkpoint.sh execution --phase 3b --verdict pass`. Proceed to Phase 4. Optionally attach proactive observations to the acceptance validator dispatch.
    - **NEEDS WORK:** Extract the guidance package. Re-enter Phase 2 for affected tasks with guidance-aware re-dispatch — include the `SEMANTIC GUIDANCE` section in the implementer dispatch containing reasoned corrections, documentation (fetched excerpts and/or fetch instructions for the local model to retrieve via context7), and improvement instructions. After fixes, restart from Phase 3 (full-story review + QA) then re-dispatch semantic reviewer (iteration 2).
    - **NEEDS WORK with escalation flag (work unreliable):** Halt execution. Escalate to coordinator and user — the local model may not be capable of this task and it may need reassignment.
@@ -154,11 +155,12 @@ Commercial-model semantic validation of local model outputs with guidance produc
 
 `checkpoint.sh execution --phase 4`
 
-Independent verification that every acceptance criterion was implemented.
+Independent verification that every acceptance criterion was implemented. Uses git diff for scoping, staging doc for context, then drills into code and runs fresh commands for evidence. Produces failure guidance on INCOMPLETE.
 
 1. Dispatch `sdlc-acceptance-validator` using [`references/acceptance-validation-dispatch-template.md`](references/acceptance-validation-dispatch-template.md).
-2. Validator maps every criterion to code + evidence.
-3. Read the validation report.
+2. Include git context (branch, base commit) for diff scoping.
+3. Validator maps every criterion to code + evidence, produces failure guidance for any FAIL criteria.
+4. Read the validation report.
 
 **GATE**: Verdict is COMPLETE. If INCOMPLETE:
 

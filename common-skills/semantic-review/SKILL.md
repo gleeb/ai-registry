@@ -2,18 +2,30 @@
 name: semantic-review
 description: >
   Use when the sdlc-semantic-reviewer needs to validate local model outputs
-  and produce guidance packages for re-dispatch. Provides the 5-check validation
-  process, verdict consistency rules, evidence verification protocol, and
-  structured guidance package format.
+  and review code quality as a senior developer. Provides a 3-check validation
+  process (agent report integrity, code quality review, terminology alignment),
+  agent report integrity rules, code quality review protocol, and structured
+  guidance package format.
 ---
 
 # Semantic Review
 
 ## Overview
 
-Commercial-model mentor skill for the execution phase. Validates local model outputs (implementer, code reviewer, QA verifier) after story-level integration, and produces structured guidance packages that propagate commercial-grade reasoning back into local model re-dispatches.
+Commercial-model senior-developer review skill for the execution phase. Validates local model outputs and reviews the actual implementation quality after story-level integration. Produces structured guidance packages that propagate commercial-grade reasoning back into local model re-dispatches.
 
 **Core principle:** The commercial model's intelligence should not stop at a verdict. It should flow through the feedback loop — reasoned corrections, identified knowledge gaps, and documentation guidance (fetched excerpts or instructions for the local model to fetch itself) — so the local model's next attempt starts from a stronger position.
+
+## Layered Input Strategy
+
+The semantic reviewer uses multiple inputs, each serving a distinct purpose:
+
+- **Git diff** — scoping: identifies which files were changed during the execution cycle
+- **Staging document** — context: provides task decomposition, architecture decisions, file references, and what to look for
+- **Actual code drill-down** — the real review: read full implementation files, trace logic paths, reason about behavior
+- **Verification command execution** — evidence: re-run commands fresh to confirm the work holds up
+
+Git diff and staging doc tell the reviewer WHERE to look and WHAT was planned. The actual validation is done by drilling into the code and reasoning about it as a senior developer.
 
 ## When to Use
 
@@ -23,22 +35,21 @@ Commercial-model mentor skill for the execution phase. Validates local model out
 
 ## Mentor Philosophy
 
-1. **Validate first** — run all 5 checks with Reality Checker defaults (NEEDS WORK until proven PASS).
-2. **Guide on failure** — don't just flag issues; reason about the better result, identify what the local model is missing, and provide the knowledge it needs (either by fetching docs directly or by giving specific fetch instructions for the local model to retrieve via context7).
-3. **Observe on success** — even on PASS, note what could be better for future iterations.
-4. **Propagate through re-dispatch** — guidance packages are structured for direct inclusion in implementer re-dispatch messages.
+1. **Validate first** — run all 3 checks with Reality Checker defaults (NEEDS WORK until proven PASS).
+2. **Full sweep, not sampling** — review ALL changed files, ALL acceptance criteria, ALL domain terms. No sampling.
+3. **Guide on failure** — don't just flag issues; reason about the better result, identify what the local model is missing, and provide the knowledge it needs (either by fetching docs directly or by giving specific fetch instructions for the local model to retrieve via context7).
+4. **Observe on success** — even on PASS, note what could be better for future iterations.
+5. **Propagate through re-dispatch** — guidance packages are structured for direct inclusion in implementer re-dispatch messages.
 
 ## Two-Phase Process
 
 ### Phase A: Validation
 
-Five checks, each defaulting to NEEDS WORK:
+Three checks, each defaulting to NEEDS WORK:
 
-1. **Verdict Consistency** — detect contradictions in local review/QA self-reports
-2. **Work Verification** — independently re-run 2-3 verification commands to confirm the work holds up
-3. **Plan-to-Code Spot-Check** — trace 2-3 ACs through actual code to verify semantic implementation
-4. **Terminology Consistency** — compare domain terms in code vs plan/contracts
-5. **Cross-Report Coherence** — verify all agents worked on the same scope
+1. **Agent Report Integrity** — detect contradictions in local review/QA self-reports AND verify all agents worked on the same scope (internal consistency + cross-agent coherence)
+2. **Code Quality Review** — full senior-developer review of the story's implementation: drill into every changed file, assess code quality and patterns, verify each AC is semantically implemented, re-run all verification commands fresh
+3. **Terminology and Contract Alignment** — full sweep of ALL domain terms from contracts/architecture/story against changed files; detect naming drift
 
 See [`references/semantic-review-checklist.md`](references/semantic-review-checklist.md) for detailed procedures.
 
@@ -51,7 +62,7 @@ See [`references/guidance-package-format.md`](references/guidance-package-format
 
 ## References
 
-- [`references/semantic-review-checklist.md`](references/semantic-review-checklist.md) — Detailed procedures for all 5 checks
-- [`references/verdict-consistency-rules.md`](references/verdict-consistency-rules.md) — Enumeration of contradiction patterns
-- [`references/evidence-verification-protocol.md`](references/evidence-verification-protocol.md) — How to independently verify the local model's work holds up
+- [`references/semantic-review-checklist.md`](references/semantic-review-checklist.md) — Detailed procedures for all 3 checks
+- [`references/verdict-consistency-rules.md`](references/verdict-consistency-rules.md) — Agent report integrity rules (contradiction patterns + cross-agent coherence)
+- [`references/evidence-verification-protocol.md`](references/evidence-verification-protocol.md) — Code quality review protocol (layered review procedure, verification, discrepancy analysis)
 - [`references/guidance-package-format.md`](references/guidance-package-format.md) — Structured guidance output format
