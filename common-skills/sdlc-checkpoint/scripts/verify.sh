@@ -261,6 +261,7 @@ verify_execution() {
 
   local story phase tasks_total tasks_completed
   local task_id task_name step iteration staging_doc
+  local branch_name base_branch base_commit
   story="$(yaml_read "$file" "story")"
   phase="$(yaml_read "$file" "phase")"
   tasks_total="$(yaml_read "$file" "tasks_total")"
@@ -270,12 +271,34 @@ verify_execution() {
   step="$(yaml_read "$file" "current_step")"
   iteration="$(yaml_read "$file" "current_iteration")"
   staging_doc="$(yaml_read "$file" "staging_doc")"
+  branch_name="$(yaml_read "$file" "branch_name")"
+  base_branch="$(yaml_read "$file" "base_branch")"
+  base_commit="$(yaml_read "$file" "base_commit")"
 
   echo "hub: execution"
   echo "phase: ${phase:-unknown}"
   echo "story: ${story:-none}"
   echo "tasks: ${tasks_completed:-0}/${tasks_total:-?}"
   echo "status: IN_PROGRESS"
+
+  # Verify git branch state if branch_name is recorded
+  if [ -n "$branch_name" ] && [ "$branch_name" != "null" ]; then
+    local current_branch
+    current_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")"
+
+    if git rev-parse --verify "$branch_name" >/dev/null 2>&1; then
+      if [ "$current_branch" = "$branch_name" ]; then
+        echo "branch: ${branch_name} (checked out)"
+        echo "base_commit: ${base_commit:-unknown}"
+      else
+        echo "branch: ${branch_name} (EXISTS but not checked out -- current: ${current_branch})"
+        echo "branch_action: checkout ${branch_name} before continuing"
+      fi
+    else
+      echo "branch: ${branch_name} (MISSING -- may have been merged or deleted)"
+      echo "branch_action: verify branch status -- may need to recreate from ${base_branch:-main}"
+    fi
+  fi
 
   # If we have a staging doc, verify task status against it
   if [ -n "$staging_doc" ] && [ "$staging_doc" != "null" ] && [ -f "$staging_doc" ]; then
@@ -334,8 +357,11 @@ verify_execution() {
     3)
       echo "recommendation: Phase 3 story integration -- dispatch sdlc-code-reviewer for full-story review"
       ;;
+    3b)
+      echo "recommendation: Phase 3b semantic review -- dispatch sdlc-semantic-reviewer with git context (branch: ${branch_name:-unknown}, base: ${base_commit:-unknown})"
+      ;;
     4)
-      echo "recommendation: Phase 4 acceptance -- dispatch sdlc-acceptance-validator"
+      echo "recommendation: Phase 4 acceptance -- dispatch sdlc-acceptance-validator with git context (branch: ${branch_name:-unknown}, base: ${base_commit:-unknown})"
       ;;
     5)
       echo "recommendation: Phase 5 documentation integration -- follow doc-integration-protocol"

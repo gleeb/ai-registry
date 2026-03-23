@@ -12,6 +12,7 @@ set -euo pipefail
 #   checkpoint.sh planning [flags]
 #   checkpoint.sh execution [flags]
 #   checkpoint.sh dispatch-log [flags]
+#   checkpoint.sh git [flags]
 #   checkpoint.sh init
 # =============================================================================
 
@@ -375,6 +376,169 @@ EOF
 }
 
 # ---------------------------------------------------------------------------
+# GIT subcommand — branch lifecycle operations
+# ---------------------------------------------------------------------------
+
+ensure_sdlc_gitignore() {
+  local gitignore=".gitignore"
+  if [ -f "$gitignore" ]; then
+    if ! grep -q "^\.sdlc/" "$gitignore" 2>/dev/null; then
+      printf '\n# SDLC checkpoint state (local workflow data)\n.sdlc/\n' >> "$gitignore"
+    fi
+  else
+    printf '# SDLC checkpoint state (local workflow data)\n.sdlc/\n' > "$gitignore"
+  fi
+}
+
+cmd_git() {
+  local exec_file="$SDLC_DIR/execution.yaml"
+  ensure_sdlc_dir
+
+  local branch_create="" commit="" merge=""
+  local story="" base="main" task="" message="" phase="" target="main"
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --branch-create) branch_create="true"; shift ;;
+      --commit)        commit="true"; shift ;;
+      --merge)         merge="true"; shift ;;
+      --story)         story="$2"; shift 2 ;;
+      --base)          base="$2"; shift 2 ;;
+      --task)          task="$2"; shift 2 ;;
+      --message)       message="$2"; shift 2 ;;
+      --phase)         phase="$2"; shift 2 ;;
+      --target)        target="$2"; shift 2 ;;
+      *) echo "Unknown git flag: $1" >&2; exit 1 ;;
+    esac
+  done
+
+  # Exactly one operation must be specified
+  local op_count=0
+  [ "$branch_create" = "true" ] && op_count=$((op_count + 1))
+  [ "$commit" = "true" ] && op_count=$((op_count + 1))
+  [ "$merge" = "true" ] && op_count=$((op_count + 1))
+  if [ "$op_count" -ne 1 ]; then
+    echo "git subcommand requires exactly one of --branch-create, --commit, --merge" >&2
+    exit 1
+  fi
+
+  # --- BRANCH CREATE ---
+  if [ "$branch_create" = "true" ]; then
+    if [ -z "$story" ]; then
+      echo "git --branch-create requires --story" >&2
+      exit 1
+    fi
+
+    local branch_name="story/${story}"
+
+    # Ensure .sdlc/ is gitignored before any git operations
+    ensure_sdlc_gitignore
+
+    # Check if branch already exists (resume scenario)
+    if git rev-parse --verify "$branch_name" >/dev/null 2>&1; then
+      echo "Branch ${branch_name} already exists — checking out for resume"
+      git checkout "$branch_name"
+    else
+      # Ensure we're on the base branch
+      git checkout "$base"
+      git checkout -b "$branch_name"
+    fi
+
+    local base_commit
+    base_commit="$(git rev-parse "$base")"
+
+    # Write branch metadata to execution.yaml
+    if [ -f "$exec_file" ]; then
+      # Remove existing branch fields if present, then append
+      local tmpfile="${exec_file}.tmp"
+      grep -v "^branch_name:" "$exec_file" | grep -v "^base_branch:" | grep -v "^base_commit:" > "$tmpfile" || true
+      {
+        cat "$tmpfile"
+        echo "branch_name: ${branch_name}"
+        echo "base_branch: ${base}"
+        echo "base_commit: ${base_commit}"
+      } > "$exec_file"
+      rm -f "$tmpfile"
+    else
+      cat > "$exec_file" <<EOF
+last_updated: "${TIMESTAMP}"
+story: ${story}
+branch_name: ${branch_name}
+base_branch: ${base}
+base_commit: ${base_commit}
+phase: null
+EOF
+    fi
+
+    append_history "git" "branch-create:${branch_name}|base:${base}|base_commit:${base_commit}"
+    echo "Created branch ${branch_name} from ${base} (${base_commit})"
+    return
+  fi
+
+  # --- COMMIT ---
+  if [ "$commit" = "true" ]; then
+    # Build commit message
+    local commit_msg=""
+    if [ -n "$task" ]; then
+      local task_id task_name
+      task_id="$(echo "$task" | cut -d: -f1)"
+      task_name="$(echo "$task" | cut -d: -f2-)"
+      commit_msg="task(${story}/${task_id}): ${task_name}"
+    elif [ -n "$message" ]; then
+      if echo "$message" | grep -qi "staging doc\|documentation\|doc integration"; then
+        commit_msg="docs(${story}): ${message}"
+      else
+        commit_msg="fix(${story}): ${message}"
+      fi
+    else
+      commit_msg="chore(${story}): checkpoint commit (phase ${phase:-unknown})"
+    fi
+
+    # Stage and commit
+    ensure_sdlc_gitignore
+    git add -A
+    if git diff --cached --quiet 2>/dev/null; then
+      echo "No changes to commit"
+      append_history "git" "commit-skip:no-changes|phase:${phase:-?}"
+      return
+    fi
+    git commit -m "$commit_msg"
+
+    append_history "git" "commit:${commit_msg}|phase:${phase:-?}"
+    echo "Committed: ${commit_msg}"
+    return
+  fi
+
+  # --- MERGE ---
+  if [ "$merge" = "true" ]; then
+    if [ -z "$story" ]; then
+      echo "git --merge requires --story" >&2
+      exit 1
+    fi
+
+    local branch_name="story/${story}"
+
+    # Verify we're on the story branch or switch to target
+    git checkout "$target"
+    git merge --no-ff "$branch_name" -m "merge(${story}): integrate story branch into ${target}"
+
+    # Delete story branch
+    git branch -d "$branch_name"
+
+    # Clear branch fields from execution.yaml
+    if [ -f "$exec_file" ]; then
+      local tmpfile="${exec_file}.tmp"
+      grep -v "^branch_name:" "$exec_file" | grep -v "^base_branch:" | grep -v "^base_commit:" > "$tmpfile" || true
+      mv "$tmpfile" "$exec_file"
+    fi
+
+    append_history "git" "merge:${branch_name}|target:${target}"
+    echo "Merged ${branch_name} into ${target} and deleted branch"
+    return
+  fi
+}
+
+# ---------------------------------------------------------------------------
 # INIT subcommand — derive state from existing artifacts
 # ---------------------------------------------------------------------------
 
@@ -711,7 +875,7 @@ cmd_dispatch_log() {
 # ---------------------------------------------------------------------------
 
 if [ $# -lt 1 ]; then
-  echo "Usage: checkpoint.sh <coordinator|planning|execution|dispatch-log|init|continue> [flags]" >&2
+  echo "Usage: checkpoint.sh <coordinator|planning|execution|dispatch-log|git|init|continue> [flags]" >&2
   exit 1
 fi
 
@@ -723,6 +887,7 @@ case "$SUBCMD" in
   planning)     cmd_planning "$@" ;;
   execution)    cmd_execution "$@" ;;
   dispatch-log) cmd_dispatch_log "$@" ;;
+  git)          cmd_git "$@" ;;
   init)         cmd_init "$@" ;;
   continue)     cmd_continue "$@" ;;
   *)            echo "Unknown subcommand: $SUBCMD" >&2; exit 1 ;;

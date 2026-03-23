@@ -76,6 +76,10 @@ See [`references/readiness-check.md`](references/readiness-check.md) for the ful
 
 **GATE**: All plan artifacts exist, all dependency stories are complete. If not, HALT and escalate to coordinator.
 
+7. **Create story branch**: After GATE passes, create an isolated branch for this story's work:
+   `checkpoint.sh git --branch-create --story {US-NNN-name} --base main`
+   This records `branch_name`, `base_branch`, and `base_commit` in `execution.yaml` for use by reviewers and validators.
+
 ---
 
 ## Phase 1: Task Decomposition + Staging Doc
@@ -107,6 +111,7 @@ For each implementation unit in the task checklist:
 11. **Verify** → dispatch `sdlc-qa` using [`references/qa-dispatch-template.md`](references/qa-dispatch-template.md)
 12. `checkpoint.sh dispatch-log --event response --dispatch-id exec-{story}-t{id}-qa-i{N} --agent sdlc-qa --verdict "{PASS|FAIL}"`
 13. On QA pass: `checkpoint.sh execution --task-done {id}`
+14. **Git commit**: `checkpoint.sh git --commit --story {US-NNN-name} --task "{id}:{name}" --phase 2`
 
 On review fail (re-dispatch implementer): `checkpoint.sh execution --step implement` then increment iteration on next review: `checkpoint.sh execution --step review --iteration {N}`
 
@@ -138,11 +143,11 @@ Commercial-model senior-developer quality review with 3 checks (agent report int
 1. `checkpoint.sh execution --phase 3b --step semantic-review`
 2. Dispatch `sdlc-semantic-reviewer` using [`references/semantic-reviewer-dispatch-template.md`](references/semantic-reviewer-dispatch-template.md).
 3. Include all local review verdicts, QA verdicts, and implementer summaries from the story.
-4. Include git context (branch, base commit) for diff scoping.
+4. Include git context (branch, base commit) for diff scoping. Populate the GIT CONTEXT section in the dispatch template using `branch_name` and `base_commit` from `execution.yaml`.
 5. Include the tech stack for documentation fetching context via context7 MCP.
 6. Read the semantic review result:
    - **PASS:** `checkpoint.sh execution --phase 3b --verdict pass`. Proceed to Phase 4. Optionally attach proactive observations to the acceptance validator dispatch.
-   - **NEEDS WORK:** Extract the guidance package. Re-enter Phase 2 for affected tasks with guidance-aware re-dispatch — include the `SEMANTIC GUIDANCE` section in the implementer dispatch containing reasoned corrections, documentation (fetched excerpts and/or fetch instructions for the local model to retrieve via context7), and improvement instructions. After fixes, restart from Phase 3 (full-story review + QA) then re-dispatch semantic reviewer (iteration 2).
+   - **NEEDS WORK:** Extract the guidance package. Re-enter Phase 2 for affected tasks with guidance-aware re-dispatch — include the `SEMANTIC GUIDANCE` section in the implementer dispatch containing reasoned corrections, documentation (fetched excerpts and/or fetch instructions for the local model to retrieve via context7), and improvement instructions. After fixes, **commit the remediation**: `checkpoint.sh git --commit --story {US-NNN-name} --message "Address semantic review findings" --phase 3b`. Then restart from Phase 3 (full-story review + QA) then re-dispatch semantic reviewer (iteration 2).
    - **NEEDS WORK with escalation flag (work unreliable):** Halt execution. Escalate to coordinator and user — the local model may not be capable of this task and it may need reassignment.
 
 **GATE**: Semantic review PASS. Max 2 iterations before escalating to coordinator.
@@ -158,7 +163,7 @@ Commercial-model senior-developer quality review with 3 checks (agent report int
 Independent verification that every acceptance criterion was implemented. Uses git diff for scoping, staging doc for context, then drills into code and runs fresh commands for evidence. Produces failure guidance on INCOMPLETE.
 
 1. Dispatch `sdlc-acceptance-validator` using [`references/acceptance-validation-dispatch-template.md`](references/acceptance-validation-dispatch-template.md).
-2. Include git context (branch, base commit) for diff scoping.
+2. Include git context (branch, base commit) for diff scoping. Populate the GIT CONTEXT section in the dispatch template using `branch_name` and `base_commit` from `execution.yaml`.
 3. Validator maps every criterion to code + evidence, produces failure guidance for any FAIL criteria.
 4. Read the validation report.
 
@@ -166,7 +171,7 @@ Independent verification that every acceptance criterion was implemented. Uses g
 
 1. Read `acceptance_iteration` from `execution.yaml` (tracked via `checkpoint.sh execution --acceptance-iteration N`).
 2. If `acceptance_iteration >= 2`: **STOP.** Do NOT dispatch another remediation or acceptance run. Return to coordinator with ESCALATE verdict, all acceptance reports attached, and recommendation for user review.
-3. If `acceptance_iteration < 2`: Create targeted remediation tasks for **FUNCTIONAL failures only** (ignore NEEDS_CLEANUP doc notes). Increment `acceptance_iteration` via `checkpoint.sh execution --acceptance-iteration {N+1}`. Re-run acceptance with PRIOR ACCEPTANCE CONTEXT from the dispatch template.
+3. If `acceptance_iteration < 2`: Create targeted remediation tasks for **FUNCTIONAL failures only** (ignore NEEDS_CLEANUP doc notes). Increment `acceptance_iteration` via `checkpoint.sh execution --acceptance-iteration {N+1}`. After remediation fixes are applied, **commit the fixes**: `checkpoint.sh git --commit --story {US-NNN-name} --message "Fix failing acceptance criteria" --phase 4`. Re-run acceptance with PRIOR ACCEPTANCE CONTEXT from the dispatch template.
 
 **HARD LIMIT**: The architect MUST NOT run more than 2 acceptance re-validations (3 total runs). This limit is non-negotiable. Violating it is a protocol error.
 
@@ -196,6 +201,7 @@ See [`references/doc-integration-protocol.md`](references/doc-integration-protoc
 3. Update `docs/index.md` if new domains were added.
 4. Verify all file references in staging doc are still valid.
 5. Mark staging doc as completed or move to `docs/archive/`.
+6. **Git commit**: `checkpoint.sh git --commit --story {US-NNN-name} --message "Integrate staging doc" --phase 5`
 
 ---
 
@@ -214,7 +220,9 @@ See [`references/user-acceptance-protocol.md`](references/user-acceptance-protoc
 
 If the user requests changes, create targeted tasks and re-enter Phase 2. Mark the staging doc with the change request context.
 
-On user approval: `checkpoint.sh coordinator --story-done {US-NNN-name}`
+On user approval:
+1. **Git merge**: `checkpoint.sh git --merge --story {US-NNN-name} --target main`
+2. `checkpoint.sh coordinator --story-done {US-NNN-name}`
 
 ---
 

@@ -26,6 +26,22 @@ description: >
 - **Verify on resume**: On resume, run `verify.sh` to cross-reference checkpoint state against actual artifacts on disk. Never blindly trust the checkpoint.
 - **Auto-bootstrap**: Scripts auto-create `.sdlc/` and YAML files on first invocation. No separate setup step needed.
 
+## Git Branch Lifecycle
+
+Each user story executes on its own git branch. The branch is created before any implementation begins (Phase 0) and merged back after user acceptance (Phase 6). Commits happen at validated work boundaries — not during mid-task implement-review cycles.
+
+- **Branch naming**: `story/{US-NNN-slug}` (e.g., `story/US-001-auth-scaffold`). Derived from the story identifier in `execution.yaml`.
+- **Commit points**: After each task passes QA (Phase 2 `--task-done`), after remediation fixes from Phase 3b/4, and after documentation integration (Phase 5).
+- **Commit convention**:
+  - `task({story}/{task-id}): {task name}` — after task-done in Phase 2
+  - `fix({story}): {description}` — after remediation from Phase 3b/4
+  - `docs({story}): integrate staging doc` — after Phase 5
+- **Merge**: Direct merge to main (no-ff) after Phase 6 user approval. Story branch is deleted after merge.
+- **Diff scoping**: Phase 3b (semantic review) and Phase 4 (acceptance validation) use `git diff {base_commit}..HEAD` to scope their review to the story's changes. The `base_commit` is recorded in `execution.yaml` at branch creation.
+- **Resume**: On resume, `verify.sh` checks that the story branch exists and is checked out. If not, it recommends checking it out before continuing.
+
+See [`references/git-branch-lifecycle.md`](references/git-branch-lifecycle.md) for the full protocol, edge cases, and examples.
+
 ## State Files
 
 All state lives in `.sdlc/` at the target project root:
@@ -34,7 +50,7 @@ All state lives in `.sdlc/` at the target project root:
 |------|-------|----------|
 | `coordinator.yaml` | Coordinator / Hubs | Active hub, current story, stories progress |
 | `planning.yaml` | Planning Hub | Phase, story loop position, per-story agent progress |
-| `execution.yaml` | Execution Hub | Phase, task, dev-loop step, iteration counts, acceptance_iteration (0-2), acceptance_verdict (COMPLETE/INCOMPLETE/null) |
+| `execution.yaml` | Execution Hub | Phase, task, dev-loop step, iteration counts, acceptance_iteration (0-2), acceptance_verdict (COMPLETE/INCOMPLETE/null), branch_name, base_branch, base_commit |
 | `dispatch-log.jsonl` | Planning & Execution Hubs | Structured dispatch/response audit trail (append-only JSONL) |
 | `history.log` | All (append-only) | Timestamped action log for debugging |
 
@@ -61,6 +77,7 @@ checkpoint.sh continue
 | `planning` | `--phase`, `--story`, `--agents-done`, `--agents-pending`, `--dispatch`, `--completed`, `--story-done` | `checkpoint.sh planning --dispatch sdlc-planner-hld` |
 | `execution` | `--story`, `--phase`, `--tasks-total`, `--task`, `--step`, `--iteration`, `--task-done`, `--staging-doc`, `--acceptance-iteration`, `--acceptance-verdict` | `checkpoint.sh execution --step review --iteration 1` |
 | `dispatch-log` | `--event`, `--story`, `--hub`, `--phase`, `--task`, `--agent`, `--model-profile`, `--dispatch-id`, `--iteration`, `--verdict`, `--duration`, `--summary` | `checkpoint.sh dispatch-log --event dispatch --agent sdlc-implementer --dispatch-id exec-US001-t3-impl-i1` |
+| `git` | `--branch-create`, `--commit`, `--merge`, `--story`, `--base`, `--task`, `--message`, `--phase`, `--target` | `checkpoint.sh git --branch-create --story US-001-auth --base main` |
 | `init` | (none) | `checkpoint.sh init` |
 | `continue` | (none) | `checkpoint.sh continue` |
 
@@ -123,6 +140,25 @@ checkpoint.sh execution --phase 3
 checkpoint.sh execution --phase 4 --acceptance-iteration 0
 checkpoint.sh execution --acceptance-iteration 1 --acceptance-verdict INCOMPLETE
 checkpoint.sh execution --acceptance-verdict COMPLETE
+```
+
+#### Git Examples
+
+```bash
+# Phase 0: Create story branch after readiness gate passes
+checkpoint.sh git --branch-create --story US-001-auth --base main
+
+# Phase 2: Commit after task passes QA
+checkpoint.sh git --commit --story US-001-auth --task "3:Implement session store" --phase 2
+
+# Phase 3b/4: Commit remediation fixes
+checkpoint.sh git --commit --story US-001-auth --message "Address semantic review findings" --phase 3b
+
+# Phase 5: Commit doc integration
+checkpoint.sh git --commit --story US-001-auth --message "Integrate staging doc" --phase 5
+
+# Phase 6: Merge story branch and clean up
+checkpoint.sh git --merge --story US-001-auth --target main
 ```
 
 ### verify.sh — Read State and Recommend Next Action
@@ -232,6 +268,7 @@ Each hub adds checkpoint calls at these points:
 3. **At every phase transition**
 4. **At every gate check result**
 5. **At every loop iteration** (next story, next task)
+6. **Git lifecycle events**: branch create (Phase 0 gate pass), commit (Phase 2 task-done, Phase 3b/4 remediation, Phase 5 docs), merge (Phase 6 approval)
 
 Minimal token cost per call: ~20-30 tokens for the shell command.
 

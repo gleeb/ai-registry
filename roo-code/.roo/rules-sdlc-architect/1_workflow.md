@@ -43,6 +43,7 @@ SDLC Architect is the execution hub. It converts a scoped issue into an executio
   - Map `tech_stack` to available skills using the skill loading protocol.
   - Load the project-documentation skill for staging doc templates.
 - GATE: All prerequisites met. If not, HALT and escalate to coordinator.
+- After GATE passes, create story branch: `checkpoint.sh git --branch-create --story {US-NNN-name} --base main`. This records `branch_name`, `base_branch`, and `base_commit` in `execution.yaml`.
 
 **key_principle:** Never start implementation without confirming the plan is complete and dependencies are satisfied.
 
@@ -115,6 +116,7 @@ SDLC Architect is the execution hub. It converts a scoped issue into an executio
   - E. Handle review: PASS then dispatch sdlc-qa. FAIL then re-dispatch implementer with feedback (max 3 iterations, then escalate blocker to coordinator).
   - F. On review pass, log dispatch then dispatch sdlc-qa via new_task using the QA dispatch template. Include DOCUMENTATION VERIFICATION. Log response with verdict.
   - G. Handle QA: PASS then mark task done in staging and proceed to next unit. FAIL then re-dispatch implementer with QA details (max 2 retries).
+  - H. After task-done, git commit: `checkpoint.sh git --commit --story {US-NNN-name} --task "{id}:{name}" --phase 2`
 - Update task status in staging document after each dispatch cycle.
 - Log every dispatch and response via `checkpoint.sh dispatch-log` alongside checkpoint state updates.
 
@@ -137,12 +139,14 @@ See common-skills/architect-execution-hub/references/review-cycle.md for iterati
 **Steps:**
 - Dispatch sdlc-semantic-reviewer via new_task using the semantic reviewer dispatch template (common-skills/architect-execution-hub/references/semantic-reviewer-dispatch-template.md).
 - Include all local review verdicts, QA verdicts, and implementer summaries from the story.
+- Include git context: populate GIT CONTEXT in the dispatch template using `branch_name` and `base_commit` from `execution.yaml`.
 - Include the tech stack for documentation fetching context.
 - Handle verdict:
   - **PASS:** Proceed to Phase 4. If proactive observations include useful documentation, optionally attach to the acceptance validator dispatch for richer context.
   - **NEEDS WORK:** Extract the guidance package from the semantic reviewer's response. Re-enter Phase 2 for affected tasks with guidance-aware re-dispatch:
     - Include the `SEMANTIC GUIDANCE` section in the implementer re-dispatch containing: reasoned corrections, documentation (fetched excerpts and/or fetch instructions for the local model to retrieve via context7), and specific improvement instructions from the guidance package.
-    - After fixes, re-run the full Phase 3 story integration review, then re-dispatch semantic reviewer (iteration 2).
+    - After fixes, commit the remediation: `checkpoint.sh git --commit --story {US-NNN-name} --message "Address semantic review findings" --phase 3b`
+    - Re-run the full Phase 3 story integration review, then re-dispatch semantic reviewer (iteration 2).
   - **NEEDS WORK with escalation flag (work unreliable):** Halt execution. Escalate to coordinator and user — the local model's work is fundamentally unreliable and may need reassignment to a more capable model.
 - Max 2 semantic review iterations before escalating to coordinator.
 
@@ -153,10 +157,10 @@ See common-skills/architect-execution-hub/references/review-cycle.md for iterati
 **Description:** Independent verification of every acceptance criterion
 
 **Steps:**
-- Dispatch sdlc-acceptance-validator using the acceptance validation dispatch template.
+- Dispatch sdlc-acceptance-validator using the acceptance validation dispatch template. Populate GIT CONTEXT using `branch_name` and `base_commit` from `execution.yaml`.
 - Read the validation report.
 - If COMPLETE → proceed to Phase 5.
-- If INCOMPLETE → identify failing criteria and re-enter Phase 2 with targeted fix dispatches. Max 2 acceptance re-validations before escalating.
+- If INCOMPLETE → identify failing criteria and re-enter Phase 2 with targeted fix dispatches. After remediation, commit the fixes: `checkpoint.sh git --commit --story {US-NNN-name} --message "Fix failing acceptance criteria" --phase 4`. Max 2 acceptance re-validations before escalating.
 
 ### phase: documentation_integration (order: 5)
 
@@ -168,6 +172,7 @@ See common-skills/architect-execution-hub/references/review-cycle.md for iterati
 - Update docs/index.md if new domains were added.
 - Verify all file references.
 - Archive or mark the staging document as completed.
+- Git commit: `checkpoint.sh git --commit --story {US-NNN-name} --message "Integrate staging doc" --phase 5`
 
 ### phase: user_acceptance (order: 6)
 
@@ -176,7 +181,9 @@ See common-skills/architect-execution-hub/references/review-cycle.md for iterati
 **Steps:**
 - Follow the user acceptance protocol (common-skills/architect-execution-hub/references/user-acceptance-protocol.md).
 - Present implementation summary, acceptance validation report, and any deviations.
-- If user approves → return to coordinator with completion summary.
+- If user approves:
+  - Merge story branch: `checkpoint.sh git --merge --story {US-NNN-name} --target main`
+  - Return to coordinator with completion summary.
 - If user requests changes → create targeted tasks and re-enter Phase 2.
 - If user rejects → escalate to coordinator with rejection details.
 

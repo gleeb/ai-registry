@@ -61,6 +61,7 @@ Phase 6: User Acceptance
    - Verify dependency stories are complete.
    - Map `tech_stack` to available skills.
 4. **GATE**: All prerequisites met. If not, HALT and escalate.
+5. **Create story branch**: After GATE passes, `checkpoint.sh git --branch-create --story {US-NNN-name} --base main`. This records `branch_name`, `base_branch`, and `base_commit` in `execution.yaml`.
 
 ## Phase 0b: Scaffolding Check
 
@@ -96,7 +97,8 @@ For each implementation unit in sequence:
 3. **QA**: On review pass, dispatch `/sdlc-qa` with acceptance criteria and verification commands.
    - If PASS → mark task done, proceed to next unit.
    - If FAIL → re-dispatch `/sdlc-implementer` with QA details (max 2 retries).
-4. Update task status in staging document after each cycle.
+4. **Git commit**: After task-done, `checkpoint.sh git --commit --story {US-NNN-name} --task "{id}:{name}" --phase 2`
+5. Update task status in staging document after each cycle.
 
 Iteration limits:
 - Max 3 review rejections per task before escalating.
@@ -114,10 +116,10 @@ After all per-task loops pass:
 
 Commercial-model senior-developer quality review with 3 checks (agent report integrity, code quality review, terminology alignment). Uses git diff for scoping, staging doc for context, then drills into the actual implementation. Full sweep, no sampling.
 
-1. Dispatch `/sdlc-semantic-reviewer` with all local review verdicts, QA verdicts, implementer summaries, tech stack, and git context (branch, base commit).
+1. Dispatch `/sdlc-semantic-reviewer` with all local review verdicts, QA verdicts, implementer summaries, tech stack, and git context (branch, base commit). Populate GIT CONTEXT using `branch_name` and `base_commit` from `execution.yaml`.
 2. Handle verdict:
    - **PASS**: Proceed to Phase 4. Optionally attach proactive observations to acceptance validator dispatch.
-   - **NEEDS WORK**: Extract the guidance package. Re-enter Phase 2 for affected tasks with guidance-aware re-dispatch — include the `SEMANTIC GUIDANCE` section in the implementer dispatch containing reasoned corrections, documentation (fetched excerpts and/or fetch instructions for the local model to retrieve via context7), and improvement instructions. After fixes, restart from Phase 3.
+   - **NEEDS WORK**: Extract the guidance package. Re-enter Phase 2 for affected tasks with guidance-aware re-dispatch — include the `SEMANTIC GUIDANCE` section in the implementer dispatch containing reasoned corrections, documentation (fetched excerpts and/or fetch instructions for the local model to retrieve via context7), and improvement instructions. After fixes, commit the remediation: `checkpoint.sh git --commit --story {US-NNN-name} --message "Address semantic review findings" --phase 3b`. Restart from Phase 3.
    - **NEEDS WORK with escalation flag (work unreliable)**: Halt execution. Escalate to coordinator and user.
 3. Max 2 semantic review iterations before escalating to coordinator.
 
@@ -125,12 +127,12 @@ Commercial-model senior-developer quality review with 3 checks (agent report int
 
 ## Phase 4: Acceptance Validation
 
-1. Dispatch `/sdlc-acceptance-validator` with story path, acceptance criteria, and git context (branch, base commit). The validator uses git diff for scoping and produces failure guidance on INCOMPLETE.
+1. Dispatch `/sdlc-acceptance-validator` with story path, acceptance criteria, and git context (branch, base commit). Populate GIT CONTEXT using `branch_name` and `base_commit` from `execution.yaml`. The validator uses git diff for scoping and produces failure guidance on INCOMPLETE.
 2. If COMPLETE → proceed to Phase 5. If `doc_status` is NEEDS_CLEANUP, apply doc fixes directly (no implementer/review/QA needed for doc-only changes) then proceed.
 3. If INCOMPLETE:
    a. Read `acceptance_iteration` from `execution.yaml`.
    b. If `acceptance_iteration >= 2`: **STOP.** Do NOT dispatch another remediation or acceptance run. Return to coordinator with ESCALATE verdict, all acceptance reports attached, and recommendation for user review.
-   c. If `acceptance_iteration < 2`: Create targeted remediation tasks for **FUNCTIONAL failures only** (ignore NEEDS_CLEANUP doc notes). Increment `acceptance_iteration` via `checkpoint.sh execution --acceptance-iteration {N+1}`. Re-run acceptance with PRIOR ACCEPTANCE CONTEXT including previous failures and remediation applied.
+   c. If `acceptance_iteration < 2`: Create targeted remediation tasks for **FUNCTIONAL failures only** (ignore NEEDS_CLEANUP doc notes). Increment `acceptance_iteration` via `checkpoint.sh execution --acceptance-iteration {N+1}`. After remediation, commit the fixes: `checkpoint.sh git --commit --story {US-NNN-name} --message "Fix failing acceptance criteria" --phase 4`. Re-run acceptance with PRIOR ACCEPTANCE CONTEXT including previous failures and remediation applied.
 
 **HARD LIMIT**: Max 2 acceptance re-validations (3 total runs). This is non-negotiable. Violating it is a protocol error.
 
@@ -140,11 +142,14 @@ Commercial-model senior-developer quality review with 3 checks (agent report int
 2. Distribute staging doc content into permanent docs.
 3. Update docs/index.md if new domains were added.
 4. Archive or mark the staging document as completed.
+5. **Git commit**: `checkpoint.sh git --commit --story {US-NNN-name} --message "Integrate staging doc" --phase 5`
 
 ## Phase 6: User Acceptance
 
 1. Present implementation summary, acceptance validation report, and any deviations.
-2. If user approves → return to coordinator with completion summary.
+2. If user approves:
+   a. **Git merge**: `checkpoint.sh git --merge --story {US-NNN-name} --target main`
+   b. Return to coordinator with completion summary.
 3. If user requests changes → create targeted tasks and re-enter Phase 2.
 4. If user rejects → escalate with rejection details.
 
@@ -174,14 +179,14 @@ Load the `sdlc-checkpoint` skill at initialization. The checkpoint script is at 
 
 ### Checkpoint Calls Per Phase
 
-- **Phase 0**: `checkpoint.sh execution --story {US-NNN-name} --phase 0`, `checkpoint.sh coordinator --hub execution --story {US-NNN-name}`
+- **Phase 0**: `checkpoint.sh execution --story {US-NNN-name} --phase 0`, `checkpoint.sh coordinator --hub execution --story {US-NNN-name}`. After GATE: `checkpoint.sh git --branch-create --story {US-NNN-name} --base main`
 - **Phase 1**: `--phase 1`, after staging doc creation: `--staging-doc "{path}" --tasks-total {N}`
-- **Phase 2** (per task): `--task "{id}:{name}" --step implement` (before implementer), `--step review --iteration {N}` (before reviewer), `--step qa` (before QA), `--task-done {id}` (after QA pass). On review fail: `--step implement` then increment iteration on next review. For each dispatch/response, also call `checkpoint.sh dispatch-log` with `--event dispatch` (before) and `--event response` (after).
+- **Phase 2** (per task): `--task "{id}:{name}" --step implement` (before implementer), `--step review --iteration {N}` (before reviewer), `--step qa` (before QA), `--task-done {id}` (after QA pass), then `checkpoint.sh git --commit --story {US-NNN-name} --task "{id}:{name}" --phase 2`. On review fail: `--step implement` then increment iteration on next review. For each dispatch/response, also call `checkpoint.sh dispatch-log` with `--event dispatch` (before) and `--event response` (after).
 - **Phase 3**: `--phase 3` at transition
-- **Phase 3b**: `--phase 3b` at transition. `--step semantic-review` before semantic reviewer dispatch. On PASS: `--verdict pass`. On NEEDS WORK: re-enter Phase 2.
-- **Phase 4**: `--phase 4` at transition
-- **Phase 5**: `--phase 5` at transition
-- **Phase 6**: `--phase 6` at transition. On user approval: `checkpoint.sh coordinator --story-done {US-NNN-name}`
+- **Phase 3b**: `--phase 3b` at transition. `--step semantic-review` before semantic reviewer dispatch. On PASS: `--verdict pass`. On NEEDS WORK: re-enter Phase 2, after remediation `checkpoint.sh git --commit ... --phase 3b`.
+- **Phase 4**: `--phase 4` at transition. After remediation: `checkpoint.sh git --commit ... --phase 4`.
+- **Phase 5**: `--phase 5` at transition. After doc integration: `checkpoint.sh git --commit --story {US-NNN-name} --message "Integrate staging doc" --phase 5`
+- **Phase 6**: `--phase 6` at transition. On user approval: `checkpoint.sh git --merge --story {US-NNN-name} --target main`, then `checkpoint.sh coordinator --story-done {US-NNN-name}`
 
 ## Error Handling
 
