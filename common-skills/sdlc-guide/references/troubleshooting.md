@@ -88,9 +88,9 @@ If `verify.sh` reports `NO_CHECKPOINT` or `NO_CHECKPOINT_DIR`, the user is infor
 
 A gate is never silently bypassed. User acknowledgment is always required for non-passing results.
 
-### Review Iteration Limit Hit (3 Rejections)
+### Review Iteration Limit Hit (5 Rejections)
 
-**Symptoms**: Code Reviewer rejected the implementation 3 times for the same task.
+**Symptoms**: Code Reviewer rejected the implementation 5 times for the same task.
 
 **Recovery**:
 1. The task is marked **blocked** in the staging document.

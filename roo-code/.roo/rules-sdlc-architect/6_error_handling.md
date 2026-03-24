@@ -43,10 +43,10 @@
 **required_actions:**
 - Mark task as blocked in staging document with review history summary.
 - Return to coordinator via attempt_completion with blocker details.
-- Include all 3 review verdicts and the pattern of failures.
+- Include all 5 review verdicts and the pattern of failures.
 
 **prohibited_actions:**
-- Do not continue dispatching the same task beyond 3 review iterations.
+- Do not continue dispatching the same task beyond 5 review iterations.
 
 ## scenario: qa_verification_failure
 

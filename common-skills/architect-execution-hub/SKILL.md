@@ -243,7 +243,7 @@ When the architect detects a greenfield project (no package manager config, no s
 
 ## Key Rules
 
-- Max 3 review iterations per task before escalating to coordinator
+- Max 5 review iterations per task before escalating to coordinator
 - Max 2 QA retries per task before escalating
 - Max 2 semantic review iterations per story before escalating
 - Max 2 acceptance re-validations before escalating

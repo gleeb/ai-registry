@@ -37,11 +37,11 @@ After implementer fix, restart from code_review step.
 
 ## iteration_limits
 
-### limit: review_iterations (max: 3)
+### limit: review_iterations (max: 5)
 
-After 3 review rejections for the same task:
+After 5 review rejections for the same task:
 - Mark task as blocked in staging with review history.
-- Return to coordinator with blocker details and all 3 review verdicts.
+- Return to coordinator with blocker details and all 5 review verdicts.
 - Do NOT continue dispatching.
 
 ### limit: qa_retries (max: 2)
@@ -77,7 +77,7 @@ Status values: pending | in-progress | done | blocked.
 - **transition (from: in-progress, to: blocked):** trigger: Review limit or QA limit reached.
 
 **tracking_fields:**
-- Review iteration count (0-3).
+- Review iteration count (0-5).
 - QA retry count (0-2).
 - Last review verdict summary.
 - Last QA verdict summary.

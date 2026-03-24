@@ -77,7 +77,7 @@ PRECEDENCE: These task-specific instructions supersede conflicting general instr
 When re-dispatching after code review rejection, add:
 
 ```
-REVIEW FEEDBACK (iteration [N]/3):
+REVIEW FEEDBACK (iteration [N]/5):
 The following issues were identified by code review. Fix ONLY these issues:
 
 [Paste reviewer's exact issue list with file:line references and recommended fixes]

@@ -46,7 +46,7 @@ Use `/sdlc-continue`. The Coordinator reads checkpoint state, verifies against a
 Phase 1: PRD → Phase 2: Architecture then Stories → Phase 3: Per-story loop (HLD, API, Data, Security in parallel; Design after HLD) → Phase 4: Security rollup, DevOps, Testing in parallel → Phase 5-7: Validation and handoff. See [planning-deep-dive.md](references/planning-deep-dive.md).
 
 **Q: What happens during the dev loop?**
-For each task: Implementer builds it → Code Reviewer reviews → QA verifies. Max 3 review rejections, max 2 QA failures per task before escalation. See [execution-deep-dive.md](references/execution-deep-dive.md).
+For each task: Implementer builds it → Code Reviewer reviews → QA verifies. Max 5 review rejections, max 2 QA failures per task before escalation. See [execution-deep-dive.md](references/execution-deep-dive.md).
 
 **Q: Validation failed. What do I do?**
 First failure: the agent is re-dispatched with specific feedback. Second/third failure: escalated to user with options (iterate, accept partial, skip with acknowledgment). See [planning-deep-dive.md](references/planning-deep-dive.md).

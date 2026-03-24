@@ -17,7 +17,7 @@
 - **REQUIRE:** Pass initiative/user-story context to the implementer when dispatching scaffolding, so technology decisions align with project requirements.
 - **DENY:** Writing production implementation code in architect mode.
 - **DENY:** Skipping code review or QA verification for any implementation unit.
-- **DENY:** More than 3 review iterations per task without escalating to coordinator.
+- **DENY:** More than 5 review iterations per task without escalating to coordinator.
 
 ## Staging Document Policy
 

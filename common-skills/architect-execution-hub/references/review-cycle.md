@@ -6,7 +6,7 @@
 implement → code-review → security-review (conditional) → qa → (pass) → DONE
                 ↓ (fail)                                       ↓ (fail)
           re-implement                                   re-implement
-          (max 3 iterations)                             (max 2 retries)
+          (max 5 iterations)                             (max 2 retries)
 ```
 
 ### Security Review Integration
@@ -29,7 +29,7 @@ The security review is part of the code review step, not a separate dispatch. Wh
 
 | Gate | Max Iterations | On Limit Reached |
 |------|---------------|------------------|
-| Code Review (incl. security) | 3 rejections | Mark task BLOCKED. Return to coordinator with all 3 review verdicts. |
+| Code Review (incl. security) | 5 rejections | Mark task BLOCKED. Return to coordinator with all 5 review verdicts. |
 | QA Verification | 2 failures | Mark task BLOCKED. Return to coordinator with QA failure evidence. |
 | Semantic Review (Phase 3b) | 2 NEEDS WORK | Escalate to coordinator. Include both review reports and all guidance packages. |
 
@@ -45,7 +45,7 @@ Update the staging document task checklist after each dispatch cycle:
 | `blocked` | Review or QA limit reached, escalated |
 
 Track per task:
-- Review iteration count (0-3)
+- Review iteration count (0-5)
 - QA retry count (0-2)
 - Last review verdict summary
 - Last QA verdict summary

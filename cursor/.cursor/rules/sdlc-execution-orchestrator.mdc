@@ -93,7 +93,7 @@ For each implementation unit in sequence:
 1. **Implement**: Dispatch `/sdlc-implementer` with task specification, tech skills, staging path, and boundaries.
 2. **Review**: On implementer success, dispatch `/sdlc-code-reviewer` with staging path and implementer's summary.
    - If Approved → proceed to QA.
-   - If Changes Required → re-dispatch `/sdlc-implementer` with review feedback (max 3 iterations).
+   - If Changes Required → re-dispatch `/sdlc-implementer` with review feedback (max 5 iterations).
 3. **QA**: On review pass, dispatch `/sdlc-qa` with acceptance criteria and verification commands.
    - If PASS → mark task done, proceed to next unit.
    - If FAIL → re-dispatch `/sdlc-implementer` with QA details (max 2 retries).
@@ -101,7 +101,7 @@ For each implementation unit in sequence:
 5. Update task status in staging document after each cycle.
 
 Iteration limits:
-- Max 3 review rejections per task before escalating.
+- Max 5 review rejections per task before escalating.
 - Max 2 QA failures per task before escalating.
 
 ## Phase 3: Story-Level Integration

@@ -88,5 +88,5 @@ When re-dispatching implementer after review feedback.
 
 - **original_task:** Reference to the original task specification.
 - **review_feedback:** The reviewer's exact issue list with file:line references and recommended fixes.
-- **iteration_count:** Current iteration number (1-3). After 3, escalate instead.
+- **iteration_count:** Current iteration number (1-5). After 5, escalate instead.
 - **focus:** Fix ONLY the issues identified in the review. Do not expand scope.

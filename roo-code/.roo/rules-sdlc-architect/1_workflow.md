@@ -113,7 +113,7 @@ SDLC Architect is the execution hub. It converts a scoped issue into an executio
   - B. Dispatch sdlc-implementer via new_task using the implementer dispatch template. Include TECH SKILLS, DOCUMENTATION, and SELF-VERIFICATION sections.
   - C. Log response: `checkpoint.sh dispatch-log --event response` with dispatch ID, agent, duration, and summary excerpt.
   - D. On implementer success, log dispatch then dispatch sdlc-code-reviewer via new_task using the reviewer dispatch template. Include SECURITY REVIEW flag and DOCUMENTATION CHECK. Log response with verdict.
-  - E. Handle review: PASS then dispatch sdlc-qa. FAIL then re-dispatch implementer with feedback (max 3 iterations, then escalate blocker to coordinator).
+  - E. Handle review: PASS then dispatch sdlc-qa. FAIL then re-dispatch implementer with feedback (max 5 iterations, then escalate blocker to coordinator).
   - F. On review pass, log dispatch then dispatch sdlc-qa via new_task using the QA dispatch template. Include DOCUMENTATION VERIFICATION. Log response with verdict.
   - G. Handle QA: PASS then mark task done in staging and proceed to next unit. FAIL then re-dispatch implementer with QA details (max 2 retries).
   - H. After task-done, git commit: `checkpoint.sh git --commit --story {US-NNN-name} --task "{id}:{name}" --phase 2`
