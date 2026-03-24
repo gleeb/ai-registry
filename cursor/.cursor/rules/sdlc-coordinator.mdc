@@ -98,7 +98,7 @@ Compose delegation context for the target orchestrator rule:
 After dispatched work completes:
 - Determine next action: dispatch next issue, report completion, handle blocker.
 - If execution reports issue complete: check for remaining issues, dispatch next if any.
-- If execution reports blocker: dispatch `/sdlc-project-research` for investigation, then resume execution.
+- If execution reports blocker: classify it using the Escalation Taxonomy below, then take the appropriate action.
 - If planning reports artifacts ready: transition to execution phase.
 
 ### Trust Hierarchy
@@ -125,9 +125,29 @@ If you have dispatched execution for the same story's Phase 4 acceptance more th
 - Never dispatch directly to implementer, code-reviewer, or qa — the execution orchestrator manages those.
 - Never re-dispatch execution for a story after receiving a COMPLETE/closeable verdict. Once execution says "close US-NNN," close it.
 
+## Escalation Taxonomy
+
+When the execution hub reports a blocker, classify it before acting:
+
+**Operational issues (execution hub must self-repair — DO NOT dispatch project-research):**
+- Branch lifecycle issues (missing branch, wrong branch, merge conflicts)
+- Checkpoint state inconsistencies or drift
+- Build/lint/test failures (implementation issues — re-dispatch execution hub to fix)
+- File reference mismatches
+- If the execution hub escalated one of these, return it to the execution hub with instructions to use its Self-Repair Protocol.
+
+**Product/planning issues (coordinator action warranted):**
+- Plan-level issues (missing plan artifacts, wrong architecture, incomplete story)
+- Model capability issues (semantic reviewer flags work as unreliable)
+- Cross-story dependency conflicts
+- User-facing product decisions
+
+For product/planning issues: dispatch `/sdlc-project-research` for investigation, then re-dispatch execution with findings.
+
 ## Error Handling
 
 - MCP unavailable: Fall back to checkpoint or ask one disambiguating question. Do not assume planning or execution.
 - Ambiguous state: Summarize what you found, ask ONE question with two clear options.
-- Cross-cutting blocker: Dispatch `/sdlc-project-research` investigation, then re-dispatch execution with findings.
+- Cross-cutting blocker (product/planning level): Dispatch `/sdlc-project-research` investigation, then re-dispatch execution with findings.
+- Operational blocker from execution hub: Return to execution hub with self-repair instructions. Do NOT dispatch project-research.
 - Project not found: Report it, ask if user wants to create new or check different name.

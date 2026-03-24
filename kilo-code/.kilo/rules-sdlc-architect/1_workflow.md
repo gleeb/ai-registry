@@ -130,7 +130,10 @@ See common-skills/architect-execution-hub/references/review-cycle.md for iterati
 - Dispatch sdlc-code-reviewer for full-story holistic review (with SECURITY_REVIEW: true if any task had security review).
 - If Approved → dispatch sdlc-qa for full-story verification.
 - If Changes Required → identify affected tasks, re-dispatch implementer for those only.
-- If final QA passes → proceed to Phase 3b.
+- If final QA passes → proceed to Pre-Flight Evidence Gate.
+
+**Pre-Flight Evidence Gate (before Phase 3b):**
+Before dispatching the commercial semantic reviewer, read the QA agent's structured evidence from the Phase 3 story-level QA completion. Confirm all automated quality gates are clean: lint 0 errors, typecheck 0 errors, tests all passing, build exit 0. If any fail, return to Phase 2 for targeted fixes. Do NOT dispatch semantic reviewer until all automated gates are clean. The hub reads evidence — it does not re-run commands.
 
 ### phase: semantic_review (order: 3b)
 

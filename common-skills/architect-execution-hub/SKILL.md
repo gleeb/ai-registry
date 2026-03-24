@@ -84,11 +84,12 @@ See [`references/readiness-check.md`](references/readiness-check.md) for the ful
 
 ## Phase 1: Task Decomposition + Staging Doc
 
-This is the existing Phase 0 (resume check) and Phase 1 (context gathering, architecture, LLD, staging doc creation). No changes to the core flow, with one addition:
+This is the existing Phase 0 (resume check) and Phase 1 (context gathering, architecture, LLD, staging doc creation). No changes to the core flow, with additions:
 
 1. `checkpoint.sh execution --phase 1`
-2. **Staging doc scaffolding**: Use the staging doc template from `common-skills/project-documentation/references/staging-doc-template.md` to create the staging document. Pre-populate Plan References, Acceptance Criteria (from story.md), and Tech Stack sections.
-3. After staging doc is created: `checkpoint.sh execution --staging-doc "docs/staging/{filename}.md" --tasks-total {N}`
+2. **Testing strategy consumption**: If `plan/cross-cutting/testing-strategy.md` exists, read it and use the AC traceability table to inform per-task testing requirements. When decomposing tasks, include expected test types and locations for each task based on the testing strategy (e.g., "unit tests for data layer", "integration tests for API endpoint").
+3. **Staging doc scaffolding**: Use the staging doc template from `common-skills/project-documentation/references/staging-doc-template.md` to create the staging document. Pre-populate Plan References, Acceptance Criteria (from story.md), and Tech Stack sections.
+4. After staging doc is created: `checkpoint.sh execution --staging-doc "docs/staging/{filename}.md" --tasks-total {N}`
 
 ---
 
@@ -131,6 +132,17 @@ After all per-task dev loops pass:
 4. **Accessibility check** — if story has `design` in `candidate_domains`, verify accessibility requirements.
 
 **GATE**: Full-story review passes + full-story QA passes. If not, re-enter Phase 2 for affected tasks.
+
+### Pre-Flight Evidence Gate (before Phase 3b)
+
+Before dispatching the commercial semantic reviewer, read the QA agent's structured evidence from the Phase 3 story-level QA completion. Confirm all automated quality gates are clean:
+
+- Lint: 0 errors (from QA evidence)
+- Type check: 0 errors (from QA evidence)
+- Test suite: all passing (from QA evidence)
+- Build: exit 0 (from QA evidence)
+
+If any quality gate shows failures, return to Phase 2 for targeted fixes. Do NOT dispatch the semantic reviewer until all automated gates are clean. The hub reads evidence — it does not re-run commands.
 
 ---
 
@@ -240,6 +252,19 @@ When the architect detects a greenfield project (no package manager config, no s
 3. Run the standard review + QA cycle on the scaffold output.
 4. **GATE**: Verify `docs/index.md` exists before proceeding to Phase 1. If missing, re-dispatch implementer to complete documentation scaffolding.
 5. After scaffold is complete and gate passes, proceed with normal architecture planning (Phase 1) against the scaffolded codebase.
+
+## Self-Repair Protocol
+
+Before escalating ANY operational issue to coordinator, attempt self-repair:
+
+1. **Branch missing or wrong**: Run `checkpoint.sh git --branch-create --story {US-NNN-name} --base main` or create the branch manually. If work was done on the wrong branch, create the story branch from the current state and update `execution.yaml` accordingly.
+2. **Checkpoint drift**: Run `checkpoint.sh init` to re-derive state from existing artifacts on disk (`plan/`, `docs/staging/`). Then run `verify.sh execution` to confirm consistency. If fields are still inconsistent, overwrite them using `checkpoint.sh execution` with values derived from the staging doc task checklist + git log.
+3. **Checkpoint field inconsistency**: Overwrite inconsistent fields using `checkpoint.sh execution` with correct values derived from staging doc + git log.
+4. **Resume state unclear**: Read staging doc task checklist, cross-reference with git log, determine actual progress, update checkpoint accordingly.
+
+**DENY**: Escalating branch lifecycle issues, checkpoint drift, or checkpoint field inconsistencies to the coordinator. These are operational issues the execution hub must resolve with the tools at hand.
+
+**Only escalate to coordinator when**: the issue is at the product/planning level (missing plan artifacts, wrong architecture, model capability issues, cross-story dependency conflicts, user-facing product decisions).
 
 ## Key Rules
 

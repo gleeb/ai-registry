@@ -51,7 +51,26 @@ Monorepo stack:
 - **Python**: uv workspaces. See [python-uv.md](references/python-uv.md) and [monorepo.md](references/monorepo.md).
 - **Hybrid (JS + Python)**: pnpm workspaces for JS side, uv workspace for Python side, unified with a Makefile. See [monorepo.md](references/monorepo.md).
 
-### 4. Scaffold Project Documentation
+### 4. Set Up Test Infrastructure
+
+Every project gets a working test setup from day one. Configure per project type:
+
+| Project Type | Test Runner | Setup |
+|-------------|-------------|-------|
+| React + Vite | Vitest | `pnpm add -D vitest @testing-library/react @testing-library/jest-dom`, add `test` script to `package.json`, create `vitest.config.ts` |
+| Next.js | Vitest | `pnpm add -D vitest @testing-library/react @testing-library/jest-dom`, add `test` script, create `vitest.config.ts` |
+| React Native (Expo) | Jest (Expo preset) | `pnpm add -D jest @testing-library/react-native`, configure in `package.json` or `jest.config.js` |
+| Python | pytest | `uv add --dev pytest`, create `tests/` directory with `conftest.py` |
+
+For all project types:
+1. Configure the test runner with the project's path aliases and TypeScript settings.
+2. Create a test helper/setup file (e.g., `src/test-setup.ts` for JS/TS, `tests/conftest.py` for Python).
+3. Create one example test that actually runs and passes — proves the test runner works:
+   - JS/TS: `src/__tests__/setup.test.ts` or `src/example.test.ts` with a basic assertion.
+   - Python: `tests/test_setup.py` with a basic assertion.
+4. Run the test suite and confirm it passes before proceeding.
+
+### 5. Scaffold Project Documentation
 
 Every project gets a `docs/` directory. Read [project-docs.md](references/project-docs.md) for templates and structure.
 
@@ -59,12 +78,18 @@ Every project gets a `docs/` directory. Read [project-docs.md](references/projec
 2. Write `docs/index.md` — project overview, component descriptions, links to domain docs.
 3. Write domain index files (`docs/frontend/index.md`, `docs/backend/index.md`, etc.) with the tech stack and structure chosen during scaffolding.
 4. Create topic file stubs (`technology.md`, `project-structure.md`, `setup-and-deployment.md`, `api.md`, etc.) — fill in everything known from the scaffold.
-5. Create `docs/staging/README.md` with the staging workflow conventions.
-6. Create `docs/specs/` and `docs/archive/` with `.gitkeep`.
+5. Add a **Testing Conventions** section to the relevant domain doc (e.g., `docs/frontend/technology.md` or `docs/backend/technology.md`) documenting:
+   - Test framework and runner (e.g., "Vitest", "pytest")
+   - Test file naming convention (e.g., `*.test.ts` colocated, `tests/test_*.py`)
+   - Test file location convention (e.g., colocated next to source, `tests/` directory)
+   - How to run tests (e.g., `pnpm test`, `uv run pytest`)
+   - Test helper/setup file location
+6. Create `docs/staging/README.md` with the staging workflow conventions.
+7. Create `docs/specs/` and `docs/archive/` with `.gitkeep`.
 
-Fill in as much as you can from what was decided during scaffolding — don't leave placeholders for things already known (tech stack, folder structure, setup commands).
+Fill in as much as you can from what was decided during scaffolding — don't leave placeholders for things already known (tech stack, folder structure, setup commands, testing conventions).
 
-### 5. Post-Setup Verification
+### 6. Post-Setup Verification
 
 After scaffolding, verify the setup works:
 
@@ -73,14 +98,16 @@ After scaffolding, verify the setup works:
 pnpm install && pnpm dev    # Dev server starts without errors
 pnpm build                  # Build completes
 pnpm lint                   # No lint errors
+pnpm test                   # Test suite runs with at least 1 passing test
 
 # Python projects
 uv run python -c "print('ok')"  # venv + deps resolve
-uv run pytest                    # Tests pass (if any)
+uv run pytest                    # Test suite runs with at least 1 passing test
 
 # Monorepo
 turbo dev                   # All apps start
 turbo build                 # All apps build
+turbo test                  # All test suites run
 
 # All project types — documentation structure
 test -f docs/index.md       # Root index exists

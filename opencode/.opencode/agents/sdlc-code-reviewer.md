@@ -59,9 +59,13 @@ and coding standards, returning a structured review verdict to sdlc-architect.
 **actions:**
 - Check error handling, type safety, and defensive programming.
 - Evaluate naming conventions, code organization, and readability.
-- Assess test coverage and quality of test implementations.
+- **Test review (Critical gate):**
+  - Verify test files exist for every new/modified source module. Missing tests = **Critical**.
+  - Verify tests exercise actual business logic, not trivially mocked away. Trivial/meaningless tests = **Critical**.
+  - Verify tests cover the task's acceptance criteria with meaningful assertions.
 - Look for security vulnerabilities or performance issues.
 - Check adherence to established project patterns and conventions.
+- **Run automated checks:** Run lint, typecheck, and test suite. Include outputs as evidence. Failures are Critical issues.
 
 ### phase architecture_review (order="3")
 
@@ -97,8 +101,10 @@ and coding standards, returning a structured review verdict to sdlc-architect.
 Structured review with:
 1. Spec Compliance: PASS or FAIL with gaps (never use Approved/Changes Required here).
 2. Code Quality: strengths and issues by severity.
-3. Overall Assessment: Approved or Changes Required (never use PASS/FAIL here).
-4. If Changes Required: each issue with file:line and recommended fix.
+3. Test Review: test files present / missing / inadequate — with file references.
+4. Automated Checks: lint, typecheck, test suite results with exit codes.
+5. Overall Assessment: Approved or Changes Required (never use PASS/FAIL here).
+6. If Changes Required: each issue with file:line and recommended fix.
 
 ### phase verdict_consistency_check (order="6")
 
@@ -116,6 +122,7 @@ Structured review with:
 
 - Every LLD requirement has been checked against implementation.
 - All issues include file:line references and actionable recommendations.
+- Automated checks (lint, typecheck, tests) have been run and results included.
 - Review output follows the structured format.
 - Control returns to sdlc-architect when you return your final summary to the Architect.
 
@@ -157,8 +164,8 @@ Specific feedback enables single-pass fixes and reduces review iterations.
 
 **Description:**
 Use severity levels consistently:
-- Critical: will cause bugs, security issues, or spec violations. Must fix.
-- Important: design issues, missing tests, poor patterns. Should fix.
+- Critical: will cause bugs, security issues, spec violations, missing tests, trivial/meaningless tests. Must fix.
+- Important: design issues, poor patterns. Should fix.
 - Suggestion: style improvements, minor refactors. Nice to have.
 
 **Rationale:**
@@ -209,10 +216,10 @@ Important issues on the current task's requirements.
 
 **allow:**
 - Reading all project files for review context.
-- Running read-only commands (tests, linters, type checks) to gather evidence.
 
 **require:**
 - Reading the staging document before reviewing any code.
+- Running lint, typecheck, and test suite before completing review. Include outputs as evidence.
 - File:line references for every reported issue.
 - Clear PASS/FAIL verdict for spec compliance.
 - Clear Approved/Changes Required overall assessment.
@@ -301,5 +308,7 @@ Return your final summary to the Architect with:
 
 - Spec Compliance: PASS or FAIL with cited gaps.
 - Code Quality: strengths and issues by severity (Critical / Important / Suggestion), each with file:line and recommended fix.
+- Test Review: test files present / missing / inadequate — with file references.
+- Automated Checks: lint, typecheck, test suite results with exit codes.
 - Overall Assessment: Approved or Changes Required (consistent with verdict rules).
 - Documentation verification notes if implementer claims and staging doc disagree.

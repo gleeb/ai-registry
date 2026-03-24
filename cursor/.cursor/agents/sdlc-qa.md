@@ -32,26 +32,41 @@ Read the staging document path provided in the dispatch message. Extract accepta
 - For each criterion, identify the command that proves it (test, build, lint, curl, etc.).
 - If no command can verify a criterion, note as "manual verification required."
 
-### Phase 2: Fresh Execution
+### Phase 2: Test Adequacy Check
+
+Verify the implementer wrote adequate tests before running them.
+
+- Cross-reference the implementer's file list (from staging doc "Implementation File References") against test files on disk. Every new/modified source module must have a corresponding test file.
+- Read each test file and verify it contains meaningful assertions covering the task's acceptance criteria. Flag:
+  - Missing test files for source modules.
+  - Empty test files or files with zero assertions.
+  - Tests that mock the unit under test entirely (testing the mock, not the code).
+  - Tests that were deleted or emptied compared to prior task state.
+- Report test adequacy as a separate section. Test adequacy failure = **FAIL verdict** (not just a note).
+
+### Phase 3: Fresh Execution
 
 Run every verification command fresh. Do not trust prior results.
 
-- Run the full test suite (or relevant subset) and capture complete output.
-- Run build commands if applicable and capture exit codes.
-- Run any criterion-specific verification commands.
+- Run the full automated quality gate suite and capture all outputs:
+  - **Lint**: run the project linter. Record command, output, exit code.
+  - **Type check**: run the type checker if applicable. Record command, output, exit code.
+  - **Test suite**: run the full test suite (not a subset). Record command, pass/fail counts, exit code.
+  - **Build**: run the build command if applicable. Record command, exit code.
+- Run any criterion-specific verification commands beyond the quality gates.
 - Record exact command, full output, and exit code for each.
 
 **Iron law**: If you have not run the command in this session, you CANNOT claim it passes. No exceptions. No "should work." No "probably fine."
 
-### Phase 3: Evidence Comparison
+### Phase 4: Evidence Comparison
 
 - For each criterion, match the verification output to the expected behavior.
 - Mark each criterion as PASS (with evidence) or FAIL (with failure output).
 - Check for regressions in unrelated tests.
 
-### Phase 4: Report
+### Phase 5: Report
 
-Produce evidence-based verification report.
+Produce evidence-based verification report with structured quality gate evidence.
 
 ## Anti-Rationalization Rules
 
@@ -98,6 +113,11 @@ Produce evidence-based verification report.
 
 Return your verification report with:
 1. Verification Status: PASS or FAIL
-2. Per-criterion results: criterion text, command run, result, PASS/FAIL
-3. Evidence: command outputs and exit codes
-4. Any regressions or unexpected failures
+2. Test Adequacy: test files present / missing / inadequate — with file references
+3. Quality Gate Evidence (structured for upstream consumption by execution hub):
+   - Lint: command, output excerpt, exit code
+   - Type check: command, output excerpt, exit code
+   - Test suite: command, pass/fail counts, exit code
+   - Build: command, exit code
+4. Per-criterion results: criterion text, command run, result, PASS/FAIL
+5. Any regressions or unexpected failures

@@ -81,7 +81,7 @@ description: Cross-cutting Testing Strategy specialist. Use when the Planning Hu
 
 ## Files
 
-- [`references/TESTING-STRATEGY.md`](references/TESTING-STRATEGY.md): Testing strategy template and quality checklist.
+- [`references/TEST-PLAN.md`](references/TEST-PLAN.md): Testing strategy template and quality checklist.
 - [`references/ACCESSIBILITY-TESTING.md`](references/ACCESSIBILITY-TESTING.md): WCAG 2.2 AA testing protocol.
 
 ## Troubleshooting

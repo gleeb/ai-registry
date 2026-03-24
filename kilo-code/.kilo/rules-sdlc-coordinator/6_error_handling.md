@@ -23,14 +23,28 @@ a clear project identifier.
 2. Ask ONE question: present the specific ambiguity and offer two clear options.
 3. Route based on user's answer.
 
-## scenario: architect_reports_cross_cutting_blocker
+## scenario: architect_reports_blocker
 
-**trigger:** Architect returns via attempt_completion with a blocker that spans multiple issues or requires investigation outside the current issue scope.
+**trigger:** Architect returns via attempt_completion with a blocker.
 
 **required_actions:**
-1. Dispatch an sdlc-project-research investigation task to gather context on the blocker.
-2. On investigation completion, compose updated context for the architect.
-3. Re-dispatch sdlc-architect with the investigation findings and narrowed scope.
+1. Classify the blocker using the Escalation Taxonomy:
+
+**Operational issues (architect must self-repair — DO NOT dispatch project-research):**
+- Branch lifecycle issues (missing branch, wrong branch, merge conflicts)
+- Checkpoint state inconsistencies or drift
+- Build/lint/test failures (implementation issues)
+- File reference mismatches
+→ Return to architect with instructions to use its Self-Repair Protocol.
+
+**Product/planning issues (coordinator action warranted):**
+- Plan-level issues (missing plan artifacts, wrong architecture, incomplete story)
+- Model capability issues (semantic reviewer flags work as unreliable)
+- Cross-story dependency conflicts
+- User-facing product decisions
+→ Dispatch sdlc-project-research investigation, then re-dispatch architect with findings.
+
+2. Act on the classification. Do not dispatch project-research for operational issues.
 
 ## scenario: acceptance_loop_detection
 

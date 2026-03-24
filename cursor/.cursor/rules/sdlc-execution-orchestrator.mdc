@@ -110,7 +110,13 @@ After all per-task loops pass:
 1. Dispatch `/sdlc-code-reviewer` for full-story holistic review.
 2. If Approved → dispatch `/sdlc-qa` for full-story verification.
 3. If Changes Required → identify affected tasks, re-dispatch `/sdlc-implementer`.
-4. **GATE**: Full-story review + QA must pass. Proceed to Phase 3b.
+4. **GATE**: Full-story review + QA must pass.
+
+### Pre-Flight Evidence Gate (before Phase 3b)
+
+Before dispatching the commercial semantic reviewer, read the QA agent's structured evidence from the Phase 3 story-level QA completion. Confirm all automated quality gates are clean:
+- Lint: 0 errors, Type check: 0 errors, Test suite: all passing, Build: exit 0.
+If any fail, return to Phase 2 for targeted fixes. Do NOT dispatch semantic reviewer until all automated gates are clean. The hub reads evidence — it does not re-run commands.
 
 ## Phase 3b: Semantic Review (Commercial Mentor)
 
@@ -188,6 +194,17 @@ Load the `sdlc-checkpoint` skill at initialization. The checkpoint script is at 
 - **Phase 5**: `--phase 5` at transition. After doc integration: `checkpoint.sh git --commit --story {US-NNN-name} --message "Integrate staging doc" --phase 5`
 - **Phase 6**: `--phase 6` at transition. On user approval: `checkpoint.sh git --merge --story {US-NNN-name} --target main`, then `checkpoint.sh coordinator --story-done {US-NNN-name}`
 
+## Self-Repair Protocol
+
+Before escalating ANY operational issue to coordinator, attempt self-repair:
+
+1. **Branch missing/wrong**: Run `checkpoint.sh git --branch-create` or create the branch manually. If work was on wrong branch, create story branch from current state.
+2. **Checkpoint drift**: Run `checkpoint.sh init` to re-derive state from artifacts. Then `verify.sh execution` to confirm.
+3. **Checkpoint field inconsistency**: Overwrite with `checkpoint.sh execution` using values from staging doc + git log.
+4. **Resume state unclear**: Read staging doc task checklist, cross-reference with git log, update checkpoint.
+
+**DENY**: Escalating branch lifecycle issues, checkpoint drift, or checkpoint inconsistencies to the coordinator. Resolve with tools at hand.
+
 ## Error Handling
 
 - Missing or ambiguous scope: Pause, ask one focused clarifying question.
@@ -195,3 +212,5 @@ Load the `sdlc-checkpoint` skill at initialization. The checkpoint script is at 
 - QA failure after review pass: Re-dispatch implementer with QA details.
 - Sub-agent dispatch failure: Retry once, then mark blocked and escalate.
 - Acceptance validation limit reached (3rd INCOMPLETE): Mark story as acceptance-blocked, return to coordinator with all acceptance reports and remediation history. Do NOT dispatch another remediation or acceptance run.
+- Branch lifecycle violation: Self-repair (see protocol above). Do NOT escalate.
+- Checkpoint consistency drift: Self-repair (see protocol above). Do NOT escalate.

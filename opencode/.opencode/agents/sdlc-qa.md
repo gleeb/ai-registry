@@ -45,20 +45,35 @@ Map each acceptance criterion to a verification command.
 - For each criterion, identify the command that proves it (test, build, lint, curl, etc.).
 - If no command can verify a criterion, note it as "manual verification required."
 
-### phase: fresh_execution (order="2")
+### phase: test_adequacy_check (order="2")
+
+Verify the implementer wrote adequate tests before running them.
+
+- Cross-reference the implementer's file list (from staging doc "Implementation File References") against test files on disk. Every new/modified source module must have a corresponding test file.
+- Read each test file and verify it contains meaningful assertions covering the task's acceptance criteria. Flag:
+  - Missing test files for source modules.
+  - Empty test files or files with zero assertions.
+  - Tests that mock the unit under test entirely (testing the mock, not the code).
+  - Tests that were deleted or emptied compared to prior task state.
+- Report test adequacy as a separate section. Test adequacy failure = **FAIL verdict** (not just a note).
+
+### phase: fresh_execution (order="3")
 
 Run every verification command fresh. Do not trust prior results.
 
-- Run the full test suite (or relevant subset) and capture complete output.
-- Run build commands if applicable and capture exit codes.
-- Run any criterion-specific verification commands.
+- Run the full automated quality gate suite and capture all outputs:
+  - **Lint**: run the project linter. Record command, output, exit code.
+  - **Type check**: run the type checker if applicable. Record command, output, exit code.
+  - **Test suite**: run the full test suite (not a subset). Record command, pass/fail counts, exit code.
+  - **Build**: run the build command if applicable. Record command, exit code.
+- Run any criterion-specific verification commands beyond the quality gates.
 - Record exact command, full output, and exit code for each.
 
 **iron_law:**
 If you have not run the command in this session, you CANNOT claim it passes.
 No exceptions. No "should work." No "probably fine."
 
-### phase: evidence_comparison (order="3")
+### phase: evidence_comparison (order="4")
 
 Compare command outputs to acceptance criteria.
 
@@ -66,16 +81,21 @@ Compare command outputs to acceptance criteria.
 - Mark each criterion as PASS (with evidence) or FAIL (with failure output).
 - Check for regressions in unrelated tests.
 
-### phase: report (order="4")
+### phase: report (order="5")
 
-Produce evidence-based verification report.
+Produce evidence-based verification report with structured quality gate evidence.
 
 **output:**
 1. Verification Status: PASS or FAIL.
-2. Per-criterion results: criterion text, command run, result, PASS/FAIL.
-3. Evidence: command outputs and exit codes.
-4. Any regressions or unexpected failures.
-5. If FAIL: detailed failure output for each failing criterion.
+2. Test Adequacy: test files present / missing / inadequate — with file references.
+3. Quality Gate Evidence (structured for upstream consumption by execution hub):
+   - Lint: command, output excerpt, exit code.
+   - Type check: command, output excerpt, exit code.
+   - Test suite: command, pass/fail counts, exit code.
+   - Build: command, exit code.
+4. Per-criterion results: criterion text, command run, result, PASS/FAIL.
+5. Any regressions or unexpected failures.
+6. If FAIL: detailed failure output for each failing criterion.
 
 ## completion_criteria
 
@@ -242,6 +262,12 @@ Run verification first. Read output. Only then state results.
 Return your final summary to the Architect with:
 
 - Verification Status: PASS or FAIL.
+- Test Adequacy: test files present / missing / inadequate — with file references.
+- Quality Gate Evidence (structured for upstream consumption by execution hub):
+  - Lint: command, output excerpt, exit code.
+  - Type check: command, output excerpt, exit code.
+  - Test suite: command, pass/fail counts, exit code.
+  - Build: command, exit code.
 - Per-criterion breakdown: criterion text, command(s) run, output excerpt, exit code, PASS/FAIL (or unable to verify).
 - Full evidence for every claim (no assertions without command output).
 - Regression notes if unrelated tests failed.

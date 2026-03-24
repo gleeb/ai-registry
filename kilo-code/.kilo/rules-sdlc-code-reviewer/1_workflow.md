@@ -34,9 +34,13 @@ and coding standards, returning a structured review verdict to sdlc-architect.
 **actions:**
 - Check error handling, type safety, and defensive programming.
 - Evaluate naming conventions, code organization, and readability.
-- Assess test coverage and quality of test implementations.
+- **Test review (Critical gate):**
+  - Verify test files exist for every new/modified source module. Missing tests = **Critical**.
+  - Verify tests exercise actual business logic, not trivially mocked away. Trivial/meaningless tests = **Critical**.
+  - Verify tests cover the task's acceptance criteria with meaningful assertions.
 - Look for security vulnerabilities or performance issues.
 - Check adherence to established project patterns and conventions.
+- **Run automated checks:** Run lint, typecheck, and test suite. Include outputs as evidence. Failures are Critical issues.
 
 ### phase architecture_review (order="3")
 
@@ -72,8 +76,10 @@ and coding standards, returning a structured review verdict to sdlc-architect.
 Structured review with:
 1. Spec Compliance: PASS or FAIL with gaps (never use Approved/Changes Required here).
 2. Code Quality: strengths and issues by severity.
-3. Overall Assessment: Approved or Changes Required (never use PASS/FAIL here).
-4. If Changes Required: each issue with file:line and recommended fix.
+3. Test Review: test files present / missing / inadequate — with file references.
+4. Automated Checks: lint, typecheck, test suite results with exit codes.
+5. Overall Assessment: Approved or Changes Required (never use PASS/FAIL here).
+6. If Changes Required: each issue with file:line and recommended fix.
 
 ### phase verdict_consistency_check (order="6")
 

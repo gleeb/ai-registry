@@ -50,6 +50,14 @@ Follow [`skill-loading-protocol.md`](skill-loading-protocol.md) to map `tech_sta
 
 Load `common-skills/project-documentation/` to prepare staging doc templates for Phase 1.
 
+### 6. Check Cross-Cutting Testing Strategy (Soft Gate)
+
+Check if `plan/cross-cutting/testing-strategy.md` exists. If it does:
+- Note it as available for Phase 1 task decomposition (include per-task testing requirements from the AC traceability table).
+- The architect should read it during Phase 1 and use it to inform testing expectations per task.
+
+If it does not exist: log a warning but do not block. Testing obligations still apply via agent rules (implementer must write tests, reviewer gates on test existence, QA verifies adequacy).
+
 ## Gate Criteria
 
 All of the following must be true to proceed:
@@ -59,6 +67,7 @@ All of the following must be true to proceed:
 - [ ] All `depends_on_stories` are completed
 - [ ] Tech skills identified (missing skills noted but not blocking)
 - [ ] Documentation skill loaded
+- [ ] Cross-cutting testing strategy noted if available (soft — does not block)
 
 ## On Failure
 

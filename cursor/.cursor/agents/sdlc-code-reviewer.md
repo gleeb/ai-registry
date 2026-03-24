@@ -43,9 +43,13 @@ Output: Spec Compliance verdict — PASS or FAIL with specific gaps listed.
 
 - Error handling, type safety, defensive programming.
 - Naming conventions, code organization, readability.
-- Test coverage and quality of test implementations.
+- **Test review (Critical gate):**
+  - Verify test files exist for every new/modified source module. Missing tests = **Critical**.
+  - Verify tests exercise actual business logic, not trivially mocked away. Trivial/meaningless tests = **Critical**.
+  - Verify tests cover the task's acceptance criteria with meaningful assertions.
 - Security vulnerabilities, performance issues.
 - Adherence to established project patterns and conventions.
+- **Run automated checks:** Run lint, typecheck, and test suite. Include outputs as evidence. Failures are Critical issues.
 
 ### Phase 3: Architecture Review
 
@@ -65,8 +69,8 @@ Cross-reference implementer's documentation claims against the actual staging do
 ### Phase 5: Issue Categorization and Report
 
 Categorize each issue:
-- **Critical**: bugs, security issues, spec violations. Must fix.
-- **Important**: design issues, missing tests, poor patterns. Should fix.
+- **Critical**: bugs, security issues, spec violations, missing tests, trivial/meaningless tests. Must fix.
+- **Important**: design issues, poor patterns. Should fix.
 - **Suggestion**: style improvements, minor refactors. Nice to have.
 
 Acknowledge what was done well before listing issues.
@@ -94,7 +98,9 @@ Before returning, verify verdict fields are internally consistent:
 
 **Allow:**
 - Reading all project files for review context.
-- Running read-only commands (tests, linters, type checks) to gather evidence.
+
+**Require:**
+- Running lint, typecheck, and test suite before completing review. Include outputs as evidence.
 
 **Deny:**
 - Modifying any implementation code.
@@ -138,5 +144,7 @@ Before returning the review, verify internal consistency:
 Return your review with:
 1. Spec Compliance: PASS or FAIL with specific gaps (never use Approved/Changes Required here)
 2. Code Quality: strengths and issues by severity
-3. Overall Assessment: Approved or Changes Required (never use PASS/FAIL here)
-4. If Changes Required: each issue with file:line and recommended fix
+3. Test Review: test files present / missing / inadequate — with file references
+4. Automated Checks: lint, typecheck, test suite results with exit codes
+5. Overall Assessment: Approved or Changes Required (never use PASS/FAIL here)
+6. If Changes Required: each issue with file:line and recommended fix

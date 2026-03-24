@@ -1,0 +1,18 @@
+Resume execution for Aicoholoic project, story US-002-inventory-manual-crud-query.
+
+Context from the last session:
+- Task 1 is COMPLETE (review iteration 3, QA PASS). 
+- The story was blocked on two OPERATIONAL issues:
+  - BLK-US002-001: branch lifecycle violation (work executed on main instead of story branch)
+  - BLK-US002-002: checkpoint consistency drift in execution metadata/lifecycle fields
+- The last coordinator action was dispatching sdlc-project-research to investigate these blockers. That dispatch was cancelled — it was the wrong routing. These are operational issues, not product/planning issues.
+
+Instructions:
+1. Do NOT dispatch sdlc-project-research for these blockers. Per the updated escalation taxonomy, branch lifecycle violations and checkpoint drift are operational issues that the execution hub must self-repair.
+2. Re-dispatch sdlc-architect for story US-002-inventory-manual-crud-query. In your dispatch, instruct the architect to:
+   a. Load the sdlc-checkpoint skill and run verify.sh execution for resume context.
+   b. Before resuming Task 2, apply the Self-Repair Protocol to resolve both blockers:
+      - BLK-US002-001: Create the story branch from current state using checkpoint.sh git --branch-create, update execution.yaml branch fields.
+      - BLK-US002-002: Run checkpoint.sh init to re-derive state from artifacts, then verify.sh execution to confirm consistency.
+   c. After self-repair, clear the blocker entries in the staging doc and resume Phase 2 from Task 2.
+3. The architect manages implement/review/qa dispatch internally as usual. Return authoritative completion or blocker status for coordinator synthesis.

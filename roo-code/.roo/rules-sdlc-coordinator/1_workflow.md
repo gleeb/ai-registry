@@ -68,7 +68,7 @@ Process completion results from dispatched modes.
 - Read the attempt_completion result from the dispatched mode.
 - Determine next action: dispatch next issue, report completion, handle blocker.
 - If architect reports issue complete: check for remaining issues, dispatch next if any.
-- If architect reports blocker: dispatch sdlc-project-research investigation, then re-dispatch architect.
+- If architect reports blocker: classify using the Escalation Taxonomy (see error_handling). Operational blockers → return to architect with self-repair instructions. Product/planning blockers → dispatch sdlc-project-research investigation, then re-dispatch architect.
 - If planner reports artifacts ready: transition to execution phase (dispatch architect).
 
 #### trust_hierarchy
