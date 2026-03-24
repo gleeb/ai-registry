@@ -35,11 +35,13 @@ The **AI Registry** solves this by storing all agent configurations in a single 
 ┌──────────────────────────────────────────────────────┐
 │                   AI Registry (this repo)             │
 │                                                       │
-│  cursor/  roo-code/  kilo-code/   claude/    codex/   │
-│  └─ .cursor/     ├─ .roomodes   ├─ CLAUDE.md ├─ AGENTS.md
-│     └─ rules/    └─ .roo/                    │       │
-│                     ├─ rules-sdlc-*/                  │
-│                     └─ skills/ → ../../common-skills/ │
+│  cursor/  roo-code/  kilo-code/  opencode/  claude/  codex/  │
+│  └─ .cursor/    ├─ .roomodes  ├─ .opencode/ ├─ CLAUDE.md ├─ AGENTS.md
+│     └─ rules/   └─ .roo/     │  ├─ agents/ │             │
+│     └─ agents/    ├─ rules-*/ │  ├─ commands/             │
+│                   └─ skills/  │  ├─ plugins/              │
+│                               │  └─ skills/ → common-skills/
+│                               └─ opencode.json            │
 │                                                       │
 │  common-skills/                                       │
 │  ├─ planning-hub/                                     │
@@ -144,6 +146,26 @@ ai-registry/
 │   ├── react-native/                   # React Native skill
 │   ├── verification-before-completion/ # Verification skill
 │   └── universal-skills.md             # Universal skill guidelines
+│
+├── opencode/                           # OpenCode configurations
+│   ├── .opencode/
+│   │   ├── agents/                    # 21 SDLC agents (1 primary + 2 hubs + 18 workers)
+│   │   │   ├── sdlc-coordinator.md    # PRIMARY: phase routing entry point
+│   │   │   ├── sdlc-planner.md        # HUB: 7-phase planning orchestrator
+│   │   │   ├── sdlc-planner-prd.md ... sdlc-planner-testing.md  # 10 planning workers
+│   │   │   ├── sdlc-plan-validator.md                            # Validator
+│   │   │   ├── sdlc-architect.md      # HUB: implementation lifecycle
+│   │   │   ├── sdlc-implementer.md ... sdlc-acceptance-validator.md  # Execution workers
+│   │   │   └── sdlc-project-research.md, sdlc-documentation-writer.md  # Utility
+│   │   ├── commands/                  # Custom SDLC commands
+│   │   │   ├── sdlc.md               # /sdlc <project> entry point
+│   │   │   └── sdlc-continue.md      # /sdlc-continue checkpoint resume
+│   │   ├── plugins/                   # Logging and analytics
+│   │   │   └── sdlc-logger.ts        # Dispatch/response/token logger
+│   │   └── skills/ → ../../common-skills/  # Symlink to shared skills
+│   ├── opencode.json                  # MCP servers, permissions, model config
+│   ├── AGENTS.md                      # Global project instructions
+│   └── MIGRATION-PROTOCOL.md         # Guide for migrating Roo Code modes to OpenCode
 │
 ├── claude/                             # Claude Code (CLI) configurations
 │   └── CLAUDE.md
@@ -487,6 +509,67 @@ See [cursor/MIGRATION-PROTOCOL.md](cursor/MIGRATION-PROTOCOL.md) for the full st
 
 ---
 
+## OpenCode Architecture
+
+The OpenCode implementation is a terminal-based AI coding agent that preserves the full Roo Code 3-level hierarchy natively. Unlike Cursor (which requires flattening), OpenCode's `permission.task` system on subagents enables multi-level dispatch.
+
+### How It Works
+
+```
+User: /sdlc my-project
+  → sdlc-coordinator (primary agent, Tab-switchable)
+    → sdlc-planner (subagent hub, dispatches planning workers)
+        → sdlc-planner-prd, sdlc-planner-architecture, ... (subagent workers)
+    → sdlc-architect (subagent hub, dispatches execution workers)
+        → sdlc-implementer, sdlc-code-reviewer, sdlc-qa, ... (subagent workers)
+```
+
+**Primary agents** are user-facing and switchable via Tab. **Hub subagents** orchestrate workers via the Task tool. **Worker subagents** receive scoped work and return results.
+
+### Dispatch Protocol
+
+| Roo Code | OpenCode |
+|---|---|
+| `new_task(mode="X", message="Y")` | Task tool: `@X` with prompt Y |
+| `attempt_completion(result="Z")` | Subagent returns final message |
+| `switch_mode(mode="X")` | Tab-switch (primary) or `@X` (subagent) |
+| `groups: [read]` | `permission: { edit: "deny", bash: "deny" }` |
+| `fileRegex` restrictions | Prompt-level "You may ONLY write to..." |
+
+### Agent Classification (21 total)
+
+| Type | Agents | Role |
+|---|---|---|
+| **Primary** (1) | sdlc-coordinator | User-facing entry point, phase routing |
+| **Hub Subagent** (2) | sdlc-planner, sdlc-architect | Orchestrate workers via Task tool |
+| **Planning Workers** (10) | prd, architecture, stories, hld, security, api, data, devops, design, testing | Domain-specific planning |
+| **Validation** (1) | plan-validator | 4-mode Reality Checker |
+| **Execution Workers** (4) | implementer, code-reviewer, qa, acceptance-validator | Implementation lifecycle |
+| **Review** (1) | semantic-reviewer | Commercial-model quality gate |
+| **Utility** (2) | project-research, documentation-writer | Research and docs |
+
+### OpenCode-Specific Features
+
+- **Custom commands**: `/sdlc <project>` and `/sdlc-continue` as native TUI commands
+- **Plugin system**: `sdlc-logger.ts` hooks `tool.execute.before/after` for dispatch logging, response capture, and token analytics
+- **Native skill tool**: Skills discovered automatically from `.opencode/skills/*/SKILL.md`
+- **Granular permissions**: Per-command bash permissions, per-agent task dispatch allowlists
+- **AGENTS.md**: Global project instructions loaded at session start
+
+### Configuration
+
+- **Agent definitions**: `.opencode/agents/*.md` (Markdown with YAML frontmatter)
+- **MCP servers**: `opencode.json` (Context7 + Linear)
+- **Skills**: `.opencode/skills/ → ../../common-skills/` (symlink)
+- **Commands**: `.opencode/commands/*.md`
+- **Plugins**: `.opencode/plugins/*.ts`
+
+### Adding New OpenCode Agents
+
+See [opencode/MIGRATION-PROTOCOL.md](opencode/MIGRATION-PROTOCOL.md) for the full step-by-step guide, decision tree, templates, and checklist.
+
+---
+
 ## Checkpoint and Resume System
 
 The SDLC workflow includes a crash-safe checkpoint system that enables seamless continuation across agents, models, and IDEs. If an agent stops mid-workflow (token exhaustion, IDE switch, model change), you can resume from the exact point using `/sdlc-continue`.
@@ -521,7 +604,7 @@ User: /sdlc-continue
 
 ### Cross-IDE Portability
 
-The checkpoint files are plain YAML in the project root. The scripts are accessible via `.roo/skills/sdlc-checkpoint/scripts/` (symlinked from the registry). Any IDE that can run shell commands can read and write checkpoints — Roo-Code, Cursor, Claude Code, and Codex all work.
+The checkpoint files are plain YAML in the project root. The scripts are accessible via `.roo/skills/sdlc-checkpoint/scripts/` (or `.opencode/skills/sdlc-checkpoint/scripts/` for OpenCode), symlinked from the registry. Any IDE that can run shell commands can read and write checkpoints — Roo-Code, Kilo Code, Cursor, OpenCode, Claude Code, and Codex all work.
 
 ### Skill Structure
 
@@ -574,6 +657,8 @@ The script will create symlinks for:
 | `kilo-code/.kilo/`            | `.kilo/`             |
 | `common-skills/`              | `.kilocode/skills/`  |
 | `claude/CLAUDE.md`            | `CLAUDE.md`          |
+| `opencode/.opencode/`         | `.opencode/`         |
+| `opencode/opencode.json`      | `opencode.json`      |
 | `codex/AGENTS.md`             | `AGENTS.md`          |
 
 ### 3. Set Up the Global Gitignore (Important!)
@@ -599,6 +684,8 @@ cat >> ~/.gitignore_global << 'EOF'
 .cursor/agents
 .roomodes
 .roo
+.opencode
+opencode.json
 CLAUDE.md
 AGENTS.md
 
@@ -635,6 +722,7 @@ From this point forward, Git will ignore these files in **every** repository on 
 | **Cursor**   | `.cursor/rules/*.mdc`, `.cursor/agents/*.md` | [Cursor Docs](https://docs.cursor.com) |
 | **Roo-Code** | `.roomodes`, `.roo/`                 | [Roo-Code Docs](https://docs.roocode.com) |
 | **Kilo Code** | `.kilocodemodes`, `.kilo/`          | [Kilo Code Docs](https://kilo.ai/docs/customize) |
+| **OpenCode** | `.opencode/agents/*.md`, `opencode.json` | [OpenCode Docs](https://opencode.ai/docs/) |
 | **Claude Code** | `CLAUDE.md`                       | [Claude Code Docs](https://docs.anthropic.com/en/docs/claude-code) |
 | **Codex / Windsurf** | `AGENTS.md`                 | — |
 
@@ -668,8 +756,9 @@ From this point forward, Git will ignore these files in **every** repository on 
 1. **Roo-Code**: Add a new entry to the `customModes` array in `roo-code/.roomodes`. Create corresponding rules in `roo-code/.roo/rules-{slug}/`. Each mode needs a `slug`, `name`, `roleDefinition`, `groups` (permissions), and `customInstructions`.
 2. **Kilo Code**: Add a new entry to the `customModes` array in `kilo-code/.kilocodemodes`. Create corresponding rules in `kilo-code/.kilo/rules-{slug}/`. Use the same YAML schema as Roo-Code, but exclude the `mcp` group (MCP tools are available by default in Kilo Code).
 3. **Cursor**: For orchestrators, add a `.mdc` rule under `cursor/.cursor/rules/`. For leaf workers, add a `.md` subagent under `cursor/.cursor/agents/`. See [cursor/MIGRATION-PROTOCOL.md](cursor/MIGRATION-PROTOCOL.md) for the decision tree and templates.
-4. **Claude**: Update `claude/CLAUDE.md` with additional context or behavioral instructions.
-5. **Codex**: Update `codex/AGENTS.md` with new agent directives.
+4. **OpenCode**: For primary agents, hub subagents, or worker subagents, add a `.md` file under `opencode/.opencode/agents/`. Configure MCP and permissions in `opencode/opencode.json`. See [opencode/MIGRATION-PROTOCOL.md](opencode/MIGRATION-PROTOCOL.md) for the decision tree and templates.
+5. **Claude**: Update `claude/CLAUDE.md` with additional context or behavioral instructions.
+6. **Codex**: Update `codex/AGENTS.md` with new agent directives.
 
 ### Editing Existing Rules
 

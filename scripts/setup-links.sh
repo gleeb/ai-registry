@@ -60,6 +60,8 @@ clean_registry_links() {
     "$TARGET_DIR/.kilocode"
     "$TARGET_DIR/CLAUDE.md"
     "$TARGET_DIR/AGENTS.md"
+    "$TARGET_DIR/.opencode"
+    "$TARGET_DIR/opencode.json"
     # Legacy / previously created — cleaned up even if no longer in the script
     "$TARGET_DIR/.cursorrules"
     "$TARGET_DIR/.clinerules"
@@ -193,6 +195,18 @@ create_link \
   "$REGISTRY_DIR/common-skills" \
   "$TARGET_DIR/.kilocode/skills" \
   ".kilocode/skills/" \
+  || ((ERRORS++))
+
+create_link \
+  "$REGISTRY_DIR/opencode/.opencode" \
+  "$TARGET_DIR/.opencode" \
+  ".opencode/" \
+  || ((ERRORS++))
+
+create_link \
+  "$REGISTRY_DIR/opencode/opencode.json" \
+  "$TARGET_DIR/opencode.json" \
+  "opencode.json" \
   || ((ERRORS++))
 
 echo ""
