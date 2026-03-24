@@ -12,7 +12,7 @@ This check has two sub-sections: internal consistency (are individual reports se
 
 ### Sub-section A: Internal Consistency
 
-1. Collect all `attempt_completion` results from:
+1. Collect all final summaries returned to the parent agent from:
    - Per-task code reviewers (each task's Spec Compliance + Overall Assessment)
    - Per-task QA verifiers (each task's Verification Status + per-criterion results)
    - Full-story code reviewer (Spec Compliance + Overall Assessment)

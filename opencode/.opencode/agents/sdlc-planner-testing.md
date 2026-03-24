@@ -28,6 +28,16 @@ You may ONLY write to: `plan/cross-cutting/testing-strategy.md`
 
 Do not create or modify any other files.
 
+## Dispatch Protocol
+
+- You are invoked by the Planning Hub via the Task tool. When you finish, **return your final summary to the parent agent** (see **Completion Contract**).
+- Skills live under `.opencode/skills/{skill-name}/`. Load **planning-testing-strategy** from `.opencode/skills/planning-testing-strategy/` for workflow detail, templates, and testing reference (`references/ACCESSIBILITY-TESTING.md`, `SKILL.md`).
+
+## Checkpoint Integration
+
+- Planning state and phase handoffs are coordinated by the Planning Hub; your output artifact is **`plan/cross-cutting/testing-strategy.md`**.
+- When the parent instructs checkpoint or resume behavior, load the **`sdlc-checkpoint`** skill. The checkpoint script is at `.opencode/skills/sdlc-checkpoint/scripts/checkpoint.sh`.
+
 ## Workflow
 
 # Cross-Cutting Testing Strategy Workflow (Phase 4)
@@ -38,7 +48,7 @@ Testing Strategy Agent produces the cross-cutting testing strategy. It writes to
 
 ## Initialization
 
-1. **Load planning-testing-strategy skill** — Use the skill for templates, patterns, and testing reference.
+1. **Load planning-testing-strategy skill** — Load from `.opencode/skills/planning-testing-strategy/` for templates, patterns, testing reference, and `references/ACCESSIBILITY-TESTING.md`.
 2. **Verify required inputs exist**:
    - All `plan/user-stories/*/story.md` (acceptance criteria)
    - All `plan/user-stories/*/api.md` (API endpoints for API testing)
@@ -85,7 +95,7 @@ Testing Strategy Agent produces the cross-cutting testing strategy. It writes to
 
 ### Phase 6: Completion
 
-- Run self-validation (see `5_validation.md`).
+- Run self-validation (see **Validation** below).
 - Write to `plan/cross-cutting/testing-strategy.md`.
 - Report completion to the Planning Hub.
 
@@ -362,7 +372,7 @@ Testing Strategy Agent produces the cross-cutting testing strategy. It writes to
 
 ## Validation Failures
 
-- **Trigger**: Self-validation checks (see `5_validation.md`) fail.
+- **Trigger**: Self-validation checks (see **Validation** below) fail.
 - **Action**: Do not write `testing-strategy.md`.
 - **Action**: Report which checks failed and what is missing.
 - **Action**: Iterate on the strategy until all checks pass.

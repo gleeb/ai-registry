@@ -1,6 +1,6 @@
 # DevOps Agent Dispatch Template
 
-Use this template when dispatching `sdlc-planner-devops` via `new_task` for Phase 4 cross-cutting DevOps planning.
+Use this template when dispatching `sdlc-planner-devops` via the Task tool for Phase 4 cross-cutting DevOps planning.
 
 ## Required Message Structure
 
@@ -32,13 +32,13 @@ REQUIREMENTS FROM HIGHER DIMENSIONS:
 - PRD NFRs for availability, scalability, performance
 
 SHARED SPARRING RULES:
-Read and apply common-skills/planning-hub/references/shared-sparring-rules.md for all interactions.
+Read and apply skills/planning-hub/references/shared-sparring-rules.md for all interactions.
 
 OUTPUT:
 - Write DevOps plan to plan/cross-cutting/devops.md
 
 COMPLETION CONTRACT:
-Return via attempt_completion with:
+Return your final summary to the parent agent with:
 1. Confirmation that plan/cross-cutting/devops.md has been written
 2. CI/CD pipeline overview (stages, gates, artifacts)
 3. Deployment strategy (blue-green, canary, rolling, etc.)

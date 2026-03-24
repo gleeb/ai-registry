@@ -46,7 +46,7 @@ description: Orchestration hub for project planning. Use when starting a new pro
 
 ## Checkpoint Integration
 
-Load the `sdlc-checkpoint` skill at hub initialization. The checkpoint script is at `.roo/skills/sdlc-checkpoint/scripts/checkpoint.sh`.
+Load the `sdlc-checkpoint` skill at hub initialization. The checkpoint script is at `skills/sdlc-checkpoint/scripts/checkpoint.sh`.
 
 **REQUIRE**: Before every dispatch, call `checkpoint.sh planning` with the current state (write-ahead pattern).
 **REQUIRE**: After every agent completion, call `checkpoint.sh planning` to record progress.
@@ -65,7 +65,7 @@ See the `sdlc-checkpoint` skill for the full `dispatch-log` API and flags.
 Before starting any planning work:
 
 1. Check if `.sdlc/planning.yaml` exists.
-2. If it exists, run `.roo/skills/sdlc-checkpoint/scripts/verify.sh planning`.
+2. If it exists, run `skills/sdlc-checkpoint/scripts/verify.sh planning`.
 3. Read the `recommendation` field from the output and follow it (see `sdlc-checkpoint/references/resume-protocol.md`).
 4. If no checkpoint exists, proceed to Phase 1.
 

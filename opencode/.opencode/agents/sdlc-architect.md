@@ -46,12 +46,12 @@ Do not use this mode for ideation/PRD shaping (use the planning hub / sdlc-plann
 
 ---
 
-## OpenCode Dispatch Protocol
+## Dispatch Protocol
 
-1. **Task tool:** Delegate work only to subagents allowed in this file’s `permission.task` block. Each delegation is a **Task tool dispatch** to the named subagent (e.g. `@sdlc-implementer`), with a complete message that includes staging path, specifications, and completion expectations described in the templates under **Dispatch Patterns** and in `.opencode/skills/architect-execution-hub/`.
+1. **Task tool:** Delegate work only to subagents allowed in this file's `permission.task` block. Each delegation is a Task tool dispatch to the named subagent (e.g. `@sdlc-implementer`), with a complete message that includes staging path, specifications, and completion expectations described in the templates under **Dispatch Patterns** and in `.opencode/skills/architect-execution-hub/`.
 2. **No direct implementation:** This hub plans, documents, checkpoints, and orchestrates; it does not edit application source. Implementers and other subagents perform code changes per their permissions.
-3. **Path translation (Roo → OpenCode):** Any historical reference to `.roo/skills/` or `common-skills/` in plans or skills means **`.opencode/skills/`** in this repo. Use `.opencode/skills/<skill-name>/` for scripts, references, and templates (e.g. architect-execution-hub, project-documentation, sdlc-checkpoint, scaffold-project).
-4. **Coordinator handoff:** When the workflow says to return control to the coordinator, **return to the coordinator** with a structured summary (see **Completion Contract**). Do not imply a legacy mode switch; the parent coordinator continues routing.
+3. **Skill paths:** Skills are located under `.opencode/skills/{skill-name}/`. Use this path for scripts, references, and templates (e.g. architect-execution-hub, project-documentation, sdlc-checkpoint, scaffold-project).
+4. **Coordinator handoff:** When the workflow completes, return to the coordinator with a structured summary (see **Completion Contract**).
 
 ---
 
@@ -211,7 +211,10 @@ See .opencode/skills/architect-execution-hub/references/review-cycle.md for iter
 - Task tool dispatch to @sdlc-code-reviewer for full-story holistic review (with SECURITY_REVIEW: true if any task had security review).
 - If Approved → Task tool dispatch to @sdlc-qa for full-story verification.
 - If Changes Required → identify affected tasks, Task tool dispatch to @sdlc-implementer for those only.
-- If final QA passes → proceed to Phase 3b.
+- If final QA passes → proceed to Pre-Flight Evidence Gate.
+
+**Pre-Flight Evidence Gate (before Phase 3b):**
+Before Task tool dispatch to @sdlc-semantic-reviewer, read the QA agent's structured evidence from the Phase 3 story-level QA completion. Confirm all automated quality gates are clean: lint 0 errors, typecheck 0 errors, tests all passing, build exit 0. If any fail, return to Phase 2 for targeted fixes. Do NOT dispatch the semantic reviewer until all automated gates are clean. The hub reads evidence — it does not re-run commands.
 
 ### phase: semantic_review (order: 3b)
 
@@ -724,6 +727,33 @@ This section provides the local model with commercial-grade reasoning and target
 - Record the failure in the staging document.
 - Retry the dispatch once with the same parameters.
 - If retry fails, mark task as blocked and return to the coordinator.
+
+## scenario: branch_lifecycle_violation
+
+**Trigger:** Work was done on wrong branch, story branch is missing, or `.opencode/skills/sdlc-checkpoint/scripts/verify.sh execution` reports branch issues.
+
+**required_actions:**
+- If story branch does not exist: run `checkpoint.sh git --branch-create --story {US-NNN-name} --base main`.
+- If work was done on wrong branch: create the story branch from the current state and update `execution.yaml` fields (`branch_name`, `base_branch`, `base_commit`).
+- Run `.opencode/skills/sdlc-checkpoint/scripts/verify.sh execution` to confirm the branch state is consistent.
+- Continue execution from the current phase.
+
+**prohibited_actions:**
+- Do not escalate branch lifecycle issues to the coordinator. These are operational issues resolvable with checkpoint tools.
+
+## scenario: checkpoint_consistency_drift
+
+**Trigger:** `.opencode/skills/sdlc-checkpoint/scripts/verify.sh execution` reports inconsistencies between checkpoint state and actual artifacts on disk.
+
+**required_actions:**
+- Run `checkpoint.sh init` to re-derive full state from existing artifacts (`plan/`, `docs/staging/`).
+- Run `.opencode/skills/sdlc-checkpoint/scripts/verify.sh execution` to confirm state is now consistent.
+- If specific fields are still incorrect, overwrite them using `checkpoint.sh execution` with values derived from the staging doc task checklist and git log.
+- Continue execution from the corrected phase/task/step.
+
+**prohibited_actions:**
+- Do not escalate checkpoint drift to the coordinator. Resolve with checkpoint tools.
+- Do not blindly trust the checkpoint over disk artifacts — verify.sh output takes precedence.
 
 ---
 

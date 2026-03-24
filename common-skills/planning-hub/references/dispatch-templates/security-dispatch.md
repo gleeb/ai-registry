@@ -1,6 +1,6 @@
 # Security Agent Dispatch Template
 
-Use this template when dispatching `sdlc-planner-security` via `new_task` for per-story security controls (Phase 3).
+Use this template when dispatching `sdlc-planner-security` via the Task tool for per-story security controls (Phase 3).
 
 For security overview rollup (Phase 4), use `security-rollup-dispatch.md` instead.
 
@@ -39,13 +39,13 @@ REQUIREMENTS FROM HIGHER DIMENSIONS:
 - PRD security and compliance NFRs
 
 SHARED SPARRING RULES:
-Read and apply common-skills/planning-hub/references/shared-sparring-rules.md for all interactions.
+Read and apply skills/planning-hub/references/shared-sparring-rules.md for all interactions.
 
 OUTPUT:
 - Write security controls to plan/user-stories/US-NNN-name/security.md
 
 COMPLETION CONTRACT:
-Return via attempt_completion with:
+Return your final summary to the parent agent with:
 1. Confirmation that security.md has been written in the story folder
 2. Threat assessment scoped to this story
 3. Auth requirements per API endpoint (if applicable)

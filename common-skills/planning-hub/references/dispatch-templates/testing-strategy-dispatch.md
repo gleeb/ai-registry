@@ -1,6 +1,6 @@
 # Testing Strategy Agent Dispatch Template
 
-Use this template when dispatching `sdlc-planner-testing` via `new_task` for Phase 4 cross-cutting testing strategy.
+Use this template when dispatching `sdlc-planner-testing` via the Task tool for Phase 4 cross-cutting testing strategy.
 
 ## Required Message Structure
 
@@ -32,13 +32,13 @@ REQUIREMENTS FROM HIGHER DIMENSIONS:
 - PRD NFRs for performance and reliability testing
 
 SHARED SPARRING RULES:
-Read and apply common-skills/planning-hub/references/shared-sparring-rules.md for all interactions.
+Read and apply skills/planning-hub/references/shared-sparring-rules.md for all interactions.
 
 OUTPUT:
 - Write testing strategy to plan/cross-cutting/testing-strategy.md
 
 COMPLETION CONTRACT:
-Return via attempt_completion with:
+Return your final summary to the parent agent with:
 1. Confirmation that plan/cross-cutting/testing-strategy.md has been written
 2. Coverage mapping: each story's acceptance criteria → test type and approach
 3. Test pyramid distribution (unit, integration, E2E)

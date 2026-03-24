@@ -1,6 +1,6 @@
 # PRD Agent Dispatch Template
 
-Use this template when dispatching `sdlc-planner-prd` via `new_task`.
+Use this template when dispatching `sdlc-planner-prd` via the Task tool.
 
 ## Required Message Structure
 
@@ -26,13 +26,13 @@ REQUIREMENTS FROM HIGHER DIMENSIONS:
 - [Any organizational or business requirements]
 
 SHARED SPARRING RULES:
-Read and apply common-skills/planning-hub/references/shared-sparring-rules.md for all interactions.
+Read and apply skills/planning-hub/references/shared-sparring-rules.md for all interactions.
 
 OUTPUT:
 - Write the validated PRD to plan/prd.md
 
 COMPLETION CONTRACT:
-Return via attempt_completion with:
+Return your final summary to the parent agent with:
 1. Confirmation that plan/prd.md has been written
 2. Summary of all 8 validation dimension scores
 3. Key decisions made during sparring

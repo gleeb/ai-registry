@@ -1,6 +1,6 @@
 # Data Architecture Agent Dispatch Template
 
-Use this template when dispatching `sdlc-planner-data` via `new_task` for a single user story.
+Use this template when dispatching `sdlc-planner-data` via the Task tool for a single user story.
 
 ## Required Message Structure
 
@@ -36,13 +36,13 @@ REQUIREMENTS FROM HIGHER DIMENSIONS:
 - Provided contracts: [if this story defines entities consumed by others]
 
 SHARED SPARRING RULES:
-Read and apply common-skills/planning-hub/references/shared-sparring-rules.md for all interactions.
+Read and apply skills/planning-hub/references/shared-sparring-rules.md for all interactions.
 
 OUTPUT:
 - Write data architecture to plan/user-stories/US-NNN-name/data.md
 
 COMPLETION CONTRACT:
-Return via attempt_completion with:
+Return your final summary to the parent agent with:
 1. Confirmation that data.md has been written in the story folder
 2. Entity inventory: name, fields, relationships, storage target
 3. Contract compliance: how consumed entity contracts are reflected in schemas

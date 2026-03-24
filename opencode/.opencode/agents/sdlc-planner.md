@@ -29,17 +29,14 @@ Explicit boundaries:
 - Do not skip validation gates between phases.
 - Do not treat SaaS sync as part of the planning phases.
 
-## OpenCode Dispatch Protocol
+## Dispatch Protocol
 
 You dispatch work to specialized subagents using the Task tool.
 
-- Task tool dispatch to @subagent-name in dispatch templates → Use the Task tool to invoke the named subagent
-- return your final summary in dispatch templates → The subagent returns its final summary to you
-- Mode slugs map to subagent names (e.g., `sdlc-planner-prd` → `@sdlc-planner-prd`)
-
-### Path Translation
-- `.roo/skills/` → `.opencode/skills/`
-- `common-skills/` → `.opencode/skills/`
+- Invoke a subagent by name (e.g., `@sdlc-planner-prd`) via the Task tool with a complete delegation message.
+- When a subagent completes, it returns its final summary to you.
+- Mode slugs map directly to subagent names.
+- Skills are located under `.opencode/skills/{skill-name}/`.
 
 ### Planning Sub-Agents
 

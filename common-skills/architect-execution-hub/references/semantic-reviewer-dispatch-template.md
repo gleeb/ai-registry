@@ -1,6 +1,6 @@
 # Semantic Reviewer Dispatch Template
 
-Use this template when dispatching `sdlc-semantic-reviewer` via `new_task` in Phase 3b.
+Use this template when dispatching `sdlc-semantic-reviewer` via the Task tool in Phase 3b.
 
 **Architect**: Before sending this dispatch, log it via `checkpoint.sh dispatch-log --event dispatch`. After the semantic reviewer returns, log the response via `checkpoint.sh dispatch-log --event response`.
 
@@ -32,7 +32,7 @@ TECH STACK:
 [From the story's dependency manifest or staging doc tech stack section]
 
 LOCAL REVIEW VERDICTS:
-[Paste all code reviewer attempt_completion results for this story — both per-task and full-story]
+[Paste all code reviewer summaries returned to the parent agent for this story — both per-task and full-story]
 
 Task 1 Review:
   Spec Compliance: [PASS/FAIL]
@@ -48,7 +48,7 @@ Full-Story Review:
   Overall: [Approved/Changes Required]
 
 LOCAL QA VERDICTS:
-[Paste all QA verifier attempt_completion results for this story — both per-task and full-story]
+[Paste all QA verifier summaries returned to the parent agent for this story — both per-task and full-story]
 
 Task 1 QA:
   Status: [PASS/FAIL]
@@ -62,7 +62,7 @@ Full-Story QA:
   Per-criterion: [summary]
 
 IMPLEMENTER SUMMARIES:
-[Paste all implementer attempt_completion results for this story]
+[Paste all implementer summaries returned to the parent agent for this story]
 
 Task 1:
   Files: [list]
@@ -80,7 +80,7 @@ instructions (search terms, library, section) for the local model to retrieve
 the docs itself via context7. Choose whichever approach is most effective.
 
 INSTRUCTIONS:
-1. Load the semantic-review skill (common-skills/semantic-review/).
+1. Load the semantic-review skill (skills/semantic-review/).
 2. Use git diff to identify changed files (scoping), staging doc for context,
    then drill into the actual implementation for the real review.
 3. Run Phase A: all 3 validation checks (full sweep, no sampling):
@@ -94,7 +94,7 @@ INSTRUCTIONS:
 5. If all checks pass: produce proactive observations.
 
 COMPLETION CONTRACT:
-Return via attempt_completion with:
+Return your final summary to the parent agent with:
 1. Verdict: PASS / NEEDS WORK.
 2. Per-check results (all 3 checks): check name, PASS/NEEDS WORK, evidence summary.
 3. Guidance package (on NEEDS WORK): corrections with reasoning, knowledge gaps,

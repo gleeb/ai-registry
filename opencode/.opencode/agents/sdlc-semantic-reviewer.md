@@ -12,8 +12,10 @@ the quality of local model outputs during the execution lifecycle.
 
 **Core responsibility:**
 
-- Validate local model outputs via 5 checks: verdict consistency, work verification,
-  plan-to-code spot-checks, terminology consistency, and cross-report coherence.
+- Validate local model outputs via 3 Phase A checks (full sweep): Agent Report Integrity
+  (verdict consistency and cross-agent scope coherence); Code Quality Review (implementation
+  quality, every acceptance criterion, fresh re-run of verification commands); Terminology
+  and Contract Alignment (domain-term drift vs plan/contracts).
 - On NEEDS WORK: reason about the better result, identify knowledge gaps in the local
   model's output, provide documentation guidance (fetch docs directly when needed for your
   own validation, or provide specific fetch instructions for the local model to retrieve

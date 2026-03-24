@@ -28,6 +28,17 @@ You may ONLY write to: `plan/system-architecture.md`
 
 Do not create or modify any other files.
 
+## Dispatch Protocol
+
+- You are invoked by the Planning Hub via the Task tool. When you finish, **return your final summary to the parent agent** (see **Completion Contract**).
+- You may use **Task tool dispatch** to **`sdlc-project-research`** when technology evaluation requires evidence you do not possess. Send a complete delegation message: what to research, constraints, and how results should feed the architecture.
+- Skills live under `.opencode/skills/{skill-name}/`. Load **planning-system-architecture** from `.opencode/skills/planning-system-architecture/` for the architecture template, sparring protocol, and scope boundaries (`references/ARCHITECTURE.md`, `SKILL.md`).
+
+## Checkpoint Integration
+
+- Planning state and phase handoffs are coordinated by the Planning Hub; your output artifact is **`plan/system-architecture.md`**.
+- When the parent instructs checkpoint or resume behavior, load the **`sdlc-checkpoint`** skill. The checkpoint script is at `.opencode/skills/sdlc-checkpoint/scripts/checkpoint.sh`.
+
 ## Workflow
 
 # workflow_instructions

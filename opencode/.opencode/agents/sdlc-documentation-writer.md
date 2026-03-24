@@ -1,5 +1,5 @@
 ---
-description: "Create clear technical project documentation. Use when you need to create, update, or improve technical documentation such as READMEs, API docs, user guides, or installation instructions."
+description: "Create clear technical project documentation. Use when you need to create, update, or improve technical documentation. Ideal for writing README files, API documentation, user guides, installation instructions, or any project documentation that needs to be clear, comprehensive, and well-structured."
 mode: subagent
 permission:
   edit: allow

@@ -59,9 +59,9 @@ All state lives in `.sdlc/` at the target project root:
 Scripts are bundled at `scripts/` relative to this skill. From a linked project, the path is:
 
 ```
-.roo/skills/sdlc-checkpoint/scripts/checkpoint.sh
-.roo/skills/sdlc-checkpoint/scripts/verify.sh
-.roo/skills/sdlc-checkpoint/scripts/dispatch-summary.sh
+skills/sdlc-checkpoint/scripts/checkpoint.sh
+skills/sdlc-checkpoint/scripts/verify.sh
+skills/sdlc-checkpoint/scripts/dispatch-summary.sh
 ```
 
 ### checkpoint.sh — Write/Update State

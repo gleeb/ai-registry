@@ -1,6 +1,6 @@
 # System Architecture Agent Dispatch Template
 
-Use this template when dispatching `sdlc-planner-architecture` via `new_task`.
+Use this template when dispatching `sdlc-planner-architecture` via the Task tool.
 
 ## Required Message Structure
 
@@ -28,13 +28,13 @@ REQUIREMENTS FROM HIGHER DIMENSIONS:
 - [Deployment constraints from PRD section 8]
 
 SHARED SPARRING RULES:
-Read and apply common-skills/planning-hub/references/shared-sparring-rules.md for all interactions.
+Read and apply skills/planning-hub/references/shared-sparring-rules.md for all interactions.
 
 OUTPUT:
 - Write the architecture specification to plan/system-architecture.md
 
 COMPLETION CONTRACT:
-Return via attempt_completion with:
+Return your final summary to the parent agent with:
 1. Confirmation that plan/system-architecture.md has been written
 2. Summary of key architectural decisions and trade-offs
 3. Component inventory with responsibilities

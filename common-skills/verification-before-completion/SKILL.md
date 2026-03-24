@@ -73,7 +73,7 @@ Skip any step = lying, not verifying
 - ANY variation of success/completion claims
 - Committing, PR creation, task completion
 - Moving to next task
-- Returning via attempt_completion
+- Return your final summary to the parent agent
 
 ## The Bottom Line
 

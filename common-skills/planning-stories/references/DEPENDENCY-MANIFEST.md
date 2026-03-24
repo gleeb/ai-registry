@@ -85,7 +85,7 @@ List of Phase 3 planning domains needed for this story. The Hub uses this to kno
 List of technologies and frameworks used by this story. The Implementation Hub uses this to load the appropriate technology skills during execution.
 
 - Format: List of technology identifiers (e.g., `[react-native, typescript, expo]`)
-- Each entry should match a skill name in `common-skills/` when a skill exists
+- Each entry should match a skill name in `skills/` when a skill exists
 - If no matching skill exists, the entry is noted as a gap but does not block execution
 - Common values: `react-native`, `typescript`, `expo`, `node`, `python`, `aws-cdk`, `terraform`
 

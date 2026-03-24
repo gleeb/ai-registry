@@ -1,6 +1,6 @@
 # API Design Agent Dispatch Template
 
-Use this template when dispatching `sdlc-planner-api` via `new_task` for a single user story.
+Use this template when dispatching `sdlc-planner-api` via the Task tool for a single user story.
 
 ## Required Message Structure
 
@@ -35,13 +35,13 @@ REQUIREMENTS FROM HIGHER DIMENSIONS:
 - Provided contracts: [if this story provides API contracts consumed by others]
 
 SHARED SPARRING RULES:
-Read and apply common-skills/planning-hub/references/shared-sparring-rules.md for all interactions.
+Read and apply skills/planning-hub/references/shared-sparring-rules.md for all interactions.
 
 OUTPUT:
 - Write API design to plan/user-stories/US-NNN-name/api.md
 
 COMPLETION CONTRACT:
-Return via attempt_completion with:
+Return your final summary to the parent agent with:
 1. Confirmation that api.md has been written in the story folder
 2. Endpoint inventory: method, path, purpose, auth required
 3. Contract compliance: how consumed contracts are used in schemas

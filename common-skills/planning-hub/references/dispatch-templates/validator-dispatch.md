@@ -1,6 +1,6 @@
 # Plan Validator Dispatch Template
 
-Use this template when dispatching `sdlc-plan-validator` via `new_task`.
+Use this template when dispatching `sdlc-plan-validator` via the Task tool.
 
 The validator has three modes. Specify the mode in the dispatch.
 
@@ -31,7 +31,7 @@ OUTPUT:
 - Write validation report to plan/validation/cross-validation-report.md
 
 COMPLETION CONTRACT:
-Return via attempt_completion with:
+Return your final summary to the parent agent with:
 1. Confirmation that validation report has been written
 2. PASS / NEEDS WORK verdict with specific findings
 3. For each finding: which documents conflict, what the issue is, suggested resolution
@@ -70,7 +70,7 @@ OUTPUT:
 - Append per-story results to plan/validation/cross-validation-report.md
 
 COMPLETION CONTRACT:
-Return via attempt_completion with:
+Return your final summary to the parent agent with:
 1. PASS / NEEDS WORK verdict
 2. Check results for all 9 validation checks
 3. For each failure: which artifact, what the issue is, suggested fix
@@ -113,7 +113,7 @@ OUTPUT:
 - Write validation report to plan/validation/cross-validation-report.md
 
 COMPLETION CONTRACT:
-Return via attempt_completion with:
+Return your final summary to the parent agent with:
 1. PASS / NEEDS WORK verdict
 2. Dependency graph status (cycles, orphans, gaps)
 3. Contract compliance across all stories

@@ -1,6 +1,6 @@
 # HLD Agent Dispatch Template
 
-Use this template when dispatching `sdlc-planner-hld` via `new_task` for a single user story.
+Use this template when dispatching `sdlc-planner-hld` via the Task tool for a single user story.
 
 ## Required Message Structure
 
@@ -34,13 +34,13 @@ REQUIREMENTS FROM HIGHER DIMENSIONS:
 - PRD sections referenced by story: [list section numbers]
 
 SHARED SPARRING RULES:
-Read and apply common-skills/planning-hub/references/shared-sparring-rules.md for all interactions.
+Read and apply skills/planning-hub/references/shared-sparring-rules.md for all interactions.
 
 OUTPUT:
 - Write HLD to plan/user-stories/US-NNN-name/hld.md
 
 COMPLETION CONTRACT:
-Return via attempt_completion with:
+Return your final summary to the parent agent with:
 1. Confirmation that hld.md has been written in the story folder
 2. Traceability: each acceptance criterion → HLD section mapping
 3. Components and modules defined in this story's HLD

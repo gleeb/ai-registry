@@ -30,13 +30,13 @@ REQUIREMENTS FROM HIGHER DIMENSIONS:
 - All per-story security controls and threat assessments
 
 SHARED SPARRING RULES:
-Read and apply common-skills/planning-hub/references/shared-sparring-rules.md for all interactions.
+Read and apply skills/planning-hub/references/shared-sparring-rules.md for all interactions.
 
 OUTPUT:
 - Write security overview to plan/cross-cutting/security-overview.md
 
 COMPLETION CONTRACT:
-Return via attempt_completion with:
+Return your final summary to the parent agent with:
 1. Confirmation that plan/cross-cutting/security-overview.md has been written
 2. Systemic security patterns identified across stories
 3. Aggregate threat model summary

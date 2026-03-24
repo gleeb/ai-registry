@@ -25,8 +25,8 @@ Brief description of what this story accomplishes and why it's needed.
 3. ...
 
 ## Tech Stack & Loaded Skills
-- [tech] — skill: `common-skills/[skill-name]/`
-- [tech] — skill: `common-skills/[skill-name]/`
+- [tech] — skill: `skills/[skill-name]/`
+- [tech] — skill: `skills/[skill-name]/`
 
 ## Context Gathered
 

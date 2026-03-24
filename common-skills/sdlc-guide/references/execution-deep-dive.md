@@ -8,7 +8,7 @@ Before any implementation begins, the Execution Hub verifies prerequisites:
 
 1. **Plan artifacts exist** — Checks that all artifacts required by the story's `candidate_domains` are present in the story folder (hld.md, api.md, data.md, security.md, design/).
 2. **Dependencies complete** — Verifies that all stories listed in `depends_on_stories` have been implemented.
-3. **Tech skills mapped** — Maps the story manifest's `tech_stack` field to available skills (e.g., `react-native` → `common-skills/react-native/`). These skills are loaded by the Implementer and verified by the Code Reviewer.
+3. **Tech skills mapped** — Maps the story manifest's `tech_stack` field to available skills (e.g., `react-native` → `skills/react-native/`). These skills are loaded by the Implementer and verified by the Code Reviewer.
 
 **Gate**: All prerequisites must be met. If any fail, the Hub halts and escalates — it does not proceed with partial readiness.
 
@@ -158,15 +158,15 @@ The story manifest's `tech_stack` field drives skill loading during execution:
 tech_stack: [react-native, typescript, expo]
 ```
 
-Maps to skills in `common-skills/`:
-- `react-native` → `common-skills/react-native/`
+Maps to skills in `skills/`:
+- `react-native` → `skills/react-native/`
 - Additional skills as available
 
 The Implementer loads each skill's SKILL.md for patterns and conventions. The Code Reviewer verifies skill patterns were followed.
 
 ## Security Review Integration
 
-The Code Reviewer loads `common-skills/security-review/` when the dispatch includes `SECURITY_REVIEW: true`. This adds OWASP-aligned security checks to the standard code review — no separate security agent dispatch is needed during execution.
+The Code Reviewer loads `skills/security-review/` when the dispatch includes `SECURITY_REVIEW: true`. This adds OWASP-aligned security checks to the standard code review — no separate security agent dispatch is needed during execution.
 
 Security review covers: secrets detection, input validation, authentication/authorization, SQL injection, XSS, CSRF, and dependency vulnerabilities.
 

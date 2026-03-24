@@ -37,7 +37,7 @@ OUTPUT:
 - Write impact analysis report to plan/validation/impact-analysis-report.md
 
 COMPLETION CONTRACT:
-Return via attempt_completion with:
+Return your final summary to the parent agent with:
 1. Confirmation that plan/validation/impact-analysis-report.md has been written
 2. Blast radius summary: N stories directly affected, N indirectly, N contracts, N cross-cutting
 3. Recommended re-planning scope (minimum set of agents to re-dispatch)

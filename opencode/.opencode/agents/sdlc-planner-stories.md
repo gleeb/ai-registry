@@ -29,9 +29,17 @@ You may ONLY write to: `plan/user-stories/ and plan/contracts/ (only files under
 
 Do not create or modify any other files.
 
-## Workflow
+## Dispatch Protocol
 
-# Workflow
+- You are invoked by the Planning Hub via the Task tool. When you finish, **return your final summary to the parent agent** (see **Completion Contract**).
+- Skills live under `.opencode/skills/{skill-name}/`. Load **planning-stories** from `.opencode/skills/planning-stories/` for the story outline template, dependency manifest schema, and planning boundaries (`references/STORY-OUTLINE.md`, `references/DEPENDENCY-MANIFEST.md`, `SKILL.md`).
+
+## Checkpoint Integration
+
+- Planning state and phase handoffs are coordinated by the Planning Hub; your output artifacts are under **`plan/user-stories/`** and **`plan/contracts/`**.
+- When the parent instructs checkpoint or resume behavior, load the **`sdlc-checkpoint`** skill. The checkpoint script is at `.opencode/skills/sdlc-checkpoint/scripts/checkpoint.sh`.
+
+## Workflow
 
 ## Role
 
@@ -107,8 +115,6 @@ When the Hub dispatches incremental decomposition (brownfield changes):
 
 ## Best Practices
 
-# Best Practices
-
 ## Right-Sizing Stories
 
 - Target ~30-60 minutes of agent execution work per story.
@@ -167,8 +173,6 @@ When the Hub dispatches incremental decomposition (brownfield changes):
 
 ## Sparring Patterns
 
-# Sparring Patterns
-
 ## Purpose
 
 Stress-test every story boundary, scope decision, and dependency relationship. Never accept a decomposition without challenge.
@@ -223,8 +227,6 @@ When the user proposes a decomposition:
 
 
 ## Decision Guidance
-
-# Decision Guidance
 
 ## When to Split a Story
 
@@ -298,8 +300,6 @@ Merge when ALL of these conditions hold:
 
 ## Validation
 
-# Validation
-
 ## Self-Validation Checks
 
 Before submitting the decomposition to the Planning Hub, verify ALL of the following. EVERY check defaults to FAIL and must be explicitly confirmed.
@@ -365,8 +365,6 @@ Sizing Warnings: {count}
 
 
 ## Error Handling
-
-# Error Handling
 
 ## Missing PRD Story Groups
 

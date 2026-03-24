@@ -22,9 +22,7 @@ The SDLC uses a write-ahead checkpoint system that enables crash-safe resume acr
 
 ### Scripts
 
-Both scripts are in the `sdlc-checkpoint` skill:
-- Roo-Code path: `.roo/skills/sdlc-checkpoint/scripts/`
-- Cursor path: `.cursor/skills/sdlc-checkpoint/scripts/`
+Both scripts are in the `sdlc-checkpoint` skill at `skills/sdlc-checkpoint/scripts/` in the linked project (symlinked from the registry).
 
 **`checkpoint.sh <hub> [flags]`** — Writes or updates checkpoint state.
 
@@ -204,5 +202,5 @@ When something seems wrong, check in this order:
    - Look for the most recent entries to see what the last successful action was.
 
 5. **Verify symlinks**:
-   - Are `.cursor/skills/`, `.cursor/rules/`, `.cursor/agents/` (or `.roo/skills/`, `.roo/`) properly symlinked to the AI Registry?
-   - Run `ls -la .cursor/skills/` or `ls -la .roo/skills/` to verify.
+   - Are `skills/`, `.cursor/rules/`, `.cursor/agents/` (or `.roo/`) properly symlinked to the AI Registry?
+   - Run `ls -la skills/` to verify.

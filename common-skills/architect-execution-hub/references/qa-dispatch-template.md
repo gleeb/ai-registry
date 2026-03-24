@@ -1,6 +1,6 @@
 # QA Verifier Dispatch Template
 
-Use this template when dispatching `sdlc-qa` via `new_task`.
+Use this template when dispatching `sdlc-qa` via the Task tool.
 
 **Architect**: Before sending this dispatch, log it via `checkpoint.sh dispatch-log --event dispatch`. After the QA verifier returns, log the response via `checkpoint.sh dispatch-log --event response`.
 
@@ -32,7 +32,7 @@ DOCUMENTATION VERIFICATION:
 - Flag any file reference mismatches as verification failures.
 
 COMPLETION CONTRACT:
-Return via attempt_completion with:
+Return your final summary to the parent agent with:
 1. Verification Status: PASS / FAIL.
 2. Per-criterion results: criterion → command → output → PASS/FAIL.
 3. Evidence: full command outputs and exit codes.

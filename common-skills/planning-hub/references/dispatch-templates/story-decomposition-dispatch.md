@@ -1,6 +1,6 @@
 # Story Decomposition Agent Dispatch Template
 
-Use this template when dispatching `sdlc-planner-stories` via `new_task`.
+Use this template when dispatching `sdlc-planner-stories` via the Task tool.
 
 ## Required Message Structure
 
@@ -28,14 +28,14 @@ REQUIREMENTS FROM HIGHER DIMENSIONS:
 - [Any user constraints on story sizing or ordering]
 
 SHARED SPARRING RULES:
-Read and apply common-skills/planning-hub/references/shared-sparring-rules.md for all interactions.
+Read and apply skills/planning-hub/references/shared-sparring-rules.md for all interactions.
 
 OUTPUT:
 - plan/user-stories/US-NNN-name/story.md — one per story
 - plan/contracts/*.md — shared contract definitions
 
 COMPLETION CONTRACT:
-Return via attempt_completion with:
+Return your final summary to the parent agent with:
 1. Story inventory: ID, name, execution_order, candidate_domains, depends_on
 2. Contract inventory: name, owner story, consumer stories
 3. PRD coverage: sections covered / total sections

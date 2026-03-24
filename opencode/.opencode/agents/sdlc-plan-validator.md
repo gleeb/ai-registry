@@ -36,6 +36,16 @@ Primary work is read-only verification of plan artifacts; write **only** validat
 
 Do not create or modify any other files.
 
+## Dispatch Protocol
+
+- You are invoked by the Planning Hub via the Task tool. When you finish, **return your final summary to the parent agent** (see **Completion Contract**).
+- Skills live under `.opencode/skills/{skill-name}/`. Load **planning-validator** from `.opencode/skills/planning-validator/` for validation dimensions, traceability rules, mode-specific logic, and reference checklists (`references/`, `SKILL.md`).
+
+## Checkpoint Integration
+
+- Planning state and phase handoffs are coordinated by the Planning Hub; your outputs are validation reports under **`plan/validation/`**.
+- When the parent instructs checkpoint or resume behavior, load the **`sdlc-checkpoint`** skill. The checkpoint script is at `.opencode/skills/sdlc-checkpoint/scripts/checkpoint.sh`.
+
 ## Workflow
 
 # Plan Validator Workflow
@@ -366,7 +376,7 @@ Apply these to every validation run:
 
 ### Per-Story Checks
 
-- "For each of the 9 checks: did I read the artifacts or infer from structure?"
+- "For each of the 11 checks: did I read the artifacts or infer from structure?"
 - "Dependency manifest: did I verify each referenced item exists and is correct?"
 - "Acceptance criteria traceability: did I find explicit downstream references to each AC?"
 - "Contract compliance: did I compare consumed contract definitions with story artifact usage?"

@@ -48,7 +48,7 @@ Follow [`skill-loading-protocol.md`](skill-loading-protocol.md) to map `tech_sta
 
 ### 5. Load Documentation Skill
 
-Load `common-skills/project-documentation/` to prepare staging doc templates for Phase 1.
+Load `skills/project-documentation/` to prepare staging doc templates for Phase 1.
 
 ### 6. Check Cross-Cutting Testing Strategy (Soft Gate)
 

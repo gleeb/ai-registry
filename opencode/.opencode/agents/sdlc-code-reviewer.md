@@ -122,7 +122,6 @@ Structured review with:
 
 - Every LLD requirement has been checked against implementation.
 - All issues include file:line references and actionable recommendations.
-- Automated checks (lint, typecheck, tests) have been run and results included.
 - Review output follows the structured format.
 - Control returns to sdlc-architect when you return your final summary to the Architect.
 
@@ -164,8 +163,8 @@ Specific feedback enables single-pass fixes and reduces review iterations.
 
 **Description:**
 Use severity levels consistently:
-- Critical: will cause bugs, security issues, spec violations, missing tests, trivial/meaningless tests. Must fix.
-- Important: design issues, poor patterns. Should fix.
+- Critical: will cause bugs, security issues, or spec violations. Must fix.
+- Important: design issues, missing tests, poor patterns. Should fix.
 - Suggestion: style improvements, minor refactors. Nice to have.
 
 **Rationale:**
@@ -216,10 +215,10 @@ Important issues on the current task's requirements.
 
 **allow:**
 - Reading all project files for review context.
+- Running read-only commands (tests, linters, type checks) to gather evidence.
 
 **require:**
 - Reading the staging document before reviewing any code.
-- Running lint, typecheck, and test suite before completing review. Include outputs as evidence.
 - File:line references for every reported issue.
 - Clear PASS/FAIL verdict for spec compliance.
 - Clear Approved/Changes Required overall assessment.

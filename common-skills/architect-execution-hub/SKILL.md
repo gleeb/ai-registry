@@ -23,7 +23,7 @@ Orchestrates the full implementation lifecycle for the sdlc-architect mode. Mana
 
 ## Checkpoint Integration
 
-Load the `sdlc-checkpoint` skill at architect initialization. The checkpoint script is at `.roo/skills/sdlc-checkpoint/scripts/checkpoint.sh`.
+Load the `sdlc-checkpoint` skill at architect initialization. The checkpoint script is at `skills/sdlc-checkpoint/scripts/checkpoint.sh`.
 
 **REQUIRE**: Before every sub-agent dispatch, call `checkpoint.sh execution` with the current state (write-ahead pattern).
 **REQUIRE**: After every sub-agent completion, call `checkpoint.sh execution` to record progress.
@@ -72,7 +72,7 @@ See [`references/readiness-check.md`](references/readiness-check.md) for the ful
 3. **Verify plan artifacts** — read `plan/user-stories/US-NNN-name/story.md` and confirm all expected artifacts exist based on `candidate_domains` (hld.md, api.md, data.md, security.md, design/).
 4. **Check dependencies** — verify all stories in `depends_on_stories` are completed.
 5. **Determine tech skills** — read `tech_stack` from the story manifest and map to available skills using [`references/skill-loading-protocol.md`](references/skill-loading-protocol.md).
-6. **Load documentation skill** — load `common-skills/project-documentation/` for staging doc templates.
+6. **Load documentation skill** — load `skills/project-documentation/` for staging doc templates.
 
 **GATE**: All plan artifacts exist, all dependency stories are complete. If not, HALT and escalate to coordinator.
 
@@ -88,7 +88,7 @@ This is the existing Phase 0 (resume check) and Phase 1 (context gathering, arch
 
 1. `checkpoint.sh execution --phase 1`
 2. **Testing strategy consumption**: If `plan/cross-cutting/testing-strategy.md` exists, read it and use the AC traceability table to inform per-task testing requirements. When decomposing tasks, include expected test types and locations for each task based on the testing strategy (e.g., "unit tests for data layer", "integration tests for API endpoint").
-3. **Staging doc scaffolding**: Use the staging doc template from `common-skills/project-documentation/references/staging-doc-template.md` to create the staging document. Pre-populate Plan References, Acceptance Criteria (from story.md), and Tech Stack sections.
+3. **Staging doc scaffolding**: Use the staging doc template from `skills/project-documentation/references/staging-doc-template.md` to create the staging document. Pre-populate Plan References, Acceptance Criteria (from story.md), and Tech Stack sections.
 4. After staging doc is created: `checkpoint.sh execution --staging-doc "docs/staging/{filename}.md" --tasks-total {N}`
 
 ---
@@ -208,7 +208,7 @@ Merge implementation knowledge into permanent documentation.
 
 See [`references/doc-integration-protocol.md`](references/doc-integration-protocol.md) for the full protocol.
 
-1. Load `common-skills/project-documentation/references/integration-checklist.md`.
+1. Load `skills/project-documentation/references/integration-checklist.md`.
 2. Distribute staging doc insights into permanent docs (`docs/frontend/`, `docs/backend/`, etc.).
 3. Update `docs/index.md` if new domains were added.
 4. Verify all file references in staging doc are still valid.

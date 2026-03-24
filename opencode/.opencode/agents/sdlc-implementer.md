@@ -317,7 +317,7 @@ The completion result must list each staging doc section that was updated and wh
 
 Return your final summary to the Architect with:
 
-- Code-change summary: files created/modified with brief descriptions.
+- Code-change summary: files created/modified with brief description.
 - Quality gate evidence: lint, typecheck, test suite, and build outputs with exit codes.
 - Per-criterion verification evidence (command, output, PASS/FAIL).
 - Staging doc updates: each section touched and what changed.

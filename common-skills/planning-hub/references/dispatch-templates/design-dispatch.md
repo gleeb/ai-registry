@@ -1,6 +1,6 @@
 # Design/UI-UX Agent Dispatch Template
 
-Use this template when dispatching `sdlc-planner-design` via `new_task` for per-story design work (Phase 3).
+Use this template when dispatching `sdlc-planner-design` via the Task tool for per-story design work (Phase 3).
 
 ## Required Message Structure
 
@@ -37,7 +37,7 @@ REQUIREMENTS FROM HIGHER DIMENSIONS:
 - Existing design system (if established by earlier story)
 
 SHARED SPARRING RULES:
-Read and apply common-skills/planning-hub/references/shared-sparring-rules.md for all interactions.
+Read and apply skills/planning-hub/references/shared-sparring-rules.md for all interactions.
 
 OUTPUT:
 - Write mockups to plan/user-stories/US-NNN-name/design/
@@ -45,7 +45,7 @@ OUTPUT:
 - Update plan/design/mockups/index.html gallery with new screens
 
 COMPLETION CONTRACT:
-Return via attempt_completion with:
+Return your final summary to the parent agent with:
 1. Confirmation of design artifacts written in story folder
 2. UX discovery findings (personas applied, journey map)
 3. Mockup inventory: screen name, purpose, states covered

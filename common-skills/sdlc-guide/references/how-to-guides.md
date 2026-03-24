@@ -105,7 +105,7 @@ The script creates these symlinks:
 |---|---|
 | `cursor/.cursor/rules/` | `.cursor/rules/` |
 | `cursor/.cursor/agents/` | `.cursor/agents/` |
-| `common-skills/` | `.cursor/skills/` |
+| `skills/` (registry) | `skills/` (project) |
 | `roo-code/.roomodes` | `.roomodes` |
 | `roo-code/.roo/` | `.roo/` |
 
@@ -154,9 +154,9 @@ To re-validate an existing plan without re-running planning agents:
 
 To extend the SDLC with a new planning domain:
 
-1. **Create a skill** in `common-skills/planning-[domain]/` with `SKILL.md` and `references/` (templates, rubrics, checklists).
+1. **Create a skill** in `skills/planning-[domain]/` with `SKILL.md` and `references/` (templates, rubrics, checklists).
 
-2. **Create a dispatch template** in `common-skills/planning-hub/references/dispatch-templates/[domain]-dispatch.md`.
+2. **Create a dispatch template** in `skills/planning-hub/references/dispatch-templates/[domain]-dispatch.md`.
 
 3. **For Roo-Code**: Create rules in `roo-code/.roo/rules-sdlc-planner-[domain]/` (4-6 Markdown files following the pattern: workflow, best practices, sparring patterns, decision guidance, validation, error handling). Add a mode entry in `roo-code/.roomodes`.
 
@@ -172,11 +172,11 @@ To extend the SDLC with a new planning domain:
 
 1. **Create an agent file** in `cursor/.cursor/agents/` (Cursor) or add a mode in `roo-code/.roomodes` with rules in `roo-code/.roo/rules-{slug}/` (Roo-Code).
 
-2. **Create a dispatch template** in `common-skills/architect-execution-hub/references/`.
+2. **Create a dispatch template** in `skills/architect-execution-hub/references/`.
 
 3. **Update the Execution Orchestrator** rule/mode to include the new agent in its dispatch workflow.
 
-4. **If the agent needs a skill**, create it in `common-skills/`.
+4. **If the agent needs a skill**, create it in `skills/`.
 
 ---
 
@@ -185,9 +185,7 @@ To extend the SDLC with a new planning domain:
 If you started work without the checkpoint system and want to adopt it:
 
 ```bash
-.roo/skills/sdlc-checkpoint/scripts/checkpoint.sh init
-# or for Cursor:
-.cursor/skills/sdlc-checkpoint/scripts/checkpoint.sh init
+skills/sdlc-checkpoint/scripts/checkpoint.sh init
 ```
 
 The `init` subcommand scans `plan/` and `docs/staging/` to derive full state from existing artifacts. After initialization, `/sdlc-continue` will work normally.

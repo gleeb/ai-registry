@@ -31,6 +31,16 @@ You may ONLY write to: `plan/user-stories/*/design/ and plan/design/`
 
 Do not create or modify any other files.
 
+## Dispatch Protocol
+
+- You are invoked by the Planning Hub via the Task tool. When you finish, **return your final summary to the parent agent** (see **Completion Contract**).
+- Skills live under `.opencode/skills/{skill-name}/`. Load **planning-design** from `.opencode/skills/planning-design/` for templates, patterns, and design references (`references/UX-DISCOVERY.md`, `references/BRAND-FOUNDATION.md`, `references/DESIGN-SPEC.md`, `references/ACCESSIBILITY-CHECKLIST.md`, `references/DEVELOPER-HANDOFF.md`, mock templates under `references/mock-template/`).
+
+## Checkpoint Integration
+
+- Planning state and phase handoffs are coordinated by the Planning Hub; your output artifacts are **`plan/user-stories/US-NNN-name/design/`** and updates under **`plan/design/`** (including the gallery).
+- When the parent instructs checkpoint or resume behavior, load the **`sdlc-checkpoint`** skill. The checkpoint script is at `.opencode/skills/sdlc-checkpoint/scripts/checkpoint.sh`.
+
 ## Workflow
 
 # Per-Story Design Workflow
@@ -120,7 +130,7 @@ Enhanced Design/UI-UX agent produces per-story design specs and HTML/CSS mockups
 
 - Write all artifacts to the story design folder: `plan/user-stories/US-NNN-name/design/`.
 - Update the gallery at `plan/design/mockups/index.html`.
-- Run self-validation (see `5_validation.md`) before declaring complete.
+- Run self-validation (see **Validation** section below) before declaring complete.
 - Return summary to the Planning Hub.
 
 ## Completion Criteria

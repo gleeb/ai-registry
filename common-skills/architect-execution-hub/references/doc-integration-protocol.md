@@ -6,13 +6,13 @@ Phase 5 — merge staging document insights into permanent project documentation
 
 - Story has passed acceptance validation (Phase 4)
 - Staging document is fully populated
-- `common-skills/project-documentation/` skill is loaded
+- `skills/project-documentation/` skill is loaded
 
 ## Steps
 
 ### 1. Load Integration Checklist
 
-Read `common-skills/project-documentation/references/integration-checklist.md` for the full verification checklist.
+Read `skills/project-documentation/references/integration-checklist.md` for the full verification checklist.
 
 ### 2. Categorize Staging Doc Content
 

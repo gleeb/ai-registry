@@ -67,7 +67,7 @@ Total: 3 orchestrator rules + 17 subagents = 20 components.
 
 In Cursor, orchestrators are `.mdc` rules loaded by the main chat agent. Subagents are `.md` files dispatched via the Task tool.
 
-In Roo-Code, orchestrators and subagents are both modes defined in `.roomodes`, dispatched via `new_task`.
+In Roo-Code, orchestrators and subagents are both modes defined in `.roomodes`, dispatched via the Task tool (or equivalent agent dispatch).
 
 ## Artifact Structure
 
@@ -136,7 +136,7 @@ Key fields:
 - `provides_contracts` / `consumes_contracts` — Links stories via shared interface definitions in `plan/contracts/`.
 - `depends_on_stories` — Enforces execution ordering.
 - `candidate_domains` — Determines which Phase 3 agents are dispatched for this story.
-- `tech_stack` — Maps to skills loaded by the Implementer during execution (e.g., `react-native` → `common-skills/react-native/`).
+- `tech_stack` — Maps to skills loaded by the Implementer during execution (e.g., `react-native` → `skills/react-native/`).
 
 The **contracts registry** (`plan/contracts/`) holds shared data shapes, API contracts, and auth models. One story owns a contract; other stories consume it. This enables mechanical impact analysis during brownfield changes.
 
@@ -161,14 +161,14 @@ The system works identically across IDEs through shared skills and IDE-specific 
 | Component | Cursor | Roo-Code |
 |---|---|---|
 | Orchestrators | `.mdc` rules in `.cursor/rules/` (loaded by main chat agent) | Modes in `.roomodes` |
-| Subagents | `.md` files in `.cursor/agents/` (dispatched via Task tool) | Modes in `.roomodes` (dispatched via `new_task`) |
-| Skills | `.cursor/skills/` → `common-skills/` (symlink) | `.roo/skills/` → `common-skills/` (symlink) |
-| Dispatch protocol | Task tool: `/agent-name message` | `new_task(mode="slug", message="...")` |
-| Completion protocol | Subagent returns final message | `attempt_completion(result="...")` |
+| Subagents | `.md` files in `.cursor/agents/` (dispatched via Task tool) | Modes in `.roomodes` (dispatched via the Task tool or equivalent agent dispatch) |
+| Skills | `skills/` → registry skills tree (symlink) | `skills/` → registry skills tree (symlink) |
+| Dispatch protocol | Task tool: `/agent-name message` | Task tool or equivalent: mode/slug + message |
+| Completion protocol | Subagent returns final message | Return your final summary to the parent agent |
 | Checkpoint | `.sdlc/` at project root (plain YAML) | Same |
 | Plan artifacts | `plan/` at project root | Same |
 
-Skills are shared — both IDEs read from `common-skills/` via their respective symlinks. Checkpoint state and plan artifacts are IDE-independent.
+Skills are shared — both IDEs read from the registry `skills/` tree via project symlinks. Checkpoint state and plan artifacts are IDE-independent.
 
 ### Registry Linking
 

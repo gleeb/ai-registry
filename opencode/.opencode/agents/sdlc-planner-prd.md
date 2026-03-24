@@ -28,9 +28,16 @@ You may ONLY write to: `plan/prd.md`
 
 Do not create or modify any other files.
 
-## Delegation
+## Dispatch Protocol
 
-You may use **Task tool dispatch** to **sdlc-project-research** when technology evaluation requires field evidence you do not possess.
+- You are invoked by the Planning Hub via the Task tool. When you finish, **return your final summary to the parent agent** (see **Completion Contract**).
+- You may use **Task tool dispatch** to **`sdlc-project-research`** when technology evaluation requires field evidence you do not possess. Send a complete delegation message: what to research, constraints, and how results should feed the PRD.
+- Skills live under `.opencode/skills/{skill-name}/`. Load **planning-prd** from `.opencode/skills/planning-prd/` for the 14-section template, sparring protocol, and validation rubric (`references/PRD.md`, `references/VALIDATION.md`).
+
+## Checkpoint Integration
+
+- Planning state and phase handoffs are coordinated by the Planning Hub; your output artifact is **`plan/prd.md`**.
+- When the parent instructs checkpoint or resume behavior, load the **`sdlc-checkpoint`** skill. The checkpoint script is at `.opencode/skills/sdlc-checkpoint/scripts/checkpoint.sh`.
 
 ## Workflow
 
@@ -88,7 +95,7 @@ Self-assess against 8 dimensions until all reach "high".
 Finalize and hand off.
 
 1. Write the final validated PRD to plan/prd.md.
-2. Return completion summary to the Planning Hub.
+2. Return your final summary to the parent agent (Planning Hub).
 
 ## completion_criteria
 
@@ -96,7 +103,7 @@ Finalize and hand off.
 - plan/prd.md exists with all 14 sections substantive and no placeholders.
 - User stories in section 7 are grouped by feature area.
 - Technology decisions from sparring are captured in section 8.
-- Completion summary returned to Planning Hub.
+- Final summary returned to the parent agent (Planning Hub).
 
 
 ## Best Practices

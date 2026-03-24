@@ -8,7 +8,7 @@ Read the `tech_stack` array from the story manifest and map each entry:
 
 | Tech Stack Entry | Skill Path | Notes |
 |-----------------|------------|-------|
-| `react-native` | `common-skills/react-native/` | Performance budgets, platform patterns |
+| `react-native` | `skills/react-native/` | Performance budgets, platform patterns |
 | `typescript` | (built-in) | No separate skill needed |
 | `expo` | (covered by react-native skill) | Included in RN skill guidance |
 | `node` | (built-in) | No separate skill needed |
@@ -32,7 +32,7 @@ Add the `TECH SKILLS` section to the implementer dispatch message:
 
 ```
 TECH SKILLS:
-- react-native (path: common-skills/react-native/)
+- react-native (path: skills/react-native/)
   Load and apply patterns from this skill during implementation.
 ```
 
@@ -44,7 +44,7 @@ Add the `TECH SKILLS` section to the reviewer dispatch message:
 
 ```
 TECH SKILLS:
-- react-native (path: common-skills/react-native/)
+- react-native (path: skills/react-native/)
   Verify implementation follows this skill's patterns and performance budgets.
 ```
 

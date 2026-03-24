@@ -4,7 +4,7 @@ Phase 6 — present the completed story to the user for final approval.
 
 ## Presentation Format
 
-Present to the user via `attempt_completion` with this structure:
+Present the following structure to the user in your final summary to the parent agent:
 
 ```
 ## Story Complete: US-NNN — [Story Title]

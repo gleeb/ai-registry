@@ -1,6 +1,6 @@
 # Code Reviewer Dispatch Template
 
-Use this template when dispatching `sdlc-code-reviewer` via `new_task`.
+Use this template when dispatching `sdlc-code-reviewer` via the Task tool.
 
 **Architect**: Before sending this dispatch, log it via `checkpoint.sh dispatch-log --event dispatch`. After the reviewer returns, log the response via `checkpoint.sh dispatch-log --event response`.
 
@@ -16,15 +16,15 @@ LLD SECTION:
 [Paste or reference the specific LLD section/requirements for this task]
 
 IMPLEMENTER SUMMARY:
-[Paste the implementer's attempt_completion result — files changed, what was done]
+[Paste the implementer's final summary returned to the parent agent — files changed, what was done]
 
 TECH SKILLS:
-- [skill-name] (path: common-skills/[skill-name]/)
+- [skill-name] (path: skills/[skill-name]/)
   Verify implementation follows this skill's patterns and performance budgets.
 [Include all tech skills from the implementer dispatch. Omit section if none.]
 
 SECURITY REVIEW: [true/false]
-If true, load common-skills/security-review/ and include a "## Security Review"
+If true, load skills/security-review/ and include a "## Security Review"
 section in the review output with findings categorized by severity.
 
 REVIEW SCOPE:
@@ -43,7 +43,7 @@ DOCUMENTATION CHECK (scoped to this task only):
   Only verify files the implementer claims to have created or modified in this task.
 
 COMPLETION CONTRACT:
-Return via attempt_completion with:
+Return your final summary to the parent agent with:
 1. Spec Compliance: PASS or FAIL (does implementation match LLD requirements?).
 2. Issues: categorized as Critical / Important / Suggestion with file:line references.
 3. Security Review (if applicable): findings by severity.

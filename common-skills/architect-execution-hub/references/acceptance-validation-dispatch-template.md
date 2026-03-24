@@ -1,6 +1,6 @@
 # Acceptance Validation Dispatch Template
 
-Use this template when dispatching `sdlc-acceptance-validator` via `new_task` in Phase 4.
+Use this template when dispatching `sdlc-acceptance-validator` via the Task tool in Phase 4.
 
 **Architect**: Before sending this dispatch, log it via `checkpoint.sh dispatch-log --event dispatch`. After the acceptance validator returns, log the response via `checkpoint.sh dispatch-log --event response`.
 
@@ -42,7 +42,7 @@ failures on criteria that previously passed unless you can cite a specific code
 change (with file:line diff) that invalidated the prior PASS.
 
 INSTRUCTIONS:
-1. Load the acceptance-validation skill (common-skills/acceptance-validation/).
+1. Load the acceptance-validation skill (skills/acceptance-validation/).
 2. Use git diff to identify changed files (scoping), staging doc for planned file
    references (context). Search these first when mapping criteria to code.
 3. If PRIOR ACCEPTANCE CONTEXT is provided, review it first. Focus fresh verification
@@ -69,7 +69,7 @@ DENY:
 - Deferring in-scope work to future iterations.
 
 COMPLETION CONTRACT:
-Return via attempt_completion with:
+Return your final summary to the parent agent with:
 1. Verdict: COMPLETE or INCOMPLETE.
 2. Per-criterion evidence table.
 3. Documentation completeness status.

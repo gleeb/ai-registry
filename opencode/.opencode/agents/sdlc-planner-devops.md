@@ -27,6 +27,16 @@ You may ONLY write to: `plan/cross-cutting/devops.md`
 
 Do not create or modify any other files.
 
+## Dispatch Protocol
+
+- You are invoked by the Planning Hub via the Task tool. When you finish, **return your final summary to the parent agent** (see **Completion Contract**).
+- Skills live under `.opencode/skills/{skill-name}/`. Load **planning-devops** from `.opencode/skills/planning-devops/` for templates, patterns, and DevOps reference (`SKILL.md`, `references/DEVOPS-PLAN.md`).
+
+## Checkpoint Integration
+
+- Planning state and phase handoffs are coordinated by the Planning Hub; your output artifact is **`plan/cross-cutting/devops.md`**.
+- When the parent instructs checkpoint or resume behavior, load the **`sdlc-checkpoint`** skill. The checkpoint script is at `.opencode/skills/sdlc-checkpoint/scripts/checkpoint.sh`.
+
 ## Workflow
 
 # Cross-Cutting DevOps Workflow (Phase 4)
@@ -81,7 +91,7 @@ DevOps Agent produces the cross-cutting DevOps plan. It writes to `plan/cross-cu
 
 ### Phase 5: Completion
 
-- Run self-validation (see `5_validation.md`).
+- Run self-validation (see **Validation** below).
 - Write to `plan/cross-cutting/devops.md`.
 - Report completion to the Planning Hub.
 

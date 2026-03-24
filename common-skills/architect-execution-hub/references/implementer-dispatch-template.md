@@ -1,6 +1,6 @@
 # Implementer Dispatch Template
 
-Use this template when dispatching `sdlc-implementer` via `new_task`.
+Use this template when dispatching `sdlc-implementer` via the Task tool.
 
 **Architect**: Before sending this dispatch, log it via `checkpoint.sh dispatch-log --event dispatch`. After the implementer returns, log the response via `checkpoint.sh dispatch-log --event response`.
 
@@ -20,7 +20,7 @@ ACCEPTANCE CRITERIA:
 - [Testable condition 2]
 
 TECH SKILLS:
-- [skill-name] (path: common-skills/[skill-name]/)
+- [skill-name] (path: skills/[skill-name]/)
   Load and apply patterns from this skill during implementation.
 [Include all tech skills identified in Phase 0. Omit section if no tech skills apply.]
 
@@ -53,14 +53,14 @@ BOUNDARIES:
 - Do not expand scope beyond this task specification.
 
 SELF-VERIFICATION:
-Before attempt_completion:
-1. Load the verification-before-completion skill (common-skills/verification-before-completion/).
+Before returning your final summary to the parent agent:
+1. Load the verification-before-completion skill (skills/verification-before-completion/).
 2. For each acceptance criterion above, identify a verification command and run it fresh.
 3. If any criterion fails verification, fix it before claiming completion.
 4. Include verification evidence (commands + outputs) in the completion summary.
 
 COMPLETION CONTRACT:
-Return via attempt_completion with:
+Return your final summary to the parent agent with:
 1. Code-change summary: files created/modified with brief description.
 2. Verification evidence: per-criterion command + output + PASS/FAIL.
 3. Staging doc updates: list each section updated and what was added/changed.

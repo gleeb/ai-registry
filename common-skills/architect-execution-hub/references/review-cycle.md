@@ -13,7 +13,7 @@ implement → code-review → security-review (conditional) → qa → (pass) �
 
 The security review is part of the code review step, not a separate dispatch. When `SECURITY_REVIEW: true` is set in the reviewer dispatch:
 
-1. The code reviewer loads `common-skills/security-review/` during review.
+1. The code reviewer loads `skills/security-review/` during review.
 2. The reviewer adds a `## Security Review` section to the review output.
 3. Security findings are categorized alongside standard code review findings.
 4. Critical security findings cause the same "Changes Required" verdict as critical code issues.
