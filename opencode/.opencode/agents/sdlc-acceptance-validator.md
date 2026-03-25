@@ -1,7 +1,7 @@
 ---
 description: "Independent verification that every acceptance criterion was implemented with evidence. Use when story-level integration has passed and each acceptance criterion must be verified with fresh evidence before Phase 4 sign-off."
 mode: subagent
-model: qwen/qwen3-coder-30b
+model: lmstudio/qwen3-coder-30b
 permission:
   edit: deny
   bash:
