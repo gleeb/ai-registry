@@ -24,10 +24,10 @@
         "baseURL": "http://192.168.1.105:1234/v1"
       },
       "models": {
-        "qwen/qwen3-coder-30b": {
+        "qwen3-coder-30b": {
           "name": "qwen3-coder-30b"
         },
-        "qwen/qwen3.5-35b-a3b": {
+        "qwen3.5-35b-a3b": {
           "name": "qwen3.5-35b-a3b"
         }
       }
@@ -40,37 +40,35 @@
     "task": "allow"
   },
   "agent": {
+    "build": {
+      "permission": {
+        "task": {
+          "sdlc-coordinator": "allow",
+          "sdlc-architect": "allow",
+          "sdlc-planner": "allow",
+          "sdlc-project-research": "allow",
+          "*": "deny"
+        }
+      }
+    },
     "sdlc-coordinator": {
       "permission": {
         "task": {
-          "sdlc-planner": "allow",
-          "sdlc-architect": "allow",
-          "sdlc-project-research": "allow",
-          "*": "deny"
+          "*": "allow"
         }
       }
     },
     "sdlc-planner": {
       "permission": {
         "task": {
-          "sdlc-planner-*": "allow",
-          "sdlc-plan-validator": "allow",
-          "sdlc-project-research": "allow",
-          "*": "deny"
+          "*": "allow"
         }
       }
     },
     "sdlc-architect": {
       "permission": {
         "task": {
-          "sdlc-implementer": "allow",
-          "sdlc-code-reviewer": "allow",
-          "sdlc-qa": "allow",
-          "sdlc-acceptance-validator": "allow",
-          "sdlc-semantic-reviewer": "allow",
-          "sdlc-project-research": "allow",
-          "sdlc-documentation-writer": "allow",
-          "*": "deny"
+          "*": "allow"
         }
       }
     }
