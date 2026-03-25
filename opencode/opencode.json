@@ -19,6 +19,43 @@
   "permission": {
     "*": "allow",
     "edit": "allow",
-    "bash": "allow"
+    "bash": "allow",
+    "task": "allow"
+  },
+  "agent": {
+    "sdlc-coordinator": {
+      "permission": {
+        "task": {
+          "sdlc-planner": "allow",
+          "sdlc-architect": "allow",
+          "sdlc-project-research": "allow",
+          "*": "deny"
+        }
+      }
+    },
+    "sdlc-planner": {
+      "permission": {
+        "task": {
+          "sdlc-planner-*": "allow",
+          "sdlc-plan-validator": "allow",
+          "sdlc-project-research": "allow",
+          "*": "deny"
+        }
+      }
+    },
+    "sdlc-architect": {
+      "permission": {
+        "task": {
+          "sdlc-implementer": "allow",
+          "sdlc-code-reviewer": "allow",
+          "sdlc-qa": "allow",
+          "sdlc-acceptance-validator": "allow",
+          "sdlc-semantic-reviewer": "allow",
+          "sdlc-project-research": "allow",
+          "sdlc-documentation-writer": "allow",
+          "*": "deny"
+        }
+      }
+    }
   }
 }
