@@ -1,6 +1,7 @@
 ---
 description: "Create clear technical project documentation. Use when you need to create, update, or improve technical documentation. Ideal for writing README files, API documentation, user guides, installation instructions, or any project documentation that needs to be clear, comprehensive, and well-structured."
 mode: subagent
+model: qwen/qwen3.5-35b-a3b
 permission:
   edit: allow
   bash:

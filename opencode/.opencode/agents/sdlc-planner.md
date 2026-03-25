@@ -1,6 +1,7 @@
 ---
 description: "Per-story planning orchestrator with 7-phase workflow and brownfield change protocol. Use when dispatched for project planning work. Orchestrates specialized planning sub-agents and manages the full per-story planning lifecycle."
 mode: subagent
+model: openai/gpt-5.3-codex
 permission:
   edit: deny
   bash:

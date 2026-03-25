@@ -1,6 +1,7 @@
 ---
 description: "Enhanced per-story Design/UI-UX specialist with 7-phase workflow — UX discovery, brand foundation, IA, visual design, HTML/CSS mockups, WCAG 2.2 AA accessibility audit, and developer handoff. Use this mode when dispatched by the Planning Hub for per-story design work in Phase 3. Requires story.md and HLD as input. The user can view mockups in their browser and iterate on the design."
 mode: subagent
+model: qwen/qwen3.5-35b-a3b
 permission:
   bash:
     "*": allow

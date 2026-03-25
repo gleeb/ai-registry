@@ -1,6 +1,7 @@
 ---
 description: "Scoped code implementation and verification. Use when the architecture plan is finalized and scoped implementation work is ready to execute."
 mode: subagent
+model: qwen/qwen3-coder-30b
 permission:
   edit: allow
   bash:

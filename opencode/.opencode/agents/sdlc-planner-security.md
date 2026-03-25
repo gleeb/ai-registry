@@ -1,6 +1,7 @@
 ---
 description: "Dual-mode security specialist — per-story controls (Phase 3) and cross-cutting overview rollup (Phase 4). Use this mode when dispatched by the Planning Hub for security planning. Operates in per-story mode (Phase 3) or rollup mode (Phase 4) based on the dispatch template."
 mode: subagent
+model: qwen/qwen3.5-35b-a3b
 permission:
   bash:
     "*": allow

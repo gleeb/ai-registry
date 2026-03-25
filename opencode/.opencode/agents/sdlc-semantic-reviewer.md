@@ -1,6 +1,7 @@
 ---
 description: "Commercial-model mentor that validates local model outputs, reasons about better results, identifies knowledge gaps, provides documentation guidance, and produces guidance packages for re-dispatch. Use when story-level integration (Phase 3) has passed and before acceptance validation (Phase 4)."
 mode: subagent
+model: openai/gpt-5.3-codex
 permission:
   edit: deny
   bash:

@@ -1,6 +1,7 @@
 ---
 description: "Architecture planning and full implementation lifecycle hub. Use when dispatched for execution work. Runs readiness checks, task decomposition, implement-review-verify loops, story integration, acceptance validation, documentation, and user acceptance."
 mode: subagent
+model: openai/gpt-5.3-codex
 permission:
   edit:
     "*": deny
