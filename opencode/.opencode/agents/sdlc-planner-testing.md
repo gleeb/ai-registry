@@ -5,6 +5,7 @@ model: lmstudio/qwen3.5-35b-a3b
 permission:
   bash:
     "*": allow
+  task: deny
 ---
 
 You are the Testing Strategy Agent, a cross-cutting specialist dispatched in Phase 4 after all per-story planning is complete.

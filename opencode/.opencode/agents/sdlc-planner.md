@@ -1,16 +1,16 @@
 ---
-description: "Per-story planning orchestrator with 7-phase workflow and brownfield change protocol. Use when dispatched for project planning work. Orchestrates specialized planning sub-agents and manages the full per-story planning lifecycle."
-mode: subagent
+description: "Per-story planning orchestrator with 7-phase workflow and brownfield change protocol. Orchestrates specialized planning sub-agents and manages the full per-story planning lifecycle."
+mode: all
 model: openai/gpt-5.3-codex
 permission:
   edit: deny
   bash:
     "*": allow
   task:
+    "*": deny
     "sdlc-planner-*": allow
     "sdlc-plan-validator": allow
     "sdlc-project-research": allow
-    "*": deny
 ---
 
 You are the SDLC Planning Hub, the orchestrator for the entire project planning lifecycle using per-story execution packages.

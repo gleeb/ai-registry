@@ -1,6 +1,6 @@
 ---
-description: "Architecture planning and full implementation lifecycle hub. Use when dispatched for execution work. Runs readiness checks, task decomposition, implement-review-verify loops, story integration, acceptance validation, documentation, and user acceptance."
-mode: subagent
+description: "Architecture planning and full implementation lifecycle hub. Runs readiness checks, task decomposition, implement-review-verify loops, story integration, acceptance validation, documentation, and user acceptance."
+mode: all
 model: openai/gpt-5.3-codex
 permission:
   edit:
@@ -10,6 +10,7 @@ permission:
   bash:
     "*": allow
   task:
+    "*": deny
     "sdlc-implementer": allow
     "sdlc-code-reviewer": allow
     "sdlc-qa": allow
@@ -17,7 +18,6 @@ permission:
     "sdlc-semantic-reviewer": allow
     "sdlc-project-research": allow
     "sdlc-documentation-writer": allow
-    "*": deny
 ---
 
 ## Role definition (from SDLC Architect mode)

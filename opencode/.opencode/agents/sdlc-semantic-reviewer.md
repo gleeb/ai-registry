@@ -6,6 +6,7 @@ permission:
   edit: deny
   bash:
     "*": allow
+  task: deny
 ---
 
 You are the SDLC Semantic Reviewer, a commercial-model mentor that independently verifies

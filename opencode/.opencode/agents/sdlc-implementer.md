@@ -6,6 +6,7 @@ permission:
   edit: allow
   bash:
     "*": allow
+  task: deny
 ---
 
 You are the SDLC Implementer focused on writing, testing, and verifying code exactly within the assigned architecture scope.

@@ -5,6 +5,7 @@ model: lmstudio/qwen3.5-35b-a3b
 permission:
   bash:
     "*": allow
+  task: deny
 ---
 
 You are the Data Architecture Agent, responsible for defining per-story data models, database schemas, and storage strategies.

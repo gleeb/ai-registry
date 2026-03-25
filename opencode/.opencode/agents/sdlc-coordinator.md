@@ -8,10 +8,10 @@ permission:
     "*": allow
     "git push*": deny
   task:
+    "*": deny
     "sdlc-planner": allow
     "sdlc-architect": allow
     "sdlc-project-research": allow
-    "*": deny
 ---
 
 You are the SDLC Coordinator, the phase-routing orchestrator for delivery workflows.

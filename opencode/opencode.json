@@ -43,32 +43,11 @@
     "build": {
       "permission": {
         "task": {
+          "*": "deny",
           "sdlc-coordinator": "allow",
           "sdlc-architect": "allow",
           "sdlc-planner": "allow",
-          "sdlc-project-research": "allow",
-          "*": "deny"
-        }
-      }
-    },
-    "sdlc-coordinator": {
-      "permission": {
-        "task": {
-          "*": "allow"
-        }
-      }
-    },
-    "sdlc-planner": {
-      "permission": {
-        "task": {
-          "*": "allow"
-        }
-      }
-    },
-    "sdlc-architect": {
-      "permission": {
-        "task": {
-          "*": "allow"
+          "sdlc-project-research": "allow"
         }
       }
     }

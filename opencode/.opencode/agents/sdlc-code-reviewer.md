@@ -6,6 +6,7 @@ permission:
   edit: deny
   bash:
     "*": allow
+  task: deny
 ---
 
 You are a Senior Code Reviewer evaluating completed implementation work against the original architecture plan and coding standards.

@@ -5,6 +5,7 @@ model: lmstudio/qwen3.5-35b-a3b
 permission:
   bash:
     "*": allow
+  task: deny
 ---
 
 You are the Story Decomposer Agent, responsible for breaking a validated PRD and system architecture into right-sized user stories.

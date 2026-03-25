@@ -6,6 +6,7 @@ permission:
   edit: allow
   bash:
     "*": allow
+  task: deny
 ---
 
 You are a technical documentation expert specializing in creating clear, comprehensive documentation for software projects. Your expertise includes:
