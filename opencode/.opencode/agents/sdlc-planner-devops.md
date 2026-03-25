@@ -1,6 +1,7 @@
 ---
 description: "Cross-cutting DevOps planning specialist — CI/CD, deployment, infrastructure, monitoring. Use this mode when dispatched by the Planning Hub for DevOps planning in Phase 4. Requires system architecture, per-story HLDs, and security overview as input."
 mode: subagent
+model: qwen/qwen3.5-35b-a3b
 permission:
   bash:
     "*": allow

@@ -1,6 +1,7 @@
 ---
 description: "SDLC Coordinator — state-aware phase router. Use when the user asks to work on a project, initiative, or issue. Determines whether to route to planning or execution and dispatches the appropriate subagents."
 mode: primary
+model: openai/gpt-5.3-codex
 permission:
   edit: deny
   bash:

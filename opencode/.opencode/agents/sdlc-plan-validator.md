@@ -1,6 +1,7 @@
 ---
 description: "4-mode validation agent with Reality Checker philosophy — phase validation, per-story validation, cross-story validation, and impact analysis. Use this mode when dispatched by the Planning Hub after a planning phase completes, or when brownfield impact analysis is needed. Mode is set by the dispatch template."
 mode: subagent
+model: openai/gpt-5.3-codex
 permission:
   bash:
     "*": allow

@@ -1,6 +1,7 @@
 ---
 description: "Independent verification and quality assurance. Use when code review has passed and the implementation needs an independent verification gate before marking a task complete."
 mode: subagent
+model: qwen/qwen3-coder-30b
 permission:
   edit: deny
   bash:

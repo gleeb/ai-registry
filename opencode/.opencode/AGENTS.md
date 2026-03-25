@@ -1,0 +1,1 @@
+/home/gleeb/workspace/ai-registry/opencode/AGENTS.md

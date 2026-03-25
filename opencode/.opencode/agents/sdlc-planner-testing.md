@@ -1,6 +1,7 @@
 ---
 description: "Cross-cutting testing strategy specialist — test pyramid, coverage mapping, accessibility testing, CI/CD test gates. Use this mode when dispatched by the Planning Hub for testing strategy in Phase 4. Requires all per-story artifacts, architecture, and security overview as input."
 mode: subagent
+model: qwen/qwen3.5-35b-a3b
 permission:
   bash:
     "*": allow
