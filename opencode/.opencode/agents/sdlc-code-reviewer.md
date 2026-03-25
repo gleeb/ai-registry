@@ -253,6 +253,14 @@ NEVER use "PASS" or "FAIL" in the Overall Assessment field. NEVER use "Approved"
 - If only Suggestions exist → Overall Assessment = Approved.
 - Spec compliance FAIL requires at least one missing or incorrectly implemented requirement.
 
+**Test Coverage vs Functional distinction:**
+When Spec Compliance is PASS and the ONLY Critical issues are missing test files:
+- Overall Assessment remains Changes Required (per verdict rules above).
+- But clearly label these as "Test Coverage Critical" separately from "Functional Critical"
+  in the Issues section, so the architect can prioritize: functional code is correct,
+  test gap needs addressing. This distinction helps the architect decide whether to
+  self-implement tests vs re-dispatch the implementer.
+
 ## verdict_consistency
 
 Before returning the review, verify internal consistency:

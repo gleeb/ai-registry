@@ -3,10 +3,13 @@
 ## Per-Task Cycle
 
 ```
-implement → code-review → security-review (conditional) → qa → (pass) → DONE
-                ↓ (fail)                                       ↓ (fail)
-          re-implement                                   re-implement
-          (max 5 iterations)                             (max 2 retries)
+implement → test-gate → code-review → security-review (conditional) → qa → (pass) → DONE
+                           ↓ (fail, iter 1-3)                              ↓ (fail)
+                     re-implement (verbatim feedback)                 re-implement
+                           ↓ (fail, iter 3+ same defect)             (max 2 retries)
+                     diagnostic analysis → self-implement or guided re-dispatch
+                           ↓ (iter 5 hard ceiling)
+                     architect self-implements → continues to review/QA
 ```
 
 ### Security Review Integration
@@ -29,9 +32,40 @@ The security review is part of the code review step, not a separate dispatch. Wh
 
 | Gate | Max Iterations | On Limit Reached |
 |------|---------------|------------------|
-| Code Review (incl. security) | 5 rejections | Mark task BLOCKED. Return to coordinator with all 5 review verdicts. |
+| Code Review (incl. security) | Adaptive (see below) | Adaptive Recovery Protocol — architect self-implements after diagnostic analysis. Never blocks. |
 | QA Verification | 2 failures | Mark task BLOCKED. Return to coordinator with QA failure evidence. |
 | Semantic Review (Phase 3b) | 2 NEEDS WORK | Escalate to coordinator. Include both review reports and all guidance packages. |
+
+## Adaptive Recovery Protocol (Code Review)
+
+Review iterations follow a tiered recovery strategy instead of a hard block:
+
+### Tier 1: Standard re-dispatch (iterations 1-3)
+- Re-dispatch to implementer with the reviewer's COMPLETE feedback verbatim (all Critical, Important, and Suggestion items with original file:line references and code snippets).
+- Do NOT summarize or omit any reviewer findings.
+
+### Tier 2: Diagnostic analysis (after 3 rejections for the SAME defect)
+1. **Read actual code:** The architect reads the implementation files directly (not just the implementer's summary).
+2. **Compare claims vs reality:** Check whether the implementer's completion claims match the actual file contents.
+3. **Classify failure pattern:**
+   - **Stuck pattern** (same core defect persisted across 3 iterations): Architect self-implements the fix directly. Edit source files, mark as `architect-implemented` in staging doc and dispatch log, continue to review/QA.
+   - **Progress pattern** (different issues each time): One more guided dispatch with exact code snippets showing what to change (see After Diagnostic Analysis below). If that also fails, self-implement.
+
+### Tier 3: Hard ceiling (iteration 5)
+- Architect self-implements regardless. No more implementer dispatches for this task.
+- Pipeline continues normally (review, QA). No escalation or blocking required.
+
+### Audit trail for self-implementation
+- Log the self-implementation in the dispatch log: `checkpoint.sh dispatch-log --event dispatch --agent architect-self-impl`.
+- Update the staging doc's task status board with `architect-implemented` in the notes column.
+- The self-implemented code still goes through review and QA like any other implementation.
+
+## Test Existence Gate
+
+Before dispatching to code reviewer, the architect verifies that the implementer created test files for new/modified source modules:
+- Check (via bash) that test files exist for each new/significantly modified source file.
+- If no test files exist: re-dispatch implementer with test-only focus (counts as an iteration). Do NOT send to reviewer without tests.
+- This prevents wasting review cycles on code guaranteed to fail the reviewer's Critical test gate.
 
 ## Status Tracking
 
@@ -42,21 +76,32 @@ Update the staging document task checklist after each dispatch cycle:
 | `pending` | Not yet started |
 | `in-progress` | Implementer dispatched, cycle active |
 | `done` | QA verification passed |
-| `blocked` | Review or QA limit reached, escalated |
+| `blocked` | QA limit reached, escalated (never for review iterations) |
 
 Track per task:
-- Review iteration count (0-5)
+- Review iteration count (0+, no hard max — adaptive recovery applies)
 - QA retry count (0-2)
 - Last review verdict summary
 - Last QA verdict summary
+- Recovery method: `implementer` | `architect-implemented` (when self-implementation was used)
 
 ## Re-dispatch Rules
 
-### After Review Rejection
-1. Include the reviewer's exact issue list in the re-dispatch message.
-2. Instruct implementer to fix ONLY the listed issues.
+### After Review Rejection (iterations 1-3)
+1. Include the reviewer's COMPLETE output verbatim in the re-dispatch — all Critical, Important, AND Suggestion items with their original file:line references and code snippets. Do NOT summarize or omit any findings.
+2. Instruct implementer to fix ALL the listed issues.
 3. Increment review iteration count.
 4. After fix, re-dispatch to sdlc-code-reviewer (not directly to QA).
+
+### After Diagnostic Analysis (Guided Re-dispatch)
+When the architect has analyzed the actual code and determined the implementer needs concrete guidance (typically after iteration 3):
+
+1. Include the reviewer's complete feedback as above.
+2. Add a `DIAGNOSTIC GUIDANCE` section with:
+   - Exact current code that is wrong, with file:line references.
+   - What it should be changed to, with reasoning.
+   - Any patterns from the existing codebase to follow.
+3. This gives the implementer maximum chance of success before the architect self-implements.
 
 ### After QA Failure
 1. Include QA failure evidence (commands, outputs, failing criteria).

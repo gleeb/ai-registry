@@ -92,18 +92,20 @@ Verify every acceptance criterion and run all automated quality gates before cla
    - **Build**: run the build command if applicable. Record exit code.
 4. For each acceptance criterion in the dispatch, identify a verification command and run it fresh.
 5. Record the command, output, and exit code for each criterion.
-6. If any quality gate or criterion fails: fix the issue and re-verify. If unfixable, HALT and escalate.
+6. If any quality gate or criterion fails: fix the issue and re-verify. Maximum 2 fix-and-reverify cycles per gate. If still failing after 2 attempts, HALT and escalate.
+7. Once all gates pass: STOP verifying. Do not re-run any verification. Proceed immediately to completion_and_escalation. Any further file changes (including writing summary files) would invalidate verification — so make NONE.
 
 ### phase: completion_and_escalation
 
-Return control to coordinator with full context
+TERMINAL PHASE — return control and STOP. Do not create any files or run any commands after composing your return message.
 
-1. On success, return your final summary to the Architect with:
+1. On success, compose your final return message to the Architect with:
    - Code-change summary: files created/modified with brief description.
    - Quality gate evidence: lint, typecheck, test suite, and build outputs with exit codes.
    - Per-criterion verification evidence (command + output + PASS/FAIL).
    - Staging doc updates: list each section updated and what was added/changed.
-2. On unresolved blocker, halt, document blocker in staging, and return your final summary to the Architect for escalation.
+2. On unresolved blocker, document blocker in staging and compose your final return message to the Architect for escalation.
+3. Return the message. Do NOT write any additional files. Do NOT re-run verification. Do NOT create summary files. Your task is COMPLETE.
 
 ## completion_criteria
 
@@ -215,6 +217,21 @@ Do not write any code before reading the staging document and the story's plan a
 
 "Staging doc updated" or "documentation was updated" without listing specific sections and changes is a violation. Every documentation claim must name the section and describe what was added or changed.
 
+### DENY: Overwriting or replacing the staging document structure
+
+The staging document is the source of truth for the entire story execution. Only UPDATE specific sections relevant to your task. Never delete, rewrite, or replace existing sections (Task Status Board, Execution Blockers, Technical Decisions, Plan References, HLD/LLD Execution Plan, etc.). If you need to add content, append to the appropriate section. If a section doesn't exist, add it at the end without disturbing existing content. Overwriting the staging document is a critical protocol violation that destroys execution history.
+
+### DENY: Creating standalone summary, completion, or report files
+
+Do not create files like Implementation_summary.md, completion_summary.md, COMPLETION.md, IMPLEMENTATION_REPORT.md, or any similar standalone documentation files. All implementation summaries, completion reports, and progress updates must be communicated through exactly two channels:
+1. The task completion message returned to the architect (your "final summary").
+2. The staging document (append to the appropriate sections).
+No other files should be created for reporting purposes. If you find yourself wanting to write a summary file, put that content in your task return message instead.
+
+### DENY: Re-running verification after all gates have passed
+
+Once all quality gates and acceptance criteria pass verification, do not re-run any verification commands. Do not create any new files after verification passes. Proceed directly to the completion phase and return your summary. Re-verification after passing creates an infinite loop and wastes cycles.
+
 ## require_rules
 
 ### REQUIRE: Map every acceptance criterion to specific code
@@ -240,6 +257,15 @@ Every created file, modified file, technical decision, and issue resolution must
 ### REQUIRE: Include concrete staging doc update summary in completion result
 
 The completion result must list each staging doc section that was updated and what was added or changed. This allows the reviewer to cross-reference claims against actual content.
+
+### REQUIRE: Preserve staging document structure during updates
+
+When updating the staging document:
+1. Read the current staging document structure first.
+2. Identify only the sections relevant to your task update.
+3. Modify ONLY those sections, preserving all other content verbatim.
+4. Sections you may update: "Implementation File References" (append your files), "Technical Decisions & Rationale" (append your decisions), "Issues & Resolutions" (append rows), "Task Status Board" (update your task row only).
+5. Sections you must NEVER modify: "Overview", "Plan References", "Acceptance Criteria", "HLD / LLD Execution Plan" (except checking your task checkbox), "Execution Blockers" (unless adding a new blocker), other tasks' status rows.
 
 ## Decision Guidance
 

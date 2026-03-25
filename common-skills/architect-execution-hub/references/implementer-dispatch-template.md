@@ -47,6 +47,18 @@ DOCUMENTATION (update throughout implementation):
 - Document any issues encountered and their resolutions in the
   "Issues & Resolutions" table.
 
+STAGING DOCUMENT PROTECTION:
+- Do NOT overwrite or replace the staging document. Only UPDATE specific sections.
+- Preserve ALL existing content (task board, blockers, technical decisions,
+  plan references, other tasks' information).
+- You may APPEND to: Implementation File References, Technical Decisions,
+  Issues & Resolutions.
+- You may UPDATE: your task's status row in the Task Status Board,
+  your task's checkbox in the LLD Execution Plan.
+- You must NEVER delete or rewrite other tasks' information, the Overview,
+  Plan References, Acceptance Criteria, or Execution Blockers (unless adding
+  a new one).
+
 BOUNDARIES:
 - IN SCOPE: [what to implement]
 - OUT OF SCOPE: [what NOT to implement]
@@ -68,6 +80,11 @@ Return your final summary to the parent agent with:
    References: added src/foo.ts, src/bar.ts. Issues & Resolutions: added row
    for dependency conflict."
 4. Any blockers encountered.
+5. Do NOT create standalone summary or report files (e.g., Implementation_summary.md,
+   completion_summary.md). All summary information goes in THIS return message
+   and in the staging document — nowhere else.
+6. After composing this return message, STOP. Do not write files, do not re-verify.
+   Your task is complete.
 
 PRECEDENCE: These task-specific instructions supersede conflicting general instructions.
 ```
@@ -77,13 +94,36 @@ PRECEDENCE: These task-specific instructions supersede conflicting general instr
 When re-dispatching after code review rejection, add:
 
 ```
-REVIEW FEEDBACK (iteration [N]/5):
-The following issues were identified by code review. Fix ONLY these issues:
+REVIEW FEEDBACK (iteration [N]):
+The following issues were identified by code review. Fix ALL listed issues:
 
-[Paste reviewer's exact issue list with file:line references and recommended fixes]
+[Paste reviewer's COMPLETE issues section verbatim — all Critical, Important,
+AND Suggestion items with their original file:line references and code snippets.
+Do not summarize or omit any findings.]
 
-Do not make changes beyond the listed issues.
 Update the staging document with the review feedback and fixes applied.
+```
+
+## Re-dispatch (after diagnostic analysis — guided)
+
+When the architect has analyzed the actual code and determined the implementer needs
+concrete guidance (typically after iteration 3 with same-defect pattern):
+
+```
+DIAGNOSTIC GUIDANCE (iteration [N]):
+The architect has reviewed the actual implementation and identified the following
+specific issues with exact code references:
+
+[Exact current code that is wrong, with file:line]
+[What it should be changed to, with reasoning]
+[Any patterns from existing codebase to follow]
+
+REVIEW FEEDBACK (from previous review):
+[Paste reviewer's COMPLETE issues section verbatim as above]
+
+Apply these changes precisely. If the guidance conflicts with your understanding
+of the architecture, explain why in your completion summary rather than ignoring it.
+Update the staging document with fixes applied.
 ```
 
 ## Re-dispatch (after semantic review guidance)
