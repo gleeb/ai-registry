@@ -43,9 +43,11 @@ Skip any step = lying, not verifying
 | Tests exist for new code | Test files present for each new/modified source module | No test files, empty test files, or trivial assertions |
 | Linter clean | Linter output: 0 errors | Partial check, extrapolation |
 | Build succeeds | Build command: exit 0 | Linter passing, logs look good |
+| Browser loads without errors | Dev server started, PinchTab navigates key routes, no console errors (web app stories) | Build passing, code looks correct |
 | Bug fixed | Test original symptom: passes | Code changed, assumed fixed |
 | Regression test works | Red-green cycle verified | Test passes once |
 | Requirements met | Line-by-line checklist | Tests passing |
+| Browser loads without errors (web apps) | Dev server started, PinchTab navigated to key routes, no console errors, expected content present | Build passing, tests passing, code looks correct |
 
 ## Red Flags - STOP
 

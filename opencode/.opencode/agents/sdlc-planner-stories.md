@@ -78,7 +78,8 @@ If any condition is unmet, request the Planning Hub to address it. Do NOT procee
 2. Apply PM-inspired patterns: ~30-60 min of agent execution work per story.
 3. Always start with US-001-scaffolding.
 4. For each story, define scope (quoting PRD), acceptance criteria, files affected, and candidate domains.
-5. Spar with user on each story before finalizing.
+5. **Integration boundary analysis**: For each story, identify all external dependencies (databases, external APIs, caches, message queues, auth providers, file storage, cloud services). For each dependency, decide whether this story mocks it, defines the interface only, connects to the real thing, or realizes a mock from a prior story. Every `mock` dependency must have exactly one later story with `realize` for the same dependency — if no realization is planned within the project, note "deferred — out of project scope" with rationale. Record decisions in the story's `## Integration Strategy` table and `integration_dependencies` manifest field.
+6. Spar with user on each story before finalizing.
 
 ### Step 4: Identify Contracts
 
@@ -94,6 +95,20 @@ If any condition is unmet, request the Planning Hub to address it. Do NOT procee
 3. Verify all PRD section 7 requirements are covered.
 4. Verify story boundaries align with architecture component boundaries.
 5. Present the full decomposition summary to the user.
+
+### Step 5b: Collect Review Milestones
+
+After the user approves the decomposition, ask ONE question:
+
+"Are there any points during execution where you'd like the agent to pause and show you results? For example: run the server and show the UI, execute a script and present the output, or verify a specific behavior. If none, execution will run fully autonomously."
+
+Based on the user's response:
+
+1. If the user specifies pause points, map each one to a story and task (or "after all tasks") and create Review Milestone entries (RM-1, RM-2, ...) in the appropriate story's `## Review Milestones` section using the STORY-OUTLINE template format.
+2. If the user says "none" or skips, write `None — fully autonomous execution.` in the `## Review Milestones` section of every story.
+3. A single milestone may span multiple stories if the user's request is cross-cutting (e.g., "after the backend and frontend are both done, run the full app"). In that case, attach it to the later story in execution order.
+
+This is the ONLY point in the planning workflow where the user is asked about execution-time interaction. Do not ask about milestones again during per-story planning (Phase 3).
 
 ### Step 6: Create Folder Structure
 
@@ -218,6 +233,15 @@ Stress-test every story boundary, scope decision, and dependency relationship. N
 - "The PRD says {quoted text}. Your story adds {additional scope}. Is this warranted?"
 - "You've included error states not in the PRD. Are these explicit requirements or assumptions?"
 
+## Integration Boundary Challenges
+
+- "This story creates a database layer. Is it mocked or real? If mocked, which story connects to the real database?"
+- "US-{NNN} mocks {dependency}. I don't see a story that realizes it. Is that intentional or a gap?"
+- "US-{NNN} and US-{NNN} both reference {dependency}. One should mock, the other should realize. Which is which?"
+- "This story uses `level: real` for {dependency}. Has the DevOps plan accounted for provisioning it?"
+- "The architecture says {component} talks to {external service}. Which story introduces the mock, and which wires up the real connection?"
+- "Every mocked dependency needs a realization story. Walk me through the mock-to-realize chain for {dependency}."
+
 ## Anti-Pleasing Protocol
 
 When the user proposes a decomposition:
@@ -263,9 +287,10 @@ Merge when ALL of these conditions hold:
 
 1. Scaffolding (US-001) is always order 1.
 2. Stories that provide contracts must come before their consumers.
-3. Backend stories before frontend stories that depend on them (unless there's a mock/stub strategy).
+3. Backend stories before frontend stories that depend on them (unless the frontend story's Integration Strategy explicitly mocks the backend dependency).
 4. Stories with no dependencies on other stories can run in parallel (same execution_order number).
-5. If two stories have a circular dependency, one of the following is true:
+5. Stories that **realize** a mocked dependency must have a higher `execution_order` than the story that introduced the mock.
+6. If two stories have a circular dependency, one of the following is true:
    - They should be merged into one story.
    - A shared contract is missing.
    - The dependency is actually one-directional and the manifest is wrong.

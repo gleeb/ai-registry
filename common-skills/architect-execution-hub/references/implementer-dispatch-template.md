@@ -59,6 +59,24 @@ STAGING DOCUMENT PROTECTION:
   Plan References, Acceptance Criteria, or Execution Blockers (unless adding
   a new one).
 
+INTEGRATION CONTEXT:
+[For each external dependency in this task's scope, declare the realization level
+and provide the details the implementer needs. Omit this section only if the task
+has no external dependencies.]
+
+- [Dependency name]: [mock | interface-only | real | realize]
+  [If mock: describe the mock approach — in-memory array, fixture file, adapter
+  returning hardcoded data, etc. Reference the HLD's integration realization
+  subsection for the exact design.]
+  [If interface-only: specify the adapter interface to define and where it lives.]
+  [If realize: identify which prior mock is being replaced, the adapter interface
+  to preserve, and the real connection details.]
+  [If real/realize and DevOps agent was dispatched — include from infra manifest:]
+    Connection: [connection string / URL / file path from DevOps manifest]
+    Env var: [env var name, e.g., DATABASE_URL]
+    Health: [verified running — DevOps health check passed]
+    Notes: [any DevOps agent notes relevant to implementation]
+
 BOUNDARIES:
 - IN SCOPE: [what to implement]
 - OUT OF SCOPE: [what NOT to implement]
@@ -69,7 +87,9 @@ Before returning your final summary to the parent agent:
 1. Load the verification-before-completion skill (skills/verification-before-completion/).
 2. For each acceptance criterion above, identify a verification command and run it fresh.
 3. If any criterion fails verification, fix it before claiming completion.
-4. Include verification evidence (commands + outputs) in the completion summary.
+4. If a BROWSER VERIFICATION section is included below, run a browser smoke check
+   after quality gates pass (see that section for details).
+5. Include verification evidence (commands + outputs) in the completion summary.
 
 COMPLETION CONTRACT:
 Return your final summary to the parent agent with:
@@ -87,6 +107,26 @@ Return your final summary to the parent agent with:
    Your task is complete.
 
 PRECEDENCE: These task-specific instructions supersede conflicting general instructions.
+```
+
+## Conditional: Browser Verification Block
+
+**Include this block only when** the story is a web application AND the task touches UI-visible code. Omit entirely for non-web-app stories or backend-only tasks.
+
+```
+BROWSER VERIFICATION:
+Load the PinchTab skill from skills/pinchtab/ and follow the browser verification
+protocol at skills/pinchtab/references/browser-verification-protocol.md.
+
+Dev server command: [e.g., npm run dev]
+Dev server port: [e.g., 3000]
+Routes to verify: [e.g., /, /dashboard, /settings]
+Expected content: [brief description of what should appear on each route]
+
+Run a browser smoke check AFTER quality gates pass (lint, typecheck, tests, build).
+Start the dev server, navigate to the affected routes via PinchTab, confirm pages
+load and expected content is present. If something is broken, fix it before claiming
+completion. If PinchTab is unreachable, skip — do not block on infrastructure.
 ```
 
 ## Re-dispatch (after review feedback)

@@ -17,6 +17,7 @@ The dependency manifest is a level-2 heading in `story.md` with YAML-like key-va
 - depends_on_stories: [US-002]
 - execution_order: 3
 - candidate_domains: [hld, api, data, security, design]
+- integration_dependencies: [sqlite:mock, inventory-api:real]
 ```
 
 ## Fields
@@ -89,6 +90,19 @@ List of technologies and frameworks used by this story. The Implementation Hub u
 - If no matching skill exists, the entry is noted as a gap but does not block execution
 - Common values: `react-native`, `typescript`, `expo`, `node`, `python`, `aws-cdk`, `terraform`
 
+### integration_dependencies (required)
+
+List of external dependencies and their realization level for this story. Enables the validator to check that every mocked dependency has a corresponding realization story.
+
+- Format: List of `name:level` pairs (e.g., `[sqlite:mock, stripe-api:real, redis:realize]`)
+- Valid levels: `mock`, `interface-only`, `real`, `realize`
+- `mock` — in-memory fake or hardcoded data; a future story replaces it with a real connection
+- `interface-only` — defines the adapter interface; consumers use a mock adapter until the real implementation
+- `real` — connects to actual infrastructure that must be provisioned before implementation
+- `realize` — replaces a mock/interface from a prior story with a real connection
+- Empty list is allowed for stories with no external dependencies (e.g., pure UI, scaffolding)
+- Each entry must have a corresponding row in the story's `## Integration Strategy` table with full details (realized_by, mock_approach, notes)
+
 ## Example
 
 ```markdown
@@ -101,6 +115,7 @@ List of technologies and frameworks used by this story. The Implementation Hub u
 - execution_order: 2
 - candidate_domains: [hld, api, data, security]
 - tech_stack: [react-native, typescript, expo]
+- integration_dependencies: [postgresql:mock, auth0:interface-only]
 ```
 
 ## Validation Rules
@@ -116,3 +131,8 @@ The Plan Validator checks:
 7. No circular dependencies in `depends_on_stories`.
 8. `candidate_domains` always includes `hld`.
 9. `tech_stack` is present and non-empty.
+10. `integration_dependencies` is present (empty list allowed for stories with no external deps).
+11. Every `mock` dependency has a corresponding `realize` entry in another story (or an explicit "deferred — out of project scope" note in the Integration Strategy table).
+12. Every `realize` dependency has a prior `mock` or `interface-only` entry in an earlier story.
+13. The realizing story's `execution_order` is higher than the mocking story's `execution_order`.
+14. Every `real` or `realize` dependency has corresponding infrastructure in `plan/cross-cutting/devops.md`.

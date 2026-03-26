@@ -28,6 +28,12 @@ Brief description of what this story accomplishes and why it's needed.
 - [tech] — skill: `skills/[skill-name]/`
 - [tech] — skill: `skills/[skill-name]/`
 
+## Review Milestones
+[Copied from story.md — the ONLY points where the agent pauses for user input]
+| ID | Trigger | Action | Verify | Status |
+|----|---------|--------|--------|--------|
+[If story.md has "None — fully autonomous execution", copy that line here instead of the table]
+
 ## Context Gathered
 
 ### Documentation Reviewed
@@ -93,4 +99,5 @@ When the architect creates this document:
 2. Fill in Plan References from the story's plan folder.
 3. Copy Acceptance Criteria verbatim from `story.md`.
 4. Fill in Tech Stack from the story manifest's `tech_stack` field, mapping each to its skill path.
-5. Leave Context Gathered, Implementation Progress, Technical Decisions, Issues, File References, and Lessons Learned for the implementer to fill during the dev loop.
+5. Copy Review Milestones from `story.md` into the staging doc, adding a Status column (pending / triggered / user-approved). If the story has no milestones, write "None — fully autonomous execution."
+6. Leave Context Gathered, Implementation Progress, Technical Decisions, Issues, File References, and Lessons Learned for the implementer to fill during the dev loop.

@@ -22,6 +22,10 @@ Shared skills and dispatch templates use Roo Code paths. When reading or composi
 - `.roo/skills/` → `.cursor/skills/`
 - `common-skills/` → `.cursor/skills/`
 
+### On-Demand PinchTab (web app stories)
+
+When the story is a web application and the architect needs to self-diagnose UI failures (Adaptive Recovery on UI tasks, stuck QA on browser verification, interpreting Pre-Flight browser evidence), load the PinchTab skill from `.cursor/skills/pinchtab/`. Do NOT load PinchTab at initialization — only when actively needed for diagnostics or self-repair.
+
 ## Execution Sub-Agents
 
 | Agent | Subagent Name | Purpose |
@@ -116,6 +120,7 @@ After all per-task loops pass:
 
 Before dispatching the commercial semantic reviewer, read the QA agent's structured evidence from the Phase 3 story-level QA completion. Confirm all automated quality gates are clean:
 - Lint: 0 errors, Type check: 0 errors, Test suite: all passing, Build: exit 0.
+- Browser smoke test: key routes load without console errors (web app stories only).
 If any fail, return to Phase 2 for targeted fixes. Do NOT dispatch semantic reviewer until all automated gates are clean. The hub reads evidence — it does not re-run commands.
 
 ## Phase 3b: Semantic Review (Commercial Mentor)
@@ -158,6 +163,10 @@ Commercial-model senior-developer quality review with 3 checks (agent report int
    b. Return to coordinator with completion summary.
 3. If user requests changes → create targeted tasks and re-enter Phase 2.
 4. If user rejects → escalate with rejection details.
+
+## On-Demand PinchTab Awareness
+
+For web app stories, when you need to self-diagnose UI failures (Adaptive Recovery on UI tasks, stuck QA involving browser verification, or interpreting Pre-Flight Evidence Gate browser evidence), load the PinchTab skill from `skills/pinchtab/`. Do NOT load it at startup — only when actively needed for browser-related diagnostics or self-repair. See `skills/pinchtab/references/environment-setup.md` for Docker networking and `skills/pinchtab/references/browser-verification-protocol.md` for the verification protocol.
 
 ## Best Practices
 

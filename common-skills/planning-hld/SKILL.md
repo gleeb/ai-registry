@@ -47,6 +47,12 @@ description: Per-story HLD specialist agent. Use when the Planning Hub dispatche
 2. Use consumed contract definitions as authoritative — do not redefine shared interfaces.
 3. If the story provides contracts, ensure the design supports the contract definition.
 4. Technology choices must align with `plan/system-architecture.md`.
+5. **Integration realization design**: Read the story's `## Integration Strategy` section. For each external dependency listed:
+   - If **mock**: design the mock implementation — define the adapter/repository interface, describe the in-memory data structure or fixture approach, and specify what fake data to provide. The implementer will build exactly what is described here.
+   - If **interface-only**: define the adapter interface with method signatures and return types. Specify the file location. Note that consumers will use a mock implementation until a later story provides the real one.
+   - If **real**: describe the connection approach (driver, ORM, SDK), configuration source (env vars, config file), and initialization steps. Note that infrastructure must be provisioned before implementation.
+   - If **realize**: identify the prior story's mock, describe how the real implementation replaces it (swap adapter, change DI binding, update config), and specify what interface is preserved.
+   Document all integration realization decisions in the HLD's `#### Integration realization` subsection. This is critical context that prevents the implementer from guessing.
 
 ### Phase 3: Design Documentation
 
@@ -80,6 +86,9 @@ description: Per-story HLD specialist agent. Use when the Planning Hub dispatche
 - "What happens at the boundary between this story's components and the next story's?"
 - "Is this technology choice consistent with the architecture? What's the rationale?"
 - "Where are the error paths? What happens when {integration point} fails?"
+- "The story mocks {dependency}. Is the mock implementation detailed enough for the implementer to build it without questions?"
+- "The adapter interface for {dependency} — will it still work when the real connection replaces the mock in {story}?"
+- "This design uses a real {dependency}. Who provisions the infrastructure? Is the DevOps plan aware?"
 
 ## Anti-Pleasing Patterns
 

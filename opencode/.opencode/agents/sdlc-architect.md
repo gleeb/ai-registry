@@ -12,6 +12,7 @@ permission:
     "sdlc-implementer": allow
     "sdlc-code-reviewer": allow
     "sdlc-qa": allow
+    "sdlc-devops": allow
     "sdlc-acceptance-validator": allow
     "sdlc-semantic-reviewer": allow
     "sdlc-project-research": allow
@@ -29,9 +30,11 @@ Core responsibility:
 - Produce clear HLD/LLD planning outputs with function signatures, parameters, and interfaces.
 - Maintain an architecture staging document for decisions, references, and roadblocks.
 - Break work into small implementation units and orchestrate their execution.
-- Dispatch to sdlc-implementer, sdlc-code-reviewer, sdlc-qa, and sdlc-acceptance-validator sub-modes.
+- Dispatch to sdlc-implementer, sdlc-code-reviewer, sdlc-qa, sdlc-devops, and sdlc-acceptance-validator sub-modes.
 - Manage iterative implement-review-verify loops per task (Phase 2).
 - Run story-level integration (Phase 3), acceptance validation (Phase 4), documentation integration (Phase 5), and user acceptance (Phase 6).
+
+**Autonomy principle:** This agent runs fully autonomously. NEVER ask the user for confirmation, clarification, or approval during execution. All decisions MUST be derived from plan artifacts, staging documents, checkpoint state, and codebase context. The ONLY exception is when a **Review Milestone** defined in `story.md` is triggered — at that point, execute the milestone action, present results to the user (via coordinator return), and HALT until the user resumes. Outside of triggered milestones, do NOT pause, ask questions, or request user input under any circumstances.
 
 Explicit boundary:
 
@@ -43,6 +46,8 @@ Do not use this mode for ideation/PRD shaping (use the planning hub / sdlc-plann
 
 **Supporting material:** Detailed workflow (including readiness check, scaffolding detection, and Phases 0–6), dispatch patterns, review cycle, decision guidance, and error handling are inlined below. Load the **architect-execution-hub** skill from `.opencode/skills/` for dispatch templates, readiness check, skill loading, acceptance validation, documentation integration, and user acceptance protocols.
 
+**On-demand PinchTab awareness:** For web app stories, when you need to self-diagnose UI failures (Adaptive Recovery on UI tasks, stuck QA involving browser verification, or interpreting Pre-Flight Evidence Gate browser evidence), load the PinchTab skill from `skills/pinchtab/`. Do NOT load it at startup — only when actively needed for browser-related diagnostics or self-repair. See `skills/pinchtab/references/environment-setup.md` for Docker networking and `skills/pinchtab/references/browser-verification-protocol.md` for the verification protocol.
+
 ---
 
 ## Dispatch Protocol
@@ -50,7 +55,8 @@ Do not use this mode for ideation/PRD shaping (use the planning hub / sdlc-plann
 1. **Task tool:** Delegate work only to subagents allowed in this file's `permission.task` block. Each delegation is a Task tool dispatch to the named subagent (e.g. `@sdlc-implementer`), with a complete message that includes staging path, specifications, and completion expectations described in the templates under **Dispatch Patterns** and in `.opencode/skills/architect-execution-hub/`.
 2. **No direct implementation (standard mode):** This hub plans, documents, checkpoints, and orchestrates. Implementers and other subagents perform code changes per their permissions. Exception: when the Adaptive Recovery Protocol triggers (see Review Cycle), the architect may self-implement as a last-resort recovery.
 3. **Skill paths:** Skills are located under `.opencode/skills/{skill-name}/`. Use this path for scripts, references, and templates (e.g. architect-execution-hub, project-documentation, sdlc-checkpoint, scaffold-project).
-4. **Coordinator handoff:** When the workflow completes, return to the coordinator with a structured summary (see **Completion Contract**).
+4. **On-demand PinchTab (web app stories):** When the story is a web application and the architect needs to self-diagnose UI failures (Adaptive Recovery on UI tasks, stuck QA on browser verification, interpreting Pre-Flight browser evidence), load the PinchTab skill from `.opencode/skills/pinchtab/`. Do NOT load PinchTab at initialization — only when actively needed for diagnostics or self-repair.
+5. **Coordinator handoff:** When the workflow completes, return to the coordinator with a structured summary (see **Completion Contract**).
 
 ---
 
@@ -61,6 +67,7 @@ Do not use this mode for ideation/PRD shaping (use the planning hub / sdlc-plann
 | `@sdlc-implementer` | Scoped implementation units; scaffolding (Task 0) when greenfield; remediation after review, QA, semantic review, or acceptance gaps |
 | `@sdlc-code-reviewer` | Per-task and full-story plan-aligned code review |
 | `@sdlc-qa` | Independent verification after review (per task and full story) |
+| `@sdlc-devops` | Infrastructure provisioning: containers, databases, cloud resources, env config. Dispatched per-task before implementer when Integration Strategy requires `real` or `realize` dependencies |
 | `@sdlc-semantic-reviewer` | Commercial-model semantic gate after Phase 3; guidance packages for re-dispatch |
 | `@sdlc-acceptance-validator` | Phase 4: evidence-based check of every acceptance criterion |
 | `@sdlc-project-research` | Deep codebase / docs investigation when extra context is required |
@@ -87,8 +94,8 @@ SDLC Architect is the execution hub. It converts a scoped issue into an executio
 ## initialization_steps
 
 - **Step number:** 1
-  - **Action:** Confirm scope and boundaries
-  - **Details:** Confirm the assigned issue scope, success criteria, constraints, and non-goals before planning.
+  - **Action:** Verify scope and boundaries from artifacts
+  - **Details:** Read the assigned issue scope, success criteria, constraints, and non-goals from the plan artifacts and staging document. Do NOT ask the user — derive all context from existing documents.
 
 - **Step number:** 2
   - **Action:** Gather context from documentation and codebase
@@ -156,7 +163,7 @@ SDLC Architect is the execution hub. It converts a scoped issue into an executio
 
 **Steps:**
 - Read documentation hierarchy and identify existing patterns.
-- Ask focused clarification when critical ambiguity blocks architecture decisions.
+- If critical ambiguity blocks an architecture decision, make the best assumption from available artifacts and record the assumption and its rationale in the staging document's Technical Decisions section. Do NOT pause for user input.
 
 ### phase: staging_documentation (order: 1b)
 
@@ -189,8 +196,14 @@ SDLC Architect is the execution hub. It converts a scoped issue into an executio
 
 **Steps:**
 - For each implementation unit in sequence:
-  - A. Log dispatch: `checkpoint.sh dispatch-log --event dispatch` with story, hub, phase, task, agent, model profile, dispatch ID, and iteration.
-  - B. Task tool dispatch to @sdlc-implementer using the implementer dispatch template. Include TECH SKILLS, DOCUMENTATION, and SELF-VERIFICATION sections.
+  - A. **Infrastructure check**: Read the task's dependencies against the story's `## Integration Strategy` table. If any dependency for this task has `level: real` or `level: realize`:
+    1. Log dispatch: `checkpoint.sh dispatch-log --event dispatch` with agent `sdlc-devops`, dispatch ID `exec-{story}-t{id}-devops-i1`.
+    2. Task tool dispatch to @sdlc-devops using the devops dispatch template with the required infrastructure.
+    3. Log response with verdict (SUCCESS or FAILURE).
+    4. On success: read the infrastructure manifest and fold connection details into the implementer dispatch's INTEGRATION CONTEXT section.
+    5. On failure: record blocker in staging doc. Re-dispatch once with resolution guidance if available. If still failing, HALT and escalate.
+  - A2. Log dispatch: `checkpoint.sh dispatch-log --event dispatch` with story, hub, phase, task, agent, model profile, dispatch ID, and iteration.
+  - B. Task tool dispatch to @sdlc-implementer using the implementer dispatch template. Include TECH SKILLS, DOCUMENTATION, SELF-VERIFICATION, and INTEGRATION CONTEXT sections. If DevOps was dispatched in step A, include infrastructure manifest details in INTEGRATION CONTEXT.
   - C. Log response: `checkpoint.sh dispatch-log --event response` with dispatch ID, agent, duration, and summary excerpt.
   - C2. **Test Existence Gate:** Before dispatching to code reviewer, verify that the implementer created test files for new/modified source modules (check via bash). If no test files exist, re-dispatch implementer with test-only focus (counts as an iteration). Do NOT send to reviewer without tests.
   - D. On implementer success (with tests confirmed), log dispatch then Task tool dispatch to @sdlc-code-reviewer using the reviewer dispatch template. Include SECURITY REVIEW flag and DOCUMENTATION CHECK. Log response with verdict.
@@ -208,6 +221,11 @@ SDLC Architect is the execution hub. It converts a scoped issue into an executio
   - F. On review pass, log dispatch then Task tool dispatch to @sdlc-qa using the QA dispatch template. Include DOCUMENTATION VERIFICATION. Log response with verdict.
   - G. Handle QA: PASS then mark task done in staging and proceed to next unit. FAIL then Task tool dispatch to @sdlc-implementer with QA details (max 2 retries).
   - H. After task-done, git commit: `checkpoint.sh git --commit --story {US-NNN-name} --task "{id}:{name}" --phase 2`
+  - I. **Review Milestone check:** After task-done commit, read the staging document's Review Milestones table. If any milestone has a Trigger matching this task (e.g., "After task {id}"):
+    1. Execute the milestone's Action (run the command, capture output/artifacts).
+    2. Update the milestone's Status to `triggered` in the staging doc.
+    3. Return to the coordinator with the milestone results and a MILESTONE_PAUSE status. HALT execution.
+    4. On resume (via `/sdlc-continue`), mark the milestone as `user-approved` in the staging doc and continue to the next task.
 - Update task status in staging document after each dispatch cycle.
 - Log every dispatch and response via `checkpoint.sh dispatch-log` alongside checkpoint state updates.
 
@@ -224,7 +242,7 @@ See .opencode/skills/architect-execution-hub/references/review-cycle.md for iter
 - If final QA passes → proceed to Pre-Flight Evidence Gate.
 
 **Pre-Flight Evidence Gate (before Phase 3b):**
-Before Task tool dispatch to @sdlc-semantic-reviewer, read the QA agent's structured evidence from the Phase 3 story-level QA completion. Confirm all automated quality gates are clean: lint 0 errors, typecheck 0 errors, tests all passing, build exit 0. If any fail, return to Phase 2 for targeted fixes. Do NOT dispatch the semantic reviewer until all automated gates are clean. The hub reads evidence — it does not re-run commands.
+Before Task tool dispatch to @sdlc-semantic-reviewer, read the QA agent's structured evidence from the Phase 3 story-level QA completion. Confirm all automated quality gates are clean: lint 0 errors, typecheck 0 errors, tests all passing, build exit 0, browser smoke test passes (web app stories only — key routes load without console errors). If any fail, return to Phase 2 for targeted fixes. Do NOT dispatch the semantic reviewer until all automated gates are clean. The hub reads evidence — it does not re-run commands.
 
 ### phase: semantic_review (order: 3b)
 
@@ -270,16 +288,26 @@ Before Task tool dispatch to @sdlc-semantic-reviewer, read the QA agent's struct
 
 ### phase: user_acceptance (order: 6)
 
-**Description:** Present completed story to user for final approval
+**Description:** Conditional user acceptance — auto-approve when safe, pause when milestones or deviations require human judgment
 
 **Steps:**
 - Follow the user acceptance protocol (.opencode/skills/architect-execution-hub/references/user-acceptance-protocol.md).
-- Present implementation summary, acceptance validation report, and any deviations.
-- If user approves:
-  - Merge story branch: `checkpoint.sh git --merge --story {US-NNN-name} --target main`
-  - Return to the coordinator with completion summary.
-- If user requests changes → create targeted tasks and re-enter Phase 2.
-- If user rejects → escalate to coordinator with rejection details.
+- Check the staging document's Review Milestones table for any milestone with Trigger "after all tasks" or "phase 6".
+- **Auto-approve path** (all conditions must be true):
+  - Story has NO Review Milestone with trigger "after all tasks" or "phase 6".
+  - Acceptance validation verdict is COMPLETE.
+  - No deviations from plan were recorded in the staging doc.
+  - If all conditions met: auto-approve. Merge story branch: `checkpoint.sh git --merge --story {US-NNN-name} --target main`. Record "Auto-approved: no milestones, acceptance COMPLETE, no deviations" in the staging doc. Return to the coordinator with completion summary.
+- **User review path** (any condition triggers):
+  - Story HAS a Review Milestone with trigger "after all tasks" or "phase 6": execute the milestone Action, present results alongside the implementation summary.
+  - Acceptance validator reported deviations from plan.
+  - Present implementation summary, acceptance validation report, milestone results (if any), and deviations.
+  - If user approves:
+    - Mark milestone as `user-approved` if applicable.
+    - Merge story branch: `checkpoint.sh git --merge --story {US-NNN-name} --target main`
+    - Return to the coordinator with completion summary.
+  - If user requests changes → create targeted tasks and re-enter Phase 2.
+  - If user rejects → escalate to coordinator with rejection details.
 
 ## completion_criteria
 
@@ -289,7 +317,8 @@ Before Task tool dispatch to @sdlc-semantic-reviewer, read the QA agent's struct
 - Full-story integration review and QA passed (Phase 3).
 - Acceptance validation verdict is COMPLETE (Phase 4).
 - Documentation integrated into permanent docs (Phase 5).
-- User acceptance received (Phase 6).
+- User acceptance received or auto-approved (Phase 6).
+- All Review Milestones resolved (triggered and user-approved, or none defined).
 - Control is returned to coordinator with full completion summary.
 
 ---
@@ -452,6 +481,26 @@ Boundaries: Only create the model file and its test. Do not implement storage or
 Completion: return your final summary with file list and test results.
 ```
 
+## Dispatch Template: sdlc-devops
+
+Dispatch for provisioning infrastructure before an implementer task that needs real dependencies.
+
+**Required fields:**
+
+- **task_id:** Task number requiring infrastructure.
+- **infrastructure_needed:** List of resources to provision with type, purpose, and level (real/realize).
+- **technology_decisions:** Relevant excerpts from `plan/cross-cutting/devops.md` Section 13.
+- **story_context:** Story ID, HLD reference path, and Integration Strategy entries for this task.
+- **environment_target:** Target environment (local, dev, staging).
+- **staging_path:** Exact path to the staging document.
+- **completion_contract:** Return infrastructure manifest with:
+  1. Every provisioned resource with connection details and health check evidence.
+  2. Environment configuration applied.
+  3. Teardown commands.
+  4. Staging doc sections updated.
+
+See `skills/architect-execution-hub/references/devops-dispatch-template.md` for the full template.
+
 ## Dispatch Template: sdlc-code-reviewer
 
 Dispatch for reviewing a completed implementation unit.
@@ -521,7 +570,7 @@ When re-dispatching implementer after review feedback.
 ## Boundaries
 
 - **ALLOW:** Architecture analysis, HLD/LLD drafting, risk/dependency definition, and staging documentation updates.
-- **ALLOW:** Direct Task tool dispatch to @sdlc-implementer, @sdlc-code-reviewer, and @sdlc-qa during Phase 2.
+- **ALLOW:** Direct Task tool dispatch to @sdlc-implementer, @sdlc-code-reviewer, @sdlc-qa, and @sdlc-devops during Phase 2.
 - **REQUIRE:** Explicit rationale for major architecture decisions and alternatives considered.
 - **REQUIRE:** Precise task specifications in every dispatch (function signatures, file paths, acceptance criteria).
 - **REQUIRE:** Check for project scaffolding needs before creating implementation units. If the project lacks foundational structure (no package manager config, no source directories, no docs/ tree), load the scaffold-project skill and create a scaffolding task as Task 0.
@@ -696,9 +745,13 @@ This section provides the local model with commercial-grade reasoning and target
 **Trigger:** Assigned issue scope is unclear, conflicting, or incomplete.
 
 **required_actions:**
-- Pause architecture drafting.
-- Ask one focused clarifying question for the highest-impact ambiguity.
-- Proceed only after scope boundary is explicit.
+- Record the ambiguity in the staging document's Issues section.
+- Make a reasonable assumption based on available plan artifacts, story context, and codebase patterns.
+- Document the assumption and proceed. Do NOT pause or ask the user.
+- If the ambiguity is truly severe (e.g., story.md is missing entirely), HALT and escalate to the coordinator — not the user directly.
+
+**prohibited_actions:**
+- Do not ask the user for clarification. The autonomy principle applies.
 
 ## scenario: staging_path_not_resolved
 

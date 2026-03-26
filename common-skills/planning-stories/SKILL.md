@@ -48,8 +48,16 @@ description: Story Decomposer agent. Decomposes a validated PRD and system archi
    - **Files Affected**: List the exact files the execution agent will create or modify.
    - **Dependency manifest**: See [`references/DEPENDENCY-MANIFEST.md`](references/DEPENDENCY-MANIFEST.md).
    - **Candidate domains**: Which Phase 3 agents are needed (hld, api, data, security, design).
-4. REQUIRE the first story to always be `US-001-scaffolding` (project setup, folder structure, dependencies).
-5. DENY stories that add scope not in the PRD — flag with `[ADDITION]` and require user approval.
+   - **Integration Strategy**: See [`references/STORY-OUTLINE.md`](references/STORY-OUTLINE.md) Integration Strategy section.
+4. **Integration boundary analysis**: For each story, identify all external dependencies (databases, external APIs, caches, message queues, auth providers, file storage, cloud services). For each dependency, decide:
+   - Does this story **mock** it (in-memory fake, fixture data)?
+   - Does this story define the **interface only** (adapter pattern, no real implementation)?
+   - Does this story connect to the **real** thing (infrastructure must be provisioned)?
+   - Does this story **realize** a mock from a prior story (replace fake with real)?
+   REQUIRE: every `mock` dependency has exactly one later story with `realize` for the same dependency. If no realization is planned within the project scope, the Integration Strategy table must note "deferred — out of project scope" with rationale.
+   Record all decisions in each story's `## Integration Strategy` table and `integration_dependencies` manifest field.
+5. REQUIRE the first story to always be `US-001-scaffolding` (project setup, folder structure, dependencies).
+6. DENY stories that add scope not in the PRD — flag with `[ADDITION]` and require user approval.
 
 ### Phase 3: Contract Identification
 
@@ -93,6 +101,13 @@ Apply these challenges during decomposition. NEVER accept a story boundary witho
 - "The architecture defines [component]. No story seems to exercise it. Is a story missing?"
 - "What happens at the boundary between [story A] and [story B]? Is the handoff clear?"
 
+### Integration Boundaries
+- "This story creates a database layer. Is it mocked or real? If mocked, which story connects to the real database?"
+- "Story US-004 mocks the [service]. I don't see a story that realizes it. Is that intentional or a gap?"
+- "US-003 and US-006 both reference [dependency]. One should mock, the other should realize. Which is which?"
+- "This story uses `level: real` for [dependency]. Has the DevOps plan accounted for provisioning it?"
+- "The architecture says [component] talks to [external service]. Which story introduces the mock, and which story wires up the real connection?"
+
 ### No Gold-Plating
 - "This acceptance criterion isn't in the PRD. Is it a genuine requirement or an addition?"
 - "The PRD doesn't mention [feature]. Should this story include it, or is it gold-plating?"
@@ -103,6 +118,7 @@ Apply these challenges during decomposition. NEVER accept a story boundary witho
 - **Premature closure**: Stay on a story until its scope, acceptance criteria, and dependencies are fully defined.
 - **Scope acceptance**: Always check whether a proposed story boundary matches PRD + architecture boundaries.
 - **Missing contracts**: If two stories share an interface, demand a contract. "We'll figure it out later" is DENIED.
+- **Unresolved mocks**: If a story mocks an external dependency but no later story realizes it, demand a realization story or an explicit "deferred" rationale. "We'll connect the real DB later" without a story is DENIED.
 - **Skipping scaffolding**: US-001-scaffolding is always the first story. Never skip it.
 
 ## Output

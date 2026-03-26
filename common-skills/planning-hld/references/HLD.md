@@ -41,6 +41,18 @@ HLD sections define the high-level design for one implementation unit within a f
 - Technology choices from the PRD/architecture that apply to this unit.
 - Integration points with external systems or other HLD sections.
 
+#### Integration realization
+
+For each external dependency listed in the parent story's `## Integration Strategy`, document:
+
+- **Realization level**: mock, interface-only, real, or realize (must match story.md).
+- **If mocked**: Describe the mock implementation — data structure (in-memory array, Map, fixture file), adapter/repository pattern to use, and what fake data to provide. The implementer will build exactly this.
+- **If interface-only**: Define the adapter interface (method signatures, return types) that the mock and future real implementation will both satisfy. Specify where the interface file lives.
+- **If real**: Describe the connection approach (driver, ORM, SDK), configuration source (env var names, config file), and any initialization/migration steps. Note infrastructure prerequisites.
+- **If realize**: Identify which prior story's mock is being replaced. Describe how the swap works (replace adapter implementation, change config, swap dependency injection binding). Specify what interface/contract is preserved to avoid breaking consumers.
+
+If the story has no external dependencies, write: "No external dependencies — no integration realization needed."
+
 ### 5) Acceptance criteria
 - Use testable, observable conditions.
 - Prefer Given/When/Then format or explicit bullet checks.

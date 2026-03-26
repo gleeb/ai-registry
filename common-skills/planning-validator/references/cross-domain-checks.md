@@ -99,6 +99,28 @@ Do NOT mark a check as PASS without examining the actual content. "References ex
 | Contract ownership | Every contract has exactly one owner story |
 | No orphan contracts | Every contract has at least one consumer |
 
+### 10. Integration Realization Completeness
+**Artifacts**: All story.md `## Integration Strategy` tables and `integration_dependencies` manifest fields, plus `plan/cross-cutting/devops.md`.
+
+| Check | What to verify |
+|---|---|
+| Mock coverage | Every dependency with `level: mock` in any story has a corresponding `level: realize` for the same dependency in another story, OR an explicit "deferred — out of project scope" note with rationale |
+| Realization ordering | Every realizing story has a higher `execution_order` than the story that introduced the mock |
+| No orphan realizations | Every `level: realize` entry references a prior story that has `level: mock` or `level: interface-only` for the same dependency |
+| Infrastructure coverage | Every dependency with `level: real` or `level: realize` has corresponding infrastructure documented in `plan/cross-cutting/devops.md` (Section 13: Story-Level Infrastructure Requirements) |
+| Manifest-table consistency | Every entry in `integration_dependencies` has a matching row in the `## Integration Strategy` table, and vice versa |
+| HLD alignment | Every dependency in the story's Integration Strategy table has a corresponding entry in the HLD's `#### Integration realization` subsection with sufficient detail for the implementer |
+| Adapter interface continuity | When a `realize` story replaces a mock, the HLD specifies the same adapter interface that the mocking story defined — no breaking changes to consumers |
+
+### 11. HLD-Integration Strategy Alignment
+**Artifacts**: story.md `## Integration Strategy` vs hld.md `#### Integration realization` within same story folder.
+
+| Check | What to verify |
+|---|---|
+| Level match | Realization level in HLD matches the Integration Strategy table |
+| Mock detail sufficiency | For `mock` dependencies, HLD describes the mock implementation in enough detail for the implementer (data structure, adapter pattern, fixture location) |
+| Interface preservation | For `realize` dependencies, HLD describes how the real implementation preserves the adapter interface from the mocking story |
+
 ## Severity Classification
 
 | Severity | Definition | Action |
