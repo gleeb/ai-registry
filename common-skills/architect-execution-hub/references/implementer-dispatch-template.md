@@ -111,7 +111,16 @@ PRECEDENCE: These task-specific instructions supersede conflicting general instr
 
 ## Conditional: Browser Verification Block
 
-**Include this block only when** the story is a web application AND the task touches UI-visible code. Omit entirely for non-web-app stories or backend-only tasks.
+**Include this block when ANY of the following are true:**
+
+1. The story is a web application AND the task touches UI-visible code (components, pages, routes, layouts, styles).
+2. The story describes a browser-observable problem (site not loading, blank page, rendering broken, HTTP errors when visiting the site, UI regression, etc.) — include for ALL tasks in the story regardless of whether the individual task appears UI-related, because config, build, server, dependency, and routing changes all affect whether the site loads.
+3. The story's acceptance criteria include browser-observable outcomes (e.g., "website loads," "page renders," "no console errors").
+4. The task modifies files that indirectly affect web rendering: build config, dev server config, dependency manifests (package.json, requirements.txt), environment variables, middleware, routing, SSR/SSG pipelines, or deployment configuration.
+
+**Omit entirely** only for non-web-app stories or tasks within a web app story where none of the above conditions apply.
+
+When the architect has classified the story as **mandatory browser verification** (recorded in the staging document), include this block for every task in the story without exception.
 
 ```
 BROWSER VERIFICATION:

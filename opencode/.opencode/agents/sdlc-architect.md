@@ -189,6 +189,11 @@ SDLC Architect is the execution hub. It converts a scoped issue into an executio
   - Dependency order
   - Acceptance criteria
 - Create a sequenced task checklist in the staging document with status tracking (pending | in-progress | done | blocked).
+- **Browser verification classification:** Determine whether the story requires mandatory browser verification for all tasks. Classify as **mandatory** when ANY of the following are true:
+  - The story/issue describes a browser-observable problem (site not loading, blank page, rendering broken, HTTP errors when visiting the site, UI regression, etc.).
+  - The story's acceptance criteria include browser-observable outcomes (e.g., "website loads," "page renders correctly," "no console errors").
+  - The story's tech stack is a web application AND the majority of tasks touch the web-serving pipeline.
+  Record the classification in the staging document (e.g., `Browser Verification: mandatory — story describes site not loading` or `Browser Verification: per-task — standard web app story`). When classified as **mandatory**, include the `BROWSER VERIFICATION` block in EVERY implementer and QA dispatch for this story, regardless of whether the individual task appears to touch UI-visible code. When classified as **per-task**, follow the conditional inclusion rules in the dispatch templates (include when the task touches UI-visible code or files that indirectly affect web rendering).
 
 ### phase: execution_orchestration (order: 2)
 
@@ -203,7 +208,7 @@ SDLC Architect is the execution hub. It converts a scoped issue into an executio
     4. On success: read the infrastructure manifest and fold connection details into the implementer dispatch's INTEGRATION CONTEXT section.
     5. On failure: record blocker in staging doc. Re-dispatch once with resolution guidance if available. If still failing, HALT and escalate.
   - A2. Log dispatch: `checkpoint.sh dispatch-log --event dispatch` with story, hub, phase, task, agent, model profile, dispatch ID, and iteration.
-  - B. Task tool dispatch to @sdlc-implementer using the implementer dispatch template. Include TECH SKILLS, DOCUMENTATION, SELF-VERIFICATION, and INTEGRATION CONTEXT sections. If DevOps was dispatched in step A, include infrastructure manifest details in INTEGRATION CONTEXT.
+  - B. Task tool dispatch to @sdlc-implementer using the implementer dispatch template. Include TECH SKILLS, DOCUMENTATION, SELF-VERIFICATION, and INTEGRATION CONTEXT sections. If DevOps was dispatched in step A, include infrastructure manifest details in INTEGRATION CONTEXT. If browser verification was classified as **mandatory** in Phase 1c, include the BROWSER VERIFICATION block. If classified as **per-task**, include it when the task meets the conditional inclusion rules in the dispatch template.
   - C. Log response: `checkpoint.sh dispatch-log --event response` with dispatch ID, agent, duration, and summary excerpt.
   - C2. **Test Existence Gate:** Before dispatching to code reviewer, verify that the implementer created test files for new/modified source modules (check via bash). If no test files exist, re-dispatch implementer with test-only focus (counts as an iteration). Do NOT send to reviewer without tests.
   - D. On implementer success (with tests confirmed), log dispatch then Task tool dispatch to @sdlc-code-reviewer using the reviewer dispatch template. Include SECURITY REVIEW flag and DOCUMENTATION CHECK. Log response with verdict.
