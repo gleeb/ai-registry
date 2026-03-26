@@ -82,7 +82,7 @@ Coordinator (primary) → Hub (subagent) → Worker (subagent)
 
 ## 3. Migrating a Hub Subagent
 
-**Input:** A Roo Code mode that dispatches other modes (e.g., `sdlc-planner`, `sdlc-architect`).
+**Input:** A Roo Code mode that dispatches other modes (e.g., `sdlc-planner`, `sdlc-engineering`).
 
 ### Steps
 
@@ -306,14 +306,14 @@ opencode/
       sdlc-planner-design.md
       sdlc-planner-testing.md
       sdlc-plan-validator.md            # Validator
-      sdlc-architect.md                 # HUB: implementation lifecycle
-      sdlc-implementer.md               # 4 execution workers
-      sdlc-code-reviewer.md
-      sdlc-qa.md
-      sdlc-acceptance-validator.md
-      sdlc-semantic-reviewer.md         # Semantic review
-      sdlc-project-research.md          # 2 utility agents
-      sdlc-documentation-writer.md
+      sdlc-engineering.md                # HUB: implementation lifecycle
+      sdlc-engineering-implementer.md    # execution workers
+      sdlc-engineering-code-reviewer.md
+      sdlc-engineering-qa.md
+      sdlc-engineering-acceptance-validator.md
+      sdlc-engineering-semantic-reviewer.md  # Semantic review
+      sdlc-project-research.md               # 2 utility agents
+      sdlc-engineering-documentation-writer.md
     commands/                            # SDLC entry points
       sdlc.md                           # /sdlc <project>
       sdlc-continue.md                  # /sdlc-continue

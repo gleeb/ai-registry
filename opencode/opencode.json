@@ -45,7 +45,7 @@
         "task": {
           "*": "deny",
           "sdlc-coordinator": "allow",
-          "sdlc-architect": "allow",
+          "sdlc-engineering": "allow",
           "sdlc-planner": "allow",
           "sdlc-project-research": "allow"
         }
