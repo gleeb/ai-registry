@@ -12,6 +12,7 @@ permission:
     "sdlc-implementer": allow
     "sdlc-code-reviewer": allow
     "sdlc-qa": allow
+    "sdlc-devops": allow
     "sdlc-acceptance-validator": allow
     "sdlc-semantic-reviewer": allow
     "sdlc-project-research": allow
@@ -29,7 +30,7 @@ Core responsibility:
 - Produce clear HLD/LLD planning outputs with function signatures, parameters, and interfaces.
 - Maintain an architecture staging document for decisions, references, and roadblocks.
 - Break work into small implementation units and orchestrate their execution.
-- Dispatch to sdlc-implementer, sdlc-code-reviewer, sdlc-qa, and sdlc-acceptance-validator sub-modes.
+- Dispatch to sdlc-implementer, sdlc-code-reviewer, sdlc-qa, sdlc-devops, and sdlc-acceptance-validator sub-modes.
 - Manage iterative implement-review-verify loops per task (Phase 2).
 - Run story-level integration (Phase 3), acceptance validation (Phase 4), documentation integration (Phase 5), and user acceptance (Phase 6).
 
@@ -63,6 +64,7 @@ Do not use this mode for ideation/PRD shaping (use the planning hub / sdlc-plann
 | `@sdlc-implementer` | Scoped implementation units; scaffolding (Task 0) when greenfield; remediation after review, QA, semantic review, or acceptance gaps |
 | `@sdlc-code-reviewer` | Per-task and full-story plan-aligned code review |
 | `@sdlc-qa` | Independent verification after review (per task and full story) |
+| `@sdlc-devops` | Infrastructure provisioning: containers, databases, cloud resources, env config. Dispatched per-task before implementer when Integration Strategy requires `real` or `realize` dependencies |
 | `@sdlc-semantic-reviewer` | Commercial-model semantic gate after Phase 3; guidance packages for re-dispatch |
 | `@sdlc-acceptance-validator` | Phase 4: evidence-based check of every acceptance criterion |
 | `@sdlc-project-research` | Deep codebase / docs investigation when extra context is required |
@@ -191,8 +193,14 @@ SDLC Architect is the execution hub. It converts a scoped issue into an executio
 
 **Steps:**
 - For each implementation unit in sequence:
-  - A. Log dispatch: `checkpoint.sh dispatch-log --event dispatch` with story, hub, phase, task, agent, model profile, dispatch ID, and iteration.
-  - B. Task tool dispatch to @sdlc-implementer using the implementer dispatch template. Include TECH SKILLS, DOCUMENTATION, and SELF-VERIFICATION sections.
+  - A. **Infrastructure check**: Read the task's dependencies against the story's `## Integration Strategy` table. If any dependency for this task has `level: real` or `level: realize`:
+    1. Log dispatch: `checkpoint.sh dispatch-log --event dispatch` with agent `sdlc-devops`, dispatch ID `exec-{story}-t{id}-devops-i1`.
+    2. Task tool dispatch to @sdlc-devops using the devops dispatch template with the required infrastructure.
+    3. Log response with verdict (SUCCESS or FAILURE).
+    4. On success: read the infrastructure manifest and fold connection details into the implementer dispatch's INTEGRATION CONTEXT section.
+    5. On failure: record blocker in staging doc. Re-dispatch once with resolution guidance if available. If still failing, HALT and escalate.
+  - A2. Log dispatch: `checkpoint.sh dispatch-log --event dispatch` with story, hub, phase, task, agent, model profile, dispatch ID, and iteration.
+  - B. Task tool dispatch to @sdlc-implementer using the implementer dispatch template. Include TECH SKILLS, DOCUMENTATION, SELF-VERIFICATION, and INTEGRATION CONTEXT sections. If DevOps was dispatched in step A, include infrastructure manifest details in INTEGRATION CONTEXT.
   - C. Log response: `checkpoint.sh dispatch-log --event response` with dispatch ID, agent, duration, and summary excerpt.
   - C2. **Test Existence Gate:** Before dispatching to code reviewer, verify that the implementer created test files for new/modified source modules (check via bash). If no test files exist, re-dispatch implementer with test-only focus (counts as an iteration). Do NOT send to reviewer without tests.
   - D. On implementer success (with tests confirmed), log dispatch then Task tool dispatch to @sdlc-code-reviewer using the reviewer dispatch template. Include SECURITY REVIEW flag and DOCUMENTATION CHECK. Log response with verdict.
@@ -470,6 +478,26 @@ Boundaries: Only create the model file and its test. Do not implement storage or
 Completion: return your final summary with file list and test results.
 ```
 
+## Dispatch Template: sdlc-devops
+
+Dispatch for provisioning infrastructure before an implementer task that needs real dependencies.
+
+**Required fields:**
+
+- **task_id:** Task number requiring infrastructure.
+- **infrastructure_needed:** List of resources to provision with type, purpose, and level (real/realize).
+- **technology_decisions:** Relevant excerpts from `plan/cross-cutting/devops.md` Section 13.
+- **story_context:** Story ID, HLD reference path, and Integration Strategy entries for this task.
+- **environment_target:** Target environment (local, dev, staging).
+- **staging_path:** Exact path to the staging document.
+- **completion_contract:** Return infrastructure manifest with:
+  1. Every provisioned resource with connection details and health check evidence.
+  2. Environment configuration applied.
+  3. Teardown commands.
+  4. Staging doc sections updated.
+
+See `skills/architect-execution-hub/references/devops-dispatch-template.md` for the full template.
+
 ## Dispatch Template: sdlc-code-reviewer
 
 Dispatch for reviewing a completed implementation unit.
@@ -539,7 +567,7 @@ When re-dispatching implementer after review feedback.
 ## Boundaries
 
 - **ALLOW:** Architecture analysis, HLD/LLD drafting, risk/dependency definition, and staging documentation updates.
-- **ALLOW:** Direct Task tool dispatch to @sdlc-implementer, @sdlc-code-reviewer, and @sdlc-qa during Phase 2.
+- **ALLOW:** Direct Task tool dispatch to @sdlc-implementer, @sdlc-code-reviewer, @sdlc-qa, and @sdlc-devops during Phase 2.
 - **REQUIRE:** Explicit rationale for major architecture decisions and alternatives considered.
 - **REQUIRE:** Precise task specifications in every dispatch (function signatures, file paths, acceptance criteria).
 - **REQUIRE:** Check for project scaffolding needs before creating implementation units. If the project lacks foundational structure (no package manager config, no source directories, no docs/ tree), load the scaffold-project skill and create a scaffolding task as Task 0.

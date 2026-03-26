@@ -434,6 +434,58 @@ Use this format when drafting or refining a DevOps plan. The DevOps plan defines
 
 ---
 
+## 13. Story-Level Infrastructure Requirements
+
+*This section maps Integration Strategy decisions across all user stories to concrete infrastructure provisioning needs. It tells the execution-phase DevOps agent exactly what to provision and when.*
+
+### 13.1 Infrastructure Timeline
+
+| Execution Order | Story | Dependency | Level | Infrastructure Required | Provisioning Approach |
+|-----------------|-------|------------|-------|------------------------|-----------------------|
+| {order} | {US-NNN} | {e.g., "PostgreSQL database"} | {real / realize} | {e.g., "Docker container: postgres:16, port 5432, volume for persistence"} | {e.g., "docker-compose service", "local SQLite file", "AWS RDS via CDK"} |
+| {order} | {US-NNN} | {e.g., "Redis cache"} | {real} | {e.g., "Docker container: redis:7, port 6379"} | {e.g., "docker-compose service"} |
+
+### 13.2 Provisioning Details
+
+*For each infrastructure item above, document the provisioning recipe the DevOps execution agent will follow.*
+
+#### {Dependency Name} (first needed: US-NNN, execution_order: {N})
+
+| Aspect | Specification |
+|--------|---------------|
+| Service type | {e.g., Docker container, managed cloud service, local file, cloud function} |
+| Image/version | {e.g., postgres:16-alpine, redis:7, sqlite3} |
+| Configuration | {e.g., ports, volumes, environment variables, initialization scripts} |
+| Connection details | {e.g., env var name: DATABASE_URL, format: postgresql://user:pass@host:port/db} |
+| Health check | {e.g., pg_isready, redis-cli ping, curl localhost:port/health} |
+| Data seeding | {e.g., "Run migrations from src/db/migrations/", "Load fixtures from test/fixtures/"} |
+| Teardown | {e.g., "docker-compose down -v", "rm -f data/local.db"} |
+
+### 13.3 Docker Compose Integration
+
+*If the project uses Docker Compose, document which services are defined and when they are first needed.*
+
+```yaml
+# Example structure — actual services derived from Infrastructure Timeline above
+services:
+  # {service-name}:
+  #   image: {image}
+  #   ports: ["{host}:{container}"]
+  #   environment: {env vars}
+  #   volumes: {persistent storage}
+  #   healthcheck: {health check config}
+```
+
+### 13.4 Mocked Dependencies (no infrastructure needed)
+
+| Story | Dependency | Mock Approach | Realized By |
+|-------|------------|---------------|-------------|
+| {US-NNN} | {e.g., "Stripe API"} | {e.g., "In-memory adapter returning fixture data"} | {US-NNN or "deferred"} |
+
+*This table is informational — it confirms which dependencies do NOT need infrastructure during their mocking phase and identifies when they will need real infrastructure.*
+
+---
+
 ## Quality Checklist
 
 Before marking the DevOps plan complete, verify:
@@ -457,3 +509,7 @@ Before marking the DevOps plan complete, verify:
 - [ ] Disaster recovery procedure is documented
 - [ ] Cost management: budget, optimization approach, billing alerts
 - [ ] Runbook references are listed for common operational scenarios
+- [ ] Story-level infrastructure requirements map all `real`/`realize` dependencies to provisioning recipes
+- [ ] Every `real`/`realize` dependency from all stories' Integration Strategy tables is accounted for
+- [ ] Provisioning details include connection info, health checks, and teardown commands
+- [ ] Mocked dependencies table confirms which stories do NOT need infrastructure yet

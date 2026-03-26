@@ -59,6 +59,24 @@ STAGING DOCUMENT PROTECTION:
   Plan References, Acceptance Criteria, or Execution Blockers (unless adding
   a new one).
 
+INTEGRATION CONTEXT:
+[For each external dependency in this task's scope, declare the realization level
+and provide the details the implementer needs. Omit this section only if the task
+has no external dependencies.]
+
+- [Dependency name]: [mock | interface-only | real | realize]
+  [If mock: describe the mock approach — in-memory array, fixture file, adapter
+  returning hardcoded data, etc. Reference the HLD's integration realization
+  subsection for the exact design.]
+  [If interface-only: specify the adapter interface to define and where it lives.]
+  [If realize: identify which prior mock is being replaced, the adapter interface
+  to preserve, and the real connection details.]
+  [If real/realize and DevOps agent was dispatched — include from infra manifest:]
+    Connection: [connection string / URL / file path from DevOps manifest]
+    Env var: [env var name, e.g., DATABASE_URL]
+    Health: [verified running — DevOps health check passed]
+    Notes: [any DevOps agent notes relevant to implementation]
+
 BOUNDARIES:
 - IN SCOPE: [what to implement]
 - OUT OF SCOPE: [what NOT to implement]

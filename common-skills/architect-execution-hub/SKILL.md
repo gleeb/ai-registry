@@ -11,7 +11,7 @@ description: >
 
 ## Overview
 
-Orchestrates the full implementation lifecycle for the sdlc-architect mode. Manages seven phases from readiness check through user acceptance, dispatching to sdlc-implementer, sdlc-code-reviewer, sdlc-qa, and sdlc-acceptance-validator sub-modes with structured contracts and iteration limits.
+Orchestrates the full implementation lifecycle for the sdlc-architect mode. Manages seven phases from readiness check through user acceptance, dispatching to sdlc-implementer, sdlc-code-reviewer, sdlc-qa, sdlc-devops, and sdlc-acceptance-validator sub-modes with structured contracts and iteration limits.
 
 **Core principle:** Precise dispatch specifications reduce review iterations. Invest in dispatch quality.
 
@@ -101,8 +101,14 @@ This is the existing Phase 0 (resume check) and Phase 1 (context gathering, arch
 For each implementation unit in the task checklist:
 
 1. `checkpoint.sh execution --task "{id}:{name}" --step implement` (write-ahead)
-2. `checkpoint.sh dispatch-log --event dispatch --story {US-NNN} --hub execution --phase 2 --task "{id}:{name}" --agent sdlc-implementer --model-profile {profile} --dispatch-id exec-{story}-t{id}-impl-i{N} --iteration {N}`
-3. **Implement** → dispatch `sdlc-implementer` using [`references/implementer-dispatch-template.md`](references/implementer-dispatch-template.md)
+2. **Infrastructure check**: Read the task's dependencies against the story's `## Integration Strategy` table. If any dependency for this task has `level: real` or `level: realize`:
+   a. `checkpoint.sh dispatch-log --event dispatch ... --agent sdlc-devops --dispatch-id exec-{story}-t{id}-devops-i1`
+   b. Dispatch `@sdlc-devops` using [`references/devops-dispatch-template.md`](references/devops-dispatch-template.md) with the required infrastructure.
+   c. `checkpoint.sh dispatch-log --event response --dispatch-id exec-{story}-t{id}-devops-i1 --agent sdlc-devops --verdict "{SUCCESS|FAILURE}"`
+   d. On success: read the infrastructure manifest and fold connection details into the implementer dispatch's `INTEGRATION CONTEXT` section.
+   e. On failure: record the blocker in the staging doc. If the DevOps agent provides resolution guidance, re-dispatch once. If still failing, HALT and escalate to coordinator.
+3. `checkpoint.sh dispatch-log --event dispatch --story {US-NNN} --hub execution --phase 2 --task "{id}:{name}" --agent sdlc-implementer --model-profile {profile} --dispatch-id exec-{story}-t{id}-impl-i{N} --iteration {N}`
+4. **Implement** → dispatch `sdlc-implementer` using [`references/implementer-dispatch-template.md`](references/implementer-dispatch-template.md). If the DevOps agent was dispatched in step 2, include the infrastructure manifest details in the `INTEGRATION CONTEXT` section.
 4. `checkpoint.sh dispatch-log --event response --dispatch-id exec-{story}-t{id}-impl-i{N} --agent sdlc-implementer --duration {seconds} --summary "{excerpt}"`
 5. `checkpoint.sh execution --step review --iteration 1`
 6. `checkpoint.sh dispatch-log --event dispatch ... --agent sdlc-code-reviewer --dispatch-id exec-{story}-t{id}-review-i{N}`
@@ -291,6 +297,7 @@ Before escalating ANY operational issue to coordinator, attempt self-repair:
 - [`references/readiness-check.md`](references/readiness-check.md) — Phase 0 readiness protocol
 - [`references/skill-loading-protocol.md`](references/skill-loading-protocol.md) — Tech stack to skill mapping
 - [`references/implementer-dispatch-template.md`](references/implementer-dispatch-template.md) — Implementer dispatch
+- [`references/devops-dispatch-template.md`](references/devops-dispatch-template.md) — DevOps infrastructure dispatch (Phase 2, before implementer)
 - [`references/reviewer-dispatch-template.md`](references/reviewer-dispatch-template.md) — Reviewer dispatch
 - [`references/qa-dispatch-template.md`](references/qa-dispatch-template.md) — QA dispatch
 - [`references/semantic-reviewer-dispatch-template.md`](references/semantic-reviewer-dispatch-template.md) — Semantic reviewer dispatch (Phase 3b)
