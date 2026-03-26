@@ -89,7 +89,8 @@ This is the existing Phase 0 (resume check) and Phase 1 (context gathering, arch
 1. `checkpoint.sh execution --phase 1`
 2. **Testing strategy consumption**: If `plan/cross-cutting/testing-strategy.md` exists, read it and use the AC traceability table to inform per-task testing requirements. When decomposing tasks, include expected test types and locations for each task based on the testing strategy (e.g., "unit tests for data layer", "integration tests for API endpoint").
 3. **Staging doc scaffolding**: Use the staging doc template from `skills/project-documentation/references/staging-doc-template.md` to create the staging document. Pre-populate Plan References, Acceptance Criteria (from story.md), and Tech Stack sections.
-4. After staging doc is created: `checkpoint.sh execution --staging-doc "docs/staging/{filename}.md" --tasks-total {N}`
+4. **Copy Review Milestones** from `story.md` into the staging doc's `## Review Milestones` section. Add a Status column (pending / triggered / user-approved). If `story.md` has "None — fully autonomous execution," copy that. These milestones are the ONLY points where execution pauses for user input.
+5. After staging doc is created: `checkpoint.sh execution --staging-doc "docs/staging/{filename}.md" --tasks-total {N}`
 
 ---
 
@@ -113,6 +114,7 @@ For each implementation unit in the task checklist:
 12. `checkpoint.sh dispatch-log --event response --dispatch-id exec-{story}-t{id}-qa-i{N} --agent sdlc-qa --verdict "{PASS|FAIL}"`
 13. On QA pass: `checkpoint.sh execution --task-done {id}`
 14. **Git commit**: `checkpoint.sh git --commit --story {US-NNN-name} --task "{id}:{name}" --phase 2`
+15. **Review Milestone check**: Read the staging doc's Review Milestones table. If any milestone's Trigger matches this task: execute its Action, update Status to `triggered`, return to coordinator with MILESTONE_PAUSE and the milestone output. On resume, mark `user-approved` and continue.
 
 On review fail (re-dispatch implementer): `checkpoint.sh execution --step implement` then increment iteration on next review: `checkpoint.sh execution --step review --iteration {N}`
 
@@ -217,22 +219,29 @@ See [`references/doc-integration-protocol.md`](references/doc-integration-protoc
 
 ---
 
-## Phase 6: User Acceptance
+## Phase 6: User Acceptance (Conditional)
 
 `checkpoint.sh execution --phase 6`
 
-Present the completed story to the user for final approval.
+Conditionally present the completed story to the user or auto-approve.
 
-See [`references/user-acceptance-protocol.md`](references/user-acceptance-protocol.md) for the presentation format.
+See [`references/user-acceptance-protocol.md`](references/user-acceptance-protocol.md) for the presentation format and auto-approve criteria.
 
-1. Summarize what was implemented (per-task summary from staging doc).
-2. Present the acceptance validation report (per-criterion evidence).
-3. Note any deviations from the original plan with justification.
-4. Request user confirmation.
+1. Check the staging doc's Review Milestones table for any milestone with Trigger "after all tasks" or "phase 6".
+2. **Auto-approve path** (all conditions must be true):
+   - No Review Milestone with trigger "after all tasks" or "phase 6".
+   - Acceptance validation verdict is COMPLETE.
+   - No deviations from plan recorded in staging doc.
+   - Auto-approve: record in staging doc, merge, and return to coordinator.
+3. **User review path** (if any auto-approve condition fails):
+   - Execute any Phase 6 milestone Action and capture results.
+   - Summarize what was implemented (per-task summary from staging doc).
+   - Present acceptance validation report, milestone results, and deviations.
+   - Wait for user response.
 
 If the user requests changes, create targeted tasks and re-enter Phase 2. Mark the staging doc with the change request context.
 
-On user approval:
+On user approval (or auto-approve):
 1. **Git merge**: `checkpoint.sh git --merge --story {US-NNN-name} --target main`
 2. `checkpoint.sh coordinator --story-done {US-NNN-name}`
 

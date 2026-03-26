@@ -95,6 +95,20 @@ If any condition is unmet, request the Planning Hub to address it. Do NOT procee
 4. Verify story boundaries align with architecture component boundaries.
 5. Present the full decomposition summary to the user.
 
+### Step 5b: Collect Review Milestones
+
+After the user approves the decomposition, ask ONE question:
+
+"Are there any points during execution where you'd like the agent to pause and show you results? For example: run the server and show the UI, execute a script and present the output, or verify a specific behavior. If none, execution will run fully autonomously."
+
+Based on the user's response:
+
+1. If the user specifies pause points, map each one to a story and task (or "after all tasks") and create Review Milestone entries (RM-1, RM-2, ...) in the appropriate story's `## Review Milestones` section using the STORY-OUTLINE template format.
+2. If the user says "none" or skips, write `None — fully autonomous execution.` in the `## Review Milestones` section of every story.
+3. A single milestone may span multiple stories if the user's request is cross-cutting (e.g., "after the backend and frontend are both done, run the full app"). In that case, attach it to the later story in execution order.
+
+This is the ONLY point in the planning workflow where the user is asked about execution-time interaction. Do not ask about milestones again during per-story planning (Phase 3).
+
 ### Step 6: Create Folder Structure
 
 1. Create `plan/user-stories/US-NNN-name/` for each story.

@@ -47,6 +47,17 @@ Per PRD {section}: "{verbatim excerpt from PRD}"
 - {Item 1}
 - {Item 2}
 
+## Review Milestones
+
+{Optional. Define specific points where the execution agent should pause and present
+results for user inspection. Outside of these milestones, the story runs fully
+autonomously with no user interaction. If no milestones are needed, write
+"None — fully autonomous execution."}
+
+| ID | Trigger | Action | Verify |
+|----|---------|--------|--------|
+| RM-1 | {After task N, after phase N, or "after all tasks"} | {Command to run or artifact to present} | {What the user checks} |
+
 ## Notes
 
 {Any additional context, open questions, or constraints for the execution agent.}
@@ -61,4 +72,5 @@ Per PRD {section}: "{verbatim excerpt from PRD}"
 3. **Acceptance criteria** MUST be testable (an assertion can be written for each one).
 4. **Files Affected** MUST list concrete file paths, not vague descriptions like "authentication files".
 5. **Out of Scope** prevents gold-plating by making boundaries explicit.
-6. **candidate_domains** MUST always include `hld`. Include others only when the story requires them.
+6. **Review Milestones** are user-defined pause points. If none are specified, the execution agent runs the entire story autonomously with no user interaction. Milestones are the ONLY mechanism for requesting user review during execution.
+7. **candidate_domains** MUST always include `hld`. Include others only when the story requires them.

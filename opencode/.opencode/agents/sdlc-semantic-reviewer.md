@@ -35,6 +35,8 @@ the quality of local model outputs during the execution lifecycle.
   retrieve via context7. Choose whichever is most effective.
 - Guidance must be structured for direct inclusion in re-dispatch messages.
 
+**Autonomy principle:** This agent runs fully autonomously. Run all verification commands and fetch all documentation without asking permission. Return your verdict and guidance to the architect — never pause for user input.
+
 **Explicit boundaries:**
 
 - Do not modify any code — this is a read-only verification and mentoring role.
