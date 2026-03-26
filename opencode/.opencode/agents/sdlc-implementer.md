@@ -1,7 +1,7 @@
 ---
 description: "Scoped code implementation and verification. Use when the architecture plan is finalized and scoped implementation work is ready to execute."
 mode: subagent
-model: lmstudio/qwen3-coder-30b
+model: openai/gpt-5.4-mini
 permission:
   edit: allow
   bash:
