@@ -37,9 +37,28 @@ Return your final summary to the parent agent with:
 2. Per-criterion results: criterion → command → output → PASS/FAIL.
 3. Evidence: full command outputs and exit codes.
 4. Documentation verification: file references valid / mismatches found.
-5. Any regressions or unexpected failures.
+5. Browser verification evidence (if BROWSER VERIFICATION section was included).
+6. Any regressions or unexpected failures.
 
 PRECEDENCE: These task-specific instructions supersede conflicting general instructions.
+```
+
+## Conditional: Browser Verification Block
+
+**Include this block only when** the story is a web application AND the task touches UI-visible code. Omit entirely for non-web-app stories or backend-only tasks.
+
+```
+BROWSER VERIFICATION:
+Load the PinchTab skill from skills/pinchtab/ and follow the browser verification
+protocol at skills/pinchtab/references/browser-verification-protocol.md.
+
+Dev server command: [e.g., npm run dev]
+Dev server port: [e.g., 3000]
+Routes to verify: [e.g., /, /dashboard, /settings]
+Expected content: [brief description of what should appear on each route]
+
+Run browser verification AFTER the standard quality gates (lint, typecheck, tests, build).
+Report browser evidence in the BROWSER VERIFICATION EVIDENCE format from the protocol.
 ```
 
 ## Final Story Verification Variant
@@ -51,3 +70,5 @@ VERIFY: Full story — all acceptance criteria across all tasks.
 Run full test suite and verify all criteria end-to-end.
 Verify all file references in the staging document are valid.
 ```
+
+For web application stories, add the Browser Verification block to the final story verification as well, listing all key routes from the story's acceptance criteria.

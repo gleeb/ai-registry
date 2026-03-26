@@ -77,6 +77,20 @@ Run every verification command fresh. Do not trust prior results.
 If you have not run the command in this session, you CANNOT claim it passes.
 No exceptions. No "should work." No "probably fine."
 
+### phase: browser_verification (order="3.5")
+
+If the dispatch includes a `BROWSER VERIFICATION` section, run browser verification. Otherwise skip this phase entirely.
+
+1. Load the PinchTab skill from `skills/pinchtab/` and read the browser verification protocol at `skills/pinchtab/references/browser-verification-protocol.md`.
+2. Start the dev server using the command from the dispatch.
+3. Wait for the server to be ready (poll the port).
+4. Verify PinchTab is healthy: `pinchtab health`.
+5. For each route listed in the dispatch, navigate via PinchTab and verify: page loads, no console errors, expected content is present.
+6. Stop the dev server.
+7. Record browser verification evidence in the `BROWSER VERIFICATION EVIDENCE` format from the protocol.
+
+Browser verification failures are reported alongside standard quality gate evidence, not instead of it. If PinchTab is unreachable, report as an infrastructure note — do not fail functional criteria for PinchTab unavailability.
+
 ### phase: evidence_comparison (order="4")
 
 Compare command outputs to acceptance criteria.
@@ -272,6 +286,8 @@ Return your final summary to the Architect with:
   - Type check: command, output excerpt, exit code.
   - Test suite: command, pass/fail counts, exit code.
   - Build: command, exit code.
+- Browser Verification Evidence (if BROWSER VERIFICATION was in the dispatch):
+  - PinchTab health, dev server status, per-route results, console errors, overall browser verdict.
 - Per-criterion breakdown: criterion text, command(s) run, output excerpt, exit code, PASS/FAIL (or unable to verify).
 - Full evidence for every claim (no assertions without command output).
 - Regression notes if unrelated tests failed.

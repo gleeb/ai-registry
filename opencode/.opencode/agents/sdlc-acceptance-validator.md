@@ -98,6 +98,8 @@ For EACH criterion:
 3. Compare to expected outcome.
 4. Record PASS, FAIL, or UNABLE TO VERIFY with evidence.
 
+**Browser verification for UI criteria:** If an acceptance criterion describes UI-visible behavior (e.g., "user sees X", "page renders Y", "form Z is functional") and the dispatch includes browser verification context, load the PinchTab skill from `skills/pinchtab/` and use it to verify the criterion in the browser. Follow the browser verification protocol at `skills/pinchtab/references/browser-verification-protocol.md`. Navigate to the relevant page, check that expected content is present, and capture evidence. Browser verification supplements (does not replace) code inspection and test evidence. If PinchTab is unreachable, report as UNABLE TO VERIFY with an infrastructure note — do not mark as FAIL due to PinchTab unavailability.
+
 ### phase: documentation_check
 
 Verify documentation completeness (advisory, non-blocking)

@@ -46,6 +46,8 @@ Do not use this mode for ideation/PRD shaping (use the planning hub / sdlc-plann
 
 **Supporting material:** Detailed workflow (including readiness check, scaffolding detection, and Phases 0–6), dispatch patterns, review cycle, decision guidance, and error handling are inlined below. Load the **architect-execution-hub** skill from `.opencode/skills/` for dispatch templates, readiness check, skill loading, acceptance validation, documentation integration, and user acceptance protocols.
 
+**On-demand PinchTab awareness:** For web app stories, when you need to self-diagnose UI failures (Adaptive Recovery on UI tasks, stuck QA involving browser verification, or interpreting Pre-Flight Evidence Gate browser evidence), load the PinchTab skill from `skills/pinchtab/`. Do NOT load it at startup — only when actively needed for browser-related diagnostics or self-repair. See `skills/pinchtab/references/environment-setup.md` for Docker networking and `skills/pinchtab/references/browser-verification-protocol.md` for the verification protocol.
+
 ---
 
 ## Dispatch Protocol
@@ -53,7 +55,8 @@ Do not use this mode for ideation/PRD shaping (use the planning hub / sdlc-plann
 1. **Task tool:** Delegate work only to subagents allowed in this file's `permission.task` block. Each delegation is a Task tool dispatch to the named subagent (e.g. `@sdlc-implementer`), with a complete message that includes staging path, specifications, and completion expectations described in the templates under **Dispatch Patterns** and in `.opencode/skills/architect-execution-hub/`.
 2. **No direct implementation (standard mode):** This hub plans, documents, checkpoints, and orchestrates. Implementers and other subagents perform code changes per their permissions. Exception: when the Adaptive Recovery Protocol triggers (see Review Cycle), the architect may self-implement as a last-resort recovery.
 3. **Skill paths:** Skills are located under `.opencode/skills/{skill-name}/`. Use this path for scripts, references, and templates (e.g. architect-execution-hub, project-documentation, sdlc-checkpoint, scaffold-project).
-4. **Coordinator handoff:** When the workflow completes, return to the coordinator with a structured summary (see **Completion Contract**).
+4. **On-demand PinchTab (web app stories):** When the story is a web application and the architect needs to self-diagnose UI failures (Adaptive Recovery on UI tasks, stuck QA on browser verification, interpreting Pre-Flight browser evidence), load the PinchTab skill from `.opencode/skills/pinchtab/`. Do NOT load PinchTab at initialization — only when actively needed for diagnostics or self-repair.
+5. **Coordinator handoff:** When the workflow completes, return to the coordinator with a structured summary (see **Completion Contract**).
 
 ---
 
@@ -239,7 +242,7 @@ See .opencode/skills/architect-execution-hub/references/review-cycle.md for iter
 - If final QA passes → proceed to Pre-Flight Evidence Gate.
 
 **Pre-Flight Evidence Gate (before Phase 3b):**
-Before Task tool dispatch to @sdlc-semantic-reviewer, read the QA agent's structured evidence from the Phase 3 story-level QA completion. Confirm all automated quality gates are clean: lint 0 errors, typecheck 0 errors, tests all passing, build exit 0. If any fail, return to Phase 2 for targeted fixes. Do NOT dispatch the semantic reviewer until all automated gates are clean. The hub reads evidence — it does not re-run commands.
+Before Task tool dispatch to @sdlc-semantic-reviewer, read the QA agent's structured evidence from the Phase 3 story-level QA completion. Confirm all automated quality gates are clean: lint 0 errors, typecheck 0 errors, tests all passing, build exit 0, browser smoke test passes (web app stories only — key routes load without console errors). If any fail, return to Phase 2 for targeted fixes. Do NOT dispatch the semantic reviewer until all automated gates are clean. The hub reads evidence — it does not re-run commands.
 
 ### phase: semantic_review (order: 3b)
 

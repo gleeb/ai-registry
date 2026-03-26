@@ -73,6 +73,14 @@ For each resource in the dispatch:
 2. Use env var names from the DevOps plan and HLD.
 3. Never hardcode credentials in source files.
 
+### Step 3b: PinchTab Health Verification (web app stories)
+
+If the dispatch includes a `PINCHTAB VERIFICATION` section, verify PinchTab is reachable:
+
+1. Run `pinchtab health`.
+2. If healthy: include `pinchtab: healthy` in the infrastructure manifest.
+3. If not reachable: include `pinchtab: unreachable` as a warning in the manifest. Do NOT attempt to start PinchTab — it is assumed to be already running.
+
 ### Step 4: Verify and Return
 
 1. Run a final health check for every provisioned resource.

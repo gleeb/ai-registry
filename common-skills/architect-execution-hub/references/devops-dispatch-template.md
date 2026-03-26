@@ -57,6 +57,18 @@ After returning the manifest, STOP.
 PRECEDENCE: These task-specific instructions supersede conflicting general instructions.
 ```
 
+## Conditional: PinchTab Verification Block
+
+**Include this block only when** the story is a web application. Omit entirely for non-web-app stories.
+
+```
+PINCHTAB VERIFICATION:
+Verify PinchTab is healthy by running `pinchtab health`.
+Report health status in the infrastructure manifest.
+Do NOT attempt to start or provision PinchTab — it is assumed to be running.
+If unreachable, report as a warning (not a blocker for infrastructure provisioning).
+```
+
 ## Re-dispatch (after provisioning failure)
 
 When re-dispatching after a provisioning failure:

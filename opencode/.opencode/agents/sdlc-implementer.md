@@ -94,8 +94,9 @@ Verify every acceptance criterion and run all automated quality gates before cla
    - **Build**: run the build command if applicable. Record exit code.
 4. For each acceptance criterion in the dispatch, determine the verification command and run it immediately. Do NOT present commands to the user for approval — execute them, capture the output, and record results.
 5. Record the command, output, and exit code for each criterion.
-6. If any quality gate or criterion fails: fix the issue and re-verify. Maximum 2 fix-and-reverify cycles per gate. If still failing after 2 attempts, HALT and escalate.
-7. Once all gates pass: STOP verifying. Do not re-run any verification. Proceed immediately to completion_and_escalation. Any further file changes (including writing summary files) would invalidate verification — so make NONE.
+6. **Browser smoke check (conditional):** If the dispatch includes a `BROWSER VERIFICATION` section and the task touches UI-visible code, load the PinchTab skill from `skills/pinchtab/` and run a quick smoke check: start the dev server, verify PinchTab is healthy (`pinchtab health`), navigate to affected routes, confirm pages load and expected content is present. Fix any issues found before proceeding. If PinchTab is unreachable, skip — do not block on infrastructure availability.
+7. If any quality gate or criterion fails: fix the issue and re-verify. Maximum 2 fix-and-reverify cycles per gate. If still failing after 2 attempts, HALT and escalate.
+8. Once all gates pass: STOP verifying. Do not re-run any verification. Proceed immediately to completion_and_escalation. Any further file changes (including writing summary files) would invalidate verification — so make NONE.
 
 ### phase: completion_and_escalation
 

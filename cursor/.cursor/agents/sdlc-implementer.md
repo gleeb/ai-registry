@@ -58,7 +58,8 @@ You are the SDLC Implementer, executing scoped architecture tasks with strict ve
    - **Build**: run the build command if applicable. Record exit code.
 4. For each acceptance criterion, identify a verification command and run it fresh.
 5. Record command, output, and exit code for each criterion.
-6. If any quality gate or criterion fails: fix and re-verify. If unfixable, HALT and escalate.
+6. **Browser smoke check (conditional):** If the dispatch includes a `BROWSER VERIFICATION` section and the task touches UI-visible code, load the PinchTab skill from `skills/pinchtab/` and run a quick smoke check: start the dev server, verify PinchTab is healthy (`pinchtab health`), navigate to affected routes, confirm pages load and expected content is present. Fix any issues found before proceeding. If PinchTab is unreachable, skip — do not block on infrastructure availability.
+7. If any quality gate or criterion fails: fix and re-verify. If unfixable, HALT and escalate.
 
 ## Anti-Fabrication Rules (ENFORCED)
 

@@ -149,6 +149,7 @@ Before dispatching the commercial semantic reviewer, read the QA agent's structu
 - Type check: 0 errors (from QA evidence)
 - Test suite: all passing (from QA evidence)
 - Build: exit 0 (from QA evidence)
+- Browser smoke test: key routes load without console errors (from QA evidence, web app stories only)
 
 If any quality gate shows failures, return to Phase 2 for targeted fixes. Do NOT dispatch the semantic reviewer until all automated gates are clean. The hub reads evidence — it does not re-run commands.
 
