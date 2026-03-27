@@ -31,9 +31,9 @@ All `curl` commands target this address.
 
 ### PinchTab → Dev Server (URL Translation)
 
-PinchTab's Chrome is inside Docker. When it needs to navigate to a dev server running on the host, `localhost` inside the container refers to the container itself, not the host.
+PinchTab's Chrome is inside Docker. When it needs to navigate to a dev server, `localhost` inside the container refers to the container itself, not your development runtime.
 
-Use `host.docker.internal` to reach the host from inside Docker:
+Use `host.docker.internal` to reach the Docker host:
 
 | Dev server on host | URL for PinchTab navigation |
 |---|---|
@@ -52,6 +52,37 @@ curl -X POST http://localhost:9867/navigate \
   -H 'Content-Type: application/json' \
   -d '{"url": "http://host.docker.internal:3000"}'
 ```
+
+### WSL-Specific Note (Important)
+
+In WSL environments, your app server may run inside the WSL VM (Linux network namespace), while PinchTab runs in Docker Desktop. In that setup:
+
+- `http://localhost:<port>` from PinchTab **will fail** for WSL-hosted dev servers.
+- `http://host.docker.internal:<port>` may point to the Windows host and can still fail for WSL-hosted services.
+- The most reliable target is usually the WSL interface IP (for example from `hostname -I`) plus a server bound to `0.0.0.0`.
+
+Recommended WSL flow:
+
+```bash
+# 1) Ensure server binds all interfaces
+# (framework-specific; example)
+npm run web
+
+# 2) Get WSL IP
+hostname -I
+
+# 3) Navigate PinchTab using WSL IP
+pinchtab nav "http://<WSL_IP>:<PORT>"
+pinchtab text
+```
+
+Observed behavior reference:
+
+| Target URL from PinchTab | Typical outcome in WSL |
+|---|---|
+| `http://localhost:<port>` | `ERR_CONNECTION_REFUSED` |
+| `http://host.docker.internal:<port>` | Works only when service is reachable on Docker host path |
+| `http://<WSL_IP>:<port>` | Preferred for WSL-hosted dev servers |
 
 ### PinchTab → External Sites
 
