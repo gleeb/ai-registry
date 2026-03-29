@@ -113,6 +113,17 @@ Build a term registry from contracts and architecture, then check this story's a
 - Flag Important and Critical drift as NEEDS WORK (not deferred DRIFT).
 - On failure: provide the canonical term, its source, and why consistency matters for downstream implementation.
 
+### 12. Story Testability Assessment
+
+Verify the story's HLD includes a testability section and that acceptance criteria have concrete test approaches:
+
+- The story's `hld.md` must include a **Testability** section (or equivalent) specifying the test approach per AC.
+- Each AC must have an explicit test type assigned: unit, integration, E2E, or manual.
+- At least one AC per story must have an integration or E2E test type — stories with only unit tests are insufficient for confidence.
+- If the story has UI-facing ACs (user interactions, screens, forms), at least one E2E test scenario must be specified.
+- ACs involving validation, error handling, or conditional logic must specify negative/error-path test coverage (not just happy path).
+- ACs with input handling must specify boundary condition testing (min/max, empty, null/undefined).
+
 ## Guidance Production (on NEEDS WORK)
 
 When the overall verdict is NEEDS WORK, produce a guidance package using the format from [`references/planning-guidance-format.md`](references/planning-guidance-format.md):
@@ -143,7 +154,12 @@ The Planning Hub extracts this guidance and includes it in the `VALIDATOR GUIDAN
 - Evidence: {what was checked, what was found}
 - Finding: {specific issue or confirmation}
 
-{Repeat for each check}
+{Repeat for checks 2-11}
+
+### 12. Story Testability Assessment
+- Status: PASS | FAIL
+- Evidence: {ACs checked, test types found in HLD testability section}
+- Finding: {specific issue or confirmation}
 
 ## Observations
 {Non-blocking observations, questions, or areas for deeper review}

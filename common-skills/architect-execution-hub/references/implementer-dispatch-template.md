@@ -77,6 +77,20 @@ has no external dependencies.]
     Health: [verified running — DevOps health check passed]
     Notes: [any DevOps agent notes relevant to implementation]
 
+COVERAGE THRESHOLDS:
+- Lines: [threshold from testing strategy, e.g., 80%]
+- Branches: [threshold from testing strategy, e.g., 70%]
+- Functions: [threshold from testing strategy, e.g., 90%]
+- Command: [e.g., npx jest --coverage --coverageReporters=json-summary]
+- Report: coverage/coverage-summary.json
+[Omit section only if no testing strategy exists AND project has no test tooling.]
+
+TESTING STRATEGY CONTEXT:
+- AC test types: [from testing-strategy.md traceability table, e.g.,
+  AC-1: unit + integration, AC-2: E2E, AC-3: unit with negative paths]
+- Negative testing required for: [list ACs with validation/error/conditional logic]
+[Omit section only if no testing strategy exists.]
+
 BOUNDARIES:
 - IN SCOPE: [what to implement]
 - OUT OF SCOPE: [what NOT to implement]

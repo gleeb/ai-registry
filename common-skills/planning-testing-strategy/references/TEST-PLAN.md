@@ -6,7 +6,7 @@ Use this format when drafting or refining a Testing Strategy specification. The 
 
 ## Contract gates
 
-- REQUIRE all 13 sections to be substantive before the testing strategy is considered complete.
+- REQUIRE all 14 sections to be substantive before the testing strategy is considered complete.
 - REQUIRE every acceptance criterion to map to at least one test type — no orphaned criteria.
 - REQUIRE coverage targets to include rationale — no arbitrary 100% without justification.
 - REQUIRE test data strategy to address fixtures, factories, seeding, cleanup, and sensitive data.
@@ -102,17 +102,20 @@ Use this format when drafting or refining a Testing Strategy specification. The 
 
 **Fixtures**
 
-- [Location: e.g., `tests/fixtures/`]
+- [Location: e.g., `tests/fixtures/` or `src/features/*/__fixtures__/`]
 - [Format: JSON, YAML, SQL dumps]
+- [Naming convention: `{entity}.fixture.{ext}` or `{scenario}.fixture.{ext}`]
 - [Maintenance: who updates, when]
 - [Scope: which tests use which fixtures]
+- [Fixture template: every fixture must include realistic field values, edge-case variants (empty, null, max-length), and relationship references]
 
 **Factories**
 
-- [Library: e.g., FactoryBot, Faker, hypothesis]
-- [Where factories live]
+- [Library: e.g., FactoryBot, Faker, @faker-js/faker, hypothesis]
+- [Where factories live: e.g., `tests/factories/` or colocated `*.factory.ts`]
 - [How to generate realistic but anonymized data]
 - [Relationship handling: nested objects, foreign keys]
+- [Factory pattern: base factory with trait overrides for common variants (valid, invalid, edge-case)]
 
 **Seeding**
 
@@ -298,6 +301,20 @@ Use this format when drafting or refining a Testing Strategy specification. The 
 - [Smoke regression: subset for fast feedback]
 - [Critical path: minimal set that must always pass]
 
+**Regression Suite Entry Criteria**
+
+- [What tests enter the regression suite: all tests for merged stories, or curated subset]
+- [Tagging convention: `@regression`, `@smoke`, `@critical` — how tests are tagged for suite selection]
+- [Graduation: when does a new test graduate from "feature test" to "regression test" (e.g., after story acceptance)]
+- [Retirement: when and how tests are removed from the regression suite (deprecated features, replaced flows)]
+
+**Cross-Story Regression Protocol**
+
+- [Before story merge: full test suite must pass against the base branch — no regressions from new code]
+- [After story merge: run smoke regression to confirm integration — catch cross-story interaction failures]
+- [Cross-story integration tests: tests that exercise flows spanning multiple stories (e.g., story A creates data, story B consumes it)]
+- [Ownership: who owns cross-story integration tests — the later story, a shared test module, or the testing strategy author]
+
 **Scope**
 
 - [What is included: all automated tests, or subset]
@@ -343,20 +360,62 @@ Use this format when drafting or refining a Testing Strategy specification. The 
 
 ---
 
+### 14) Coverage Thresholds and Enforcement
+
+**Default Minimums**
+
+| Metric | New Code Threshold | Overall Project Threshold | Rationale |
+|--------|-------------------|--------------------------|-----------|
+| Line coverage | [e.g., 80%] | [e.g., 70%] | [Why this target — balance speed vs confidence] |
+| Branch coverage | [e.g., 70%] | [e.g., 60%] | [Why this target — conditional logic confidence] |
+| Function coverage | [e.g., 90%] | [e.g., 80%] | [Why this target — API surface area] |
+
+**Coverage Delta Policy**
+
+- [New code must not decrease overall project coverage — coverage delta gate on PRs]
+- [Per-story coverage: new/modified files must individually meet the "new code" thresholds above]
+- [Exemptions: generated code, type declarations, config files, test utilities — list specific glob patterns]
+
+**Coverage Tooling**
+
+- [Primary tool: e.g., Jest `--coverage` (built-in Istanbul), c8, nyc, pytest-cov]
+- [Report formats: JSON summary (machine-readable for gates), lcov (for dashboards/CI), HTML (for developer review)]
+- [Command: e.g., `npx jest --coverage --coverageReporters=json-summary --coverageReporters=lcov`]
+- [Output location: e.g., `coverage/coverage-summary.json`]
+
+**CI Enforcement**
+
+- [PR gate: parse `coverage-summary.json`, fail if new/modified files below threshold]
+- [Coverage trend: track overall coverage over time, alert on sustained decline]
+- [Merge blocking: coverage gate is blocking (not advisory) for all PRs]
+
+**Negative Testing Requirements**
+
+- [Every AC involving validation, error handling, or conditional logic must have at least one failure-path test]
+- [API endpoints: test 4xx/5xx responses, not just 2xx]
+- [UI components: test error states, empty states, loading states — not just happy path]
+- [Boundary conditions: min/max values, empty inputs, null/undefined for every AC with input handling]
+
+---
+
 ## Quality Checklist
 
 Before marking the testing strategy as complete, verify:
 
-- [ ] All 13 sections are substantive with no placeholders.
+- [ ] All 14 sections are substantive with no placeholders.
 - [ ] Every acceptance criterion maps to at least one test type.
 - [ ] Coverage targets have rationale; no 100% without justification.
-- [ ] Test data strategy covers fixtures, factories, seeding, cleanup, and sensitive data.
+- [ ] Test data strategy covers fixtures (with templates), factories (with trait patterns), seeding, cleanup, and sensitive data.
 - [ ] QA gates are defined and align with deployment workflow.
 - [ ] Test environment requirements are documented per level.
 - [ ] Performance testing approach includes load, stress, and soak scenarios with thresholds.
 - [ ] Security testing cross-references `plan/security.md` and specifies SAST, DAST, dependency scanning.
 - [ ] Accessibility testing specifies tools, WCAG level, and manual checks.
-- [ ] Regression testing strategy defines scope, frequency, and automation level.
+- [ ] Regression testing strategy defines scope, frequency, automation level, suite entry/exit criteria, and cross-story protocol.
 - [ ] Test framework and tooling choices include rationale.
 - [ ] CI vs. local environment parity (or known differences) is documented.
+- [ ] Coverage thresholds defined for lines, branches, and functions with rationale.
+- [ ] Coverage tooling and report format specified with CI enforcement command.
+- [ ] Coverage delta policy defined (new code must not decrease overall coverage).
+- [ ] Negative testing requirements specified for validation, error handling, and boundary ACs.
 - [ ] User has reviewed and approved the strategy.

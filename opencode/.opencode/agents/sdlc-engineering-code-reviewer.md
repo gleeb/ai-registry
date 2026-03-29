@@ -75,6 +75,9 @@ and coding standards, returning a structured review verdict to sdlc-engineering.
   - Verify test files exist for every new/modified source module. Missing tests = **Critical**.
   - Verify tests exercise actual business logic, not trivially mocked away. Trivial/meaningless tests = **Critical**.
   - Verify tests cover the task's acceptance criteria with meaningful assertions.
+  - **Coverage below threshold**: If the implementer's coverage report shows new/modified files below the dispatch's coverage thresholds = **Critical**.
+  - **No negative/error-path tests**: ACs involving validation, error handling, or conditional logic with only happy-path tests = **Major**.
+  - **Happy-path-only test suite**: All tests across all ACs are success-path only with no failure or boundary testing = **Major**.
 - Look for security vulnerabilities or performance issues.
 - Check adherence to established project patterns and conventions.
 - **Run automated checks:** Run lint, typecheck, and test suite. Include outputs as evidence. Failures are Critical issues.

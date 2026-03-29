@@ -39,6 +39,8 @@ description: Cross-cutting Testing Strategy specialist. Use when the Planning Hu
 
 ### Phase 2: Test Pyramid Design
 
+Reference the `e2e-testing-patterns` skill (`skills/e2e-testing-patterns/`) for pyramid ratios and CI/CD integration patterns.
+
 1. Define the test pyramid distribution (unit, integration, E2E ratios).
 2. For each test level, define what gets tested:
    - **Unit**: individual functions, business logic, data transformations.
@@ -60,10 +62,18 @@ description: Cross-cutting Testing Strategy specialist. Use when the Planning Hu
 3. Define test environment requirements.
 4. Define test data strategy.
 
-### Phase 5: Review and Completion
+### Phase 5: Coverage Thresholds and Negative Testing
+
+1. Define explicit code coverage thresholds (line, branch, function) for new code and overall project.
+2. Specify coverage tooling and report format (JSON summary for CI gates, lcov for dashboards).
+3. Define coverage delta policy: new code must not decrease overall coverage.
+4. Define negative testing requirements: every AC with validation, error handling, or conditional logic must have failure-path tests.
+5. Specify boundary condition testing requirements for input-handling ACs.
+
+### Phase 6: Review and Completion
 
 1. Present testing strategy with coverage mapping.
-2. Apply sparring — challenge coverage gaps, test isolation, CI/CD gates.
+2. Apply sparring — challenge coverage gaps, test isolation, CI/CD gates, coverage thresholds.
 3. Write to `plan/cross-cutting/testing-strategy.md`.
 
 ## Sparring Protocol
@@ -74,6 +84,8 @@ description: Cross-cutting Testing Strategy specialist. Use when the Planning Hu
 - "Have you covered error scenarios for all API endpoints?"
 - "How do you test accessibility? Automated tools alone aren't sufficient."
 - "What's the performance baseline? How do you detect regressions?"
+- "What are your coverage thresholds and how will they be enforced in CI? Show me the enforcement command."
+- "Which ACs have only happy-path tests? Where are the failure-path and boundary tests?"
 
 ## Output
 
@@ -81,8 +93,17 @@ description: Cross-cutting Testing Strategy specialist. Use when the Planning Hu
 
 ## Files
 
-- [`references/TEST-PLAN.md`](references/TEST-PLAN.md): Testing strategy template and quality checklist.
+- [`references/TEST-PLAN.md`](references/TEST-PLAN.md): Testing strategy template and quality checklist (14 sections).
 - [`references/ACCESSIBILITY-TESTING.md`](references/ACCESSIBILITY-TESTING.md): WCAG 2.2 AA testing protocol.
+
+## External Testing Skills (installed)
+
+- `skills/test-driven-development/`: TDD red-green-refactor methodology for implementers.
+- `skills/webapp-testing/`: Native browser-based E2E testing patterns for QA.
+- `skills/playwright-best-practices/`: Comprehensive Playwright patterns (50+ testing patterns).
+- `skills/nodejs-backend-patterns/`: Backend integration test patterns for APIs and data.
+- `skills/e2e-testing-patterns/`: E2E testing strategy, pyramid ratios, CI/CD patterns.
+- `skills/systematic-debugging/`: Root-cause tracing for persistent test failures.
 
 ## Troubleshooting
 

@@ -68,9 +68,14 @@ Execute scoped tasks and verify results
 Write tests for all new and significantly modified source modules
 
 1. For every source module created or significantly modified, write colocated test files following the project's testing conventions (from `docs/` or scaffold defaults).
-2. Tests must cover the acceptance criteria for this task. Minimum: one test per AC, exercising actual business logic (not mocked away).
-3. If the project has no testing conventions documented yet, follow the language/framework defaults: colocate `*.test.ts`/`*.test.tsx` for TS/JS, `tests/` directory for Python, etc.
-4. Do not write trivial tests that assert nothing or mock the unit under test entirely. Tests must exercise real code paths.
+2. **TDD methodology**: Follow the `test-driven-development` skill (`skills/test-driven-development/`): write a failing test first, verify it fails (red), implement minimal code to make it pass (green), then refactor. This ensures tests are meaningful and code is minimal.
+3. Tests must cover the acceptance criteria for this task. Minimum: one test per AC, exercising actual business logic (not mocked away).
+4. If the project has no testing conventions documented yet, follow the language/framework defaults: colocate `*.test.ts`/`*.test.tsx` for TS/JS, `tests/` directory for Python, etc.
+5. Do not write trivial tests that assert nothing or mock the unit under test entirely. Tests must exercise real code paths.
+6. **REQUIRE negative/error-path tests**: For any AC involving validation, error handling, or conditional logic, write at least one failure-path test (invalid input, error response, boundary condition). Happy-path-only tests are insufficient.
+7. **Coverage check**: After writing tests, run `npx jest --coverage --coverageReporters=json-summary` (or project equivalent). Check coverage of new/modified files against thresholds from the dispatch's COVERAGE THRESHOLDS section (defaults: 80% lines, 70% branches). If below threshold, write additional tests targeting uncovered lines/branches until thresholds are met.
+8. **Boundary conditions**: For ACs with input handling, include tests at boundary values (empty, null/undefined, min, max, just-over-max).
+9. **Integration test patterns**: For API endpoints and data flows, reference the `nodejs-backend-patterns` skill (`skills/nodejs-backend-patterns/`) for integration test patterns, middleware testing, and database interaction testing.
 
 ### phase: continuous_documentation
 
@@ -90,7 +95,7 @@ Verify every acceptance criterion and run all automated quality gates before cla
 3. Run the full automated quality gate suite and record all outputs:
    - **Lint**: run the project linter (e.g., `eslint`, `ruff`). Record output and exit code.
    - **Type check**: run the type checker if applicable (e.g., `tsc --noEmit`). Record output and exit code.
-   - **Test suite**: run the full test suite (not just new tests). Record pass/fail counts and exit code.
+   - **Test suite with coverage**: run the full test suite with coverage reporting (e.g., `npx jest --coverage --coverageReporters=json-summary`). Record pass/fail counts, exit code, and coverage percentages (lines, branches, functions) for new/modified files.
    - **Build**: run the build command if applicable. Record exit code.
 4. For each acceptance criterion in the dispatch, determine the verification command and run it immediately. Do NOT present commands to the user for approval — execute them, capture the output, and record results.
 5. Record the command, output, and exit code for each criterion.
@@ -104,7 +109,8 @@ TERMINAL PHASE — return control and STOP. Do not create any files or run any c
 
 1. On success, compose your final return message to the Engineering Hub with:
    - Code-change summary: files created/modified with brief description.
-   - Quality gate evidence: lint, typecheck, test suite, and build outputs with exit codes.
+   - Quality gate evidence: lint, typecheck, test suite (with coverage %), and build outputs with exit codes.
+   - Coverage report: lines %, branches %, functions % for new/modified files (from `coverage-summary.json`).
    - Per-criterion verification evidence (command + output + PASS/FAIL).
    - Staging doc updates: list each section updated and what was added/changed.
 2. On unresolved blocker, document blocker in staging and compose your final return message to the Engineering Hub for escalation.

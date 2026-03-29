@@ -80,8 +80,8 @@ For each user story in `execution_order`:
    - `/sdlc-planner-security` — If `security` in domains (per-story mode).
    - `/sdlc-planner-design` — If `design` in domains (depends on HLD completion).
 3. HLD, API, Data, Security can run in parallel. Design waits on HLD.
-4. On completion, dispatch `/sdlc-plan-validator` in per-story mode.
-5. **GATE**: Per-story validation must pass before the next story.
+4. On completion, dispatch `/sdlc-plan-validator` in per-story mode (12 checks including Check 12: Story Testability Assessment — HLD must have testability section with per-AC test types).
+5. **GATE**: Per-story validation (including testability) must pass before the next story.
 
 ## Phase 4: Cross-Cutting Concerns
 
@@ -106,7 +106,7 @@ If a SaaS sync skill was loaded, sync plan artifacts to the external system.
 
 1. Present planning completion summary to the user.
 2. Transition to the **SDLC Execution Orchestrator** rule for implementation.
-3. Include: what was planned, which story to execute first, and the full dependency graph.
+3. Include: what was planned, which story to execute first, the full dependency graph, and the path to `plan/cross-cutting/testing-strategy.md` (coverage thresholds and AC traceability for execution agents).
 
 ## Brownfield Change Protocol
 

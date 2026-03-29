@@ -22,6 +22,14 @@ SUGGESTED VERIFICATION COMMANDS:
 - [build command if applicable]
 - [any other verification commands]
 
+COVERAGE EXPECTATIONS:
+- Lines threshold: [from testing strategy, e.g., 80%]
+- Branches threshold: [from testing strategy, e.g., 70%]
+- Coverage command: [e.g., npx jest --coverage --coverageReporters=json-summary]
+- Report location: coverage/coverage-summary.json
+- Implementer claimed coverage: [lines %, branches %, functions % from implementer report]
+[Omit section only if no testing strategy exists AND project has no test tooling.]
+
 IRON LAW: No completion claims without fresh verification evidence.
 Run every command fresh. Do not trust prior results or implementer claims.
 
@@ -36,9 +44,12 @@ Return your final summary to the parent agent with:
 1. Verification Status: PASS / FAIL.
 2. Per-criterion results: criterion → command → output → PASS/FAIL.
 3. Evidence: full command outputs and exit codes.
-4. Documentation verification: file references valid / mismatches found.
-5. Browser verification evidence (if BROWSER VERIFICATION section was included).
-6. Any regressions or unexpected failures.
+4. Coverage Report: lines %, branches %, functions % for new/modified files.
+   Files below threshold listed individually. Overall project coverage.
+   Comparison against implementer's claimed coverage (flag discrepancies).
+5. Documentation verification: file references valid / mismatches found.
+6. Browser verification evidence (if BROWSER VERIFICATION section was included).
+7. Any regressions or unexpected failures.
 
 PRECEDENCE: These task-specific instructions supersede conflicting general instructions.
 ```

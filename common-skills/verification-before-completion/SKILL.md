@@ -44,6 +44,8 @@ Skip any step = lying, not verifying
 | Linter clean | Linter output: 0 errors | Partial check, extrapolation |
 | Build succeeds | Build command: exit 0 | Linter passing, logs look good |
 | Browser loads without errors | Dev server started, PinchTab navigates key routes, no console errors (web app stories) | Build passing, code looks correct |
+| Coverage meets threshold | `jest --coverage` output: new/modified files >= line/branch thresholds from testing strategy | "I wrote tests" without running coverage, or partial coverage run |
+| Negative paths tested | Error/validation ACs have at least one failure-case test (invalid input, error response, boundary) | Only happy-path tests for all ACs |
 | Bug fixed | Test original symptom: passes | Code changed, assumed fixed |
 | Regression test works | Red-green cycle verified | Test passes once |
 | Requirements met | Line-by-line checklist | Tests passing |

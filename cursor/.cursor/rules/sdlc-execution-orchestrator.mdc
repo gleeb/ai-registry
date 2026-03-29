@@ -80,6 +80,7 @@ If the project is greenfield (no package manager config, no source directories):
 ## Phase 1: Context Gathering + Task Decomposition
 
 1. Read documentation hierarchy and identify existing patterns.
+1b. **Testing strategy loading**: Read `plan/cross-cutting/testing-strategy.md` if present. Extract coverage thresholds (line %, branch %, function %), AC-to-test-type traceability, and negative testing requirements. These values are included in all implementer and QA dispatches.
 2. Create staging document using the template from project-documentation skill.
 3. Pre-populate Plan References, Acceptance Criteria, and Tech Stack.
 4. Break work into small implementation units, each with:
@@ -94,11 +95,12 @@ If the project is greenfield (no package manager config, no source directories):
 
 For each implementation unit in sequence:
 
-1. **Implement**: Dispatch `/sdlc-implementer` with task specification, tech skills, staging path, and boundaries.
-2. **Review**: On implementer success, dispatch `/sdlc-code-reviewer` with staging path and implementer's summary.
+1. **Implement**: Dispatch `/sdlc-implementer` with task specification, tech skills, staging path, boundaries, and COVERAGE THRESHOLDS + TESTING STRATEGY CONTEXT from `plan/cross-cutting/testing-strategy.md`.
+2. **Test Existence + Coverage Gate**: Before reviewer, verify test files exist (patterns from `review-cycle.md`). Then run coverage (`jest --coverage`), compare against thresholds. On failure, re-dispatch implementer with coverage report.
+3. **Review**: On gates pass, dispatch `/sdlc-code-reviewer` with staging path, implementer's summary, and coverage report.
    - If Approved → proceed to QA.
    - If Changes Required → re-dispatch `/sdlc-implementer` with review feedback (max 5 iterations).
-3. **QA**: On review pass, dispatch `/sdlc-qa` with acceptance criteria and verification commands.
+4. **QA**: On review pass, dispatch `/sdlc-qa` with acceptance criteria, verification commands, and COVERAGE EXPECTATIONS.
    - If PASS → mark task done, proceed to next unit.
    - If FAIL → re-dispatch `/sdlc-implementer` with QA details (max 2 retries).
 4. **Git commit**: After task-done, `checkpoint.sh git --commit --story {US-NNN-name} --task "{id}:{name}" --phase 2`
@@ -120,8 +122,9 @@ After all per-task loops pass:
 
 Before dispatching the commercial semantic reviewer, read the QA agent's structured evidence from the Phase 3 story-level QA completion. Confirm all automated quality gates are clean:
 - Lint: 0 errors, Type check: 0 errors, Test suite: all passing, Build: exit 0.
+- Coverage: lines >= threshold, branches >= threshold (from QA evidence coverage report — thresholds from testing strategy or defaults: 80% lines, 70% branches).
 - Browser smoke test: key routes load without console errors (web app stories only).
-If any fail, return to Phase 2 for targeted fixes. Do NOT dispatch semantic reviewer until all automated gates are clean. The hub reads evidence — it does not re-run commands.
+If any fail (including coverage below threshold), return to Phase 2 for targeted fixes. Do NOT dispatch semantic reviewer until all automated gates are clean. The hub reads evidence — it does not re-run commands.
 
 ## Phase 3b: Semantic Review (Commercial Mentor)
 

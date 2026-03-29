@@ -111,9 +111,9 @@ For each user story (in execution_order):
      - **Security Agent** in per-story mode (if `security` in domains) using [`dispatch-templates/security-dispatch.md`](references/dispatch-templates/security-dispatch.md)
      - **Design Agent** (if `design` in domains) using [`dispatch-templates/design-dispatch.md`](references/dispatch-templates/design-dispatch.md)
    - `checkpoint.sh planning --completed {domain}` (after each agent returns)
-5. On completion, dispatch **Plan Validator** in per-story mode.
+5. On completion, dispatch **Plan Validator** in per-story mode (now includes Check 12: Story Testability Assessment — verifies HLD testability section with per-AC test types, negative testing, and E2E requirements for UI stories).
 6. `checkpoint.sh planning --story-done {US-NNN-name}`
-7. GATE: Per-story validation must pass before moving to next story.
+7. GATE: Per-story validation must pass (including testability) before moving to next story.
 
 Use [`dispatch-templates/per-story-planning-dispatch.md`](references/dispatch-templates/per-story-planning-dispatch.md) as the orchestration wrapper.
 
@@ -153,7 +153,7 @@ If a SaaS sync skill was loaded:
 2. `checkpoint.sh coordinator --hub execution --story {first-story-by-execution-order}`
 3. Present a planning completion summary to the user.
 4. Hand off to `sdlc-coordinator` for execution orchestration.
-5. The handoff includes: what was planned, which story to execute first (execution_order: 1), and the full dependency graph.
+5. The handoff includes: what was planned, which story to execute first (execution_order: 1), the full dependency graph, and the path to `plan/cross-cutting/testing-strategy.md` (coverage thresholds and AC traceability for execution agents).
 
 ## Brownfield Change Protocol
 

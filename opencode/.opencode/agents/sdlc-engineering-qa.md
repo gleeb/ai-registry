@@ -55,7 +55,7 @@ Map each acceptance criterion to a verification command.
 
 ### phase: test_adequacy_check (order="2")
 
-Verify the implementer wrote adequate tests before running them.
+Verify the implementer wrote adequate tests before running them. Reference the `webapp-testing` skill (`skills/webapp-testing/`) and `playwright-best-practices` skill (`skills/playwright-best-practices/`) for E2E test evaluation criteria when assessing browser-facing test adequacy.
 
 - Cross-reference the implementer's file list (from staging doc "Implementation File References") against test files on disk. Every new/modified source module must have a corresponding test file.
 - Read each test file and verify it contains meaningful assertions covering the task's acceptance criteria. Flag:
@@ -63,7 +63,9 @@ Verify the implementer wrote adequate tests before running them.
   - Empty test files or files with zero assertions.
   - Tests that mock the unit under test entirely (testing the mock, not the code).
   - Tests that were deleted or emptied compared to prior task state.
-- Report test adequacy as a separate section. Test adequacy failure = **FAIL verdict** (not just a note).
+  - **Happy-path-only tests**: ACs involving validation, error handling, or conditional logic must have at least one failure-path test. Flag if only success scenarios are tested.
+- **Run independent coverage check**: Execute `npx jest --coverage --coverageReporters=json-summary` (or project equivalent). Parse `coverage/coverage-summary.json` and compare new/modified file coverage against thresholds from the dispatch's COVERAGE EXPECTATIONS (defaults: 80% lines, 70% branches). Compare against the implementer's claimed coverage numbers — flag discrepancies.
+- Report test adequacy as a separate section. Test adequacy failure = **FAIL verdict** (not just a note). Coverage below threshold = **FAIL verdict**.
 
 ### phase: fresh_execution (order="3")
 
@@ -72,7 +74,7 @@ Run every verification command fresh. Do not trust prior results.
 - Run the full automated quality gate suite and capture all outputs:
   - **Lint**: run the project linter. Record command, output, exit code.
   - **Type check**: run the type checker if applicable. Record command, output, exit code.
-  - **Test suite**: run the full test suite (not a subset). Record command, pass/fail counts, exit code.
+  - **Test suite with coverage**: run the full test suite with coverage (e.g., `npx jest --coverage --coverageReporters=json-summary`). Record command, pass/fail counts, exit code, and coverage percentages (lines, branches, functions) for new/modified files.
   - **Build**: run the build command if applicable. Record command, exit code.
 - Run any criterion-specific verification commands beyond the quality gates.
 - Record exact command, full output, and exit code for each.
@@ -110,15 +112,16 @@ Produce evidence-based verification report with structured quality gate evidence
 
 **output:**
 1. Verification Status: PASS or FAIL.
-2. Test Adequacy: test files present / missing / inadequate — with file references.
+2. Test Adequacy: test files present / missing / inadequate — with file references. Negative test coverage status.
 3. Quality Gate Evidence (structured for upstream consumption by execution hub):
    - Lint: command, output excerpt, exit code.
    - Type check: command, output excerpt, exit code.
    - Test suite: command, pass/fail counts, exit code.
    - Build: command, exit code.
-4. Per-criterion results: criterion text, command run, result, PASS/FAIL.
-5. Any regressions or unexpected failures.
-6. If FAIL: detailed failure output for each failing criterion.
+4. **Coverage Report**: lines %, branches %, functions % for new/modified files. Files below threshold listed with their individual coverage. Overall project coverage. Threshold source (testing strategy or defaults).
+5. Per-criterion results: criterion text, command run, result, PASS/FAIL.
+6. Any regressions or unexpected failures.
+7. If FAIL: detailed failure output for each failing criterion.
 
 ## completion_criteria
 

@@ -163,6 +163,7 @@ SDLC Engineering Hub is the execution hub. It converts a scoped issue into an ex
 
 **Steps:**
 - Read documentation hierarchy and identify existing patterns.
+- **Testing strategy loading**: Read `plan/cross-cutting/testing-strategy.md` if present. Extract coverage thresholds (line %, branch %, function %), AC-to-test-type traceability table, and negative testing requirements. Store these values for inclusion in all implementer and QA dispatches throughout the story.
 - If critical ambiguity blocks an architecture decision, make the best assumption from available artifacts and record the assumption and its rationale in the staging document's Technical Decisions section. Do NOT pause for user input.
 
 ### phase: staging_documentation (order: 1b)
@@ -208,7 +209,8 @@ SDLC Engineering Hub is the execution hub. It converts a scoped issue into an ex
   - B. Task tool dispatch to @sdlc-engineering-implementer using the implementer dispatch template. Include TECH SKILLS, DOCUMENTATION, SELF-VERIFICATION, PLAN ARTIFACTS, and INTEGRATION CONTEXT sections. If DevOps was dispatched in step A, include infrastructure manifest details in INTEGRATION CONTEXT. **Browser verification per-task skip rule:** If browser verification is classified as **per-task** AND the task touches only domain/data/guard files with zero browser-observable acceptance signals, omit the BROWSER VERIFICATION block entirely from the dispatch — no N/A documentation required. If classified as **mandatory**, always include the BROWSER VERIFICATION block. If classified as **per-task** and the task touches UI-visible code or files that affect web rendering, include it.
   - C. Log implementer response (compound — also advances step to code_review):
     `checkpoint.sh execution --step code_review --dispatch-event response --dispatch-agent sdlc-engineering-implementer --dispatch-id "exec-{story}-t{id}-impl-i1" --dispatch-verdict "success"`
-  - C2. **Test Existence Gate:** Before dispatching to code reviewer, verify that the implementer created test files for new/modified source modules (check via bash). If no test files exist, re-dispatch implementer with test-only focus (counts as an iteration). Do NOT send to reviewer without tests.
+  - C2. **Test Existence Gate:** Before dispatching to code reviewer, verify that the implementer created test files for new/modified source modules (check via bash using patterns from `review-cycle.md`: `**/__tests__/**/*.{test,spec}.*`, `**/*.{test,spec}.*`). Exempt: docs, config, type declarations, test utilities. If no test files exist, re-dispatch implementer with test-only focus (counts as an iteration). Do NOT send to reviewer without tests.
+  - C2b. **Coverage Gate:** After test existence is confirmed, run `npx jest --coverage --coverageReporters=json-summary` (or project equivalent). Parse `coverage/coverage-summary.json` and compare new/modified file coverage against thresholds from `plan/cross-cutting/testing-strategy.md` (defaults: 80% lines, 70% branches). On failure, re-dispatch implementer with the coverage report and specific uncovered lines (counts as an iteration). Include coverage summary in reviewer dispatch context.
   - D. On implementer success (with tests confirmed), log reviewer dispatch (compound):
     `checkpoint.sh execution --dispatch-event dispatch --dispatch-agent sdlc-engineering-code-reviewer --dispatch-id "exec-{story}-t{id}-review-i1"`
     Then Task tool dispatch to @sdlc-engineering-code-reviewer using the reviewer dispatch template. Include SECURITY REVIEW flag and DOCUMENTATION CHECK.
@@ -252,7 +254,7 @@ See .opencode/skills/architect-execution-hub/references/review-cycle.md for iter
 - If final QA passes → proceed to Pre-Flight Evidence Gate.
 
 **Pre-Flight Evidence Gate (before Phase 3b):**
-Before Task tool dispatch to @sdlc-engineering-semantic-reviewer, read the QA agent's structured evidence from the Phase 3 story-level QA completion. Confirm all automated quality gates are clean: lint 0 errors, typecheck 0 errors, tests all passing, build exit 0, browser smoke test passes (web app stories only — key routes load without console errors). If any fail, return to Phase 2 for targeted fixes. Do NOT dispatch the semantic reviewer until all automated gates are clean. The hub reads evidence — it does not re-run commands.
+Before Task tool dispatch to @sdlc-engineering-semantic-reviewer, read the QA agent's structured evidence from the Phase 3 story-level QA completion. Confirm all automated quality gates are clean: lint 0 errors, typecheck 0 errors, tests all passing, build exit 0, coverage meets thresholds (lines >= X%, branches >= Y% from testing strategy or defaults: 80%/70%), browser smoke test passes (web app stories only — key routes load without console errors). If any fail (including coverage below threshold), return to Phase 2 for targeted fixes. Do NOT dispatch the semantic reviewer until all automated gates are clean. The hub reads evidence — it does not re-run commands.
 
 ### phase: semantic_review (order: 3b)
 
@@ -603,6 +605,7 @@ When re-dispatching implementer after review feedback.
 - **DENY:** Writing production implementation code in engineering hub mode during normal operations (iterations 1-3). After Adaptive Recovery triggers, self-implementation is required, not denied.
 - **DENY:** Skipping code review or QA verification for any implementation unit (including architect-implemented code).
 - **DENY:** More than 5 review iterations per task. After 3 identical rejections, self-implement instead of re-dispatching. After 5 total iterations, self-implement unconditionally. Never block the pipeline.
+- **ALLOW:** For persistent test failures across multiple iterations, load the `systematic-debugging` skill (`skills/systematic-debugging/`) for root-cause tracing, defense-in-depth analysis, and test polluter detection before self-implementing.
 
 ## Staging Document Policy
 

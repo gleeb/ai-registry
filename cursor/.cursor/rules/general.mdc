@@ -40,6 +40,10 @@ alwaysApply: true
 - Colocate test files next to source files (`Component.test.tsx` alongside `Component.tsx`).
 - Test behavior, not implementation details.
 - Prefer integration tests over unit tests for API routes and data flows.
+- **Coverage**: Run `--coverage` and maintain thresholds from the testing strategy (default: 80% lines, 70% branches for new code). Coverage is a blocking gate, not advisory.
+- **Negative testing**: Every validation/error-handling path must have at least one failure-case test. Happy-path-only test suites are insufficient.
+- **E2E**: UI-facing stories must include at least one persistent E2E test scenario in the codebase — not ad-hoc browser checks only.
+- **Regression**: Full test suite must pass against the base branch before story merge. No regressions from new code.
 
 ## Performance
 

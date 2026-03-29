@@ -67,6 +67,7 @@ Every requirement from a higher-level document must be addressed downstream.
 | Story acceptance criteria | Story artifacts (hld, api, data, security) | Every AC addressed |
 | Contracts | Provider/consumer stories | Every contract has an owner and consumers |
 | All acceptance criteria | Testing Strategy | Every AC has test coverage mapping |
+| Story acceptance criteria | HLD testability section | Every AC has explicit test type (unit/integration/E2E/manual) |
 
 ### 2. Cross-Domain Consistency
 
@@ -79,6 +80,7 @@ See [`references/cross-domain-checks.md`](references/cross-domain-checks.md) for
 - Every story has a complete dependency manifest.
 - Every contract has an owner and at least one consumer.
 - Every acceptance criterion has a test type mapped.
+- Every story HLD includes a testability section with per-AC test approach.
 - Every API endpoint has error handling defined.
 - Every data entity has a lifecycle defined.
 
@@ -101,7 +103,7 @@ See [`references/conflict-detection.md`](references/conflict-detection.md) for t
 
 ### Phase 2: Mode-Specific Validation
 - **Phase validation**: Run traceability, consistency, completeness, and conflict checks for the completed phase.
-- **Per-story validation**: Run all 11 checks from [`references/per-story-validation.md`](references/per-story-validation.md) (9 structural + 2 semantic).
+- **Per-story validation**: Run all 12 checks from [`references/per-story-validation.md`](references/per-story-validation.md) (10 structural + 2 semantic).
 - **Cross-story validation**: Run dependency graph integrity, contract compliance, cross-cutting coverage, and pattern detection aggregation.
 - **Impact analysis**: Trace dependency graph from change point per [`references/impact-analysis.md`](references/impact-analysis.md).
 
@@ -152,7 +154,7 @@ Write the validation report to `plan/validation/cross-validation-report.md` (or 
 - [`references/traceability-matrix.md`](references/traceability-matrix.md): How to check traceability (per-story + cross-story).
 - [`references/cross-domain-checks.md`](references/cross-domain-checks.md): Cross-domain consistency check patterns.
 - [`references/conflict-detection.md`](references/conflict-detection.md): Conflict patterns and resolution guidance.
-- [`references/per-story-validation.md`](references/per-story-validation.md): Per-story internal consistency checks (9 structural + 2 semantic).
+- [`references/per-story-validation.md`](references/per-story-validation.md): Per-story internal consistency checks (10 structural + 2 semantic).
 - [`references/impact-analysis.md`](references/impact-analysis.md): Impact analysis specification.
 - [`references/semantic-spot-checks.md`](references/semantic-spot-checks.md): Verify ACs correctly interpret PRD requirements (meaning, not just references).
 - [`references/terminology-enforcement.md`](references/terminology-enforcement.md): Detect and enforce naming consistency across plan artifacts.
