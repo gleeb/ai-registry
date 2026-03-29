@@ -277,6 +277,10 @@ cmd_execution() {
 
   local story="" phase="" tasks_total="" task="" step="" iteration=""
   local task_done="" staging_doc=""
+  # Compound dispatch-log flags (optional — writes dispatch-log.jsonl entry alongside state)
+  local d_event="" d_agent="" d_dispatch_id="" d_model="" d_verdict="" d_duration="" d_summary=""
+  # Compound commit flag (optional — stages + commits after state update)
+  local do_commit_flag=""
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -288,6 +292,14 @@ cmd_execution() {
       --iteration) iteration="$2"; shift 2 ;;
       --task-done) task_done="$2"; shift 2 ;;
       --staging-doc) staging_doc="$2"; shift 2 ;;
+      --dispatch-event)   d_event="$2"; shift 2 ;;
+      --dispatch-agent)   d_agent="$2"; shift 2 ;;
+      --dispatch-id)      d_dispatch_id="$2"; shift 2 ;;
+      --dispatch-model)   d_model="$2"; shift 2 ;;
+      --dispatch-verdict) d_verdict="$2"; shift 2 ;;
+      --dispatch-duration) d_duration="$2"; shift 2 ;;
+      --dispatch-summary) d_summary="$2"; shift 2 ;;
+      --commit) do_commit_flag="true"; shift ;;
       *) echo "Unknown execution flag: $1" >&2; exit 1 ;;
     esac
   done
@@ -330,9 +342,12 @@ cmd_execution() {
   [ -n "$step" ] && cur_step="$step"
   [ -n "$iteration" ] && cur_iteration="$iteration"
 
-  # Handle task-done — increment completed count
+  # Handle task-done — increment completed count (capped at tasks_total)
   if [ -n "$task_done" ]; then
     cur_tasks_completed=$(( ${cur_tasks_completed:-0} + 1 ))
+    if [ -n "$cur_tasks_total" ] && [ "$cur_tasks_completed" -gt "$cur_tasks_total" ] 2>/dev/null; then
+      cur_tasks_completed="$cur_tasks_total"
+    fi
     cur_task_id=""
     cur_task_name=""
     cur_step=""
@@ -373,22 +388,23 @@ EOF
   [ -n "$step" ] && detail="${detail}|step:${step}"
   [ -n "$task_done" ] && detail="${detail}|task-done:${task_done}"
   append_history "execution" "$detail"
+
+  # --- Compound dispatch-log (optional) ---
+  if [ -n "$d_event" ]; then
+    build_and_append_dispatch_json "$d_event" "$d_agent" "$d_dispatch_id" \
+      "${cur_story:-}" "execution" "${cur_phase:-}" "${task:-}" \
+      "$d_model" "${iteration:-}" "$d_verdict" "$d_duration" "$d_summary"
+  fi
+
+  # --- Compound commit (optional) ---
+  if [ "$do_commit_flag" = "true" ]; then
+    do_commit "${cur_story:-}" "${task:-}" "" "${cur_phase:-}"
+  fi
 }
 
 # ---------------------------------------------------------------------------
 # GIT subcommand — branch lifecycle operations
 # ---------------------------------------------------------------------------
-
-ensure_sdlc_gitignore() {
-  local gitignore=".gitignore"
-  if [ -f "$gitignore" ]; then
-    if ! grep -q "^\.sdlc/" "$gitignore" 2>/dev/null; then
-      printf '\n# SDLC checkpoint state (local workflow data)\n.sdlc/\n' >> "$gitignore"
-    fi
-  else
-    printf '# SDLC checkpoint state (local workflow data)\n.sdlc/\n' > "$gitignore"
-  fi
-}
 
 cmd_git() {
   local exec_file="$SDLC_DIR/execution.yaml"
@@ -430,9 +446,6 @@ cmd_git() {
     fi
 
     local branch_name="story/${story}"
-
-    # Ensure .sdlc/ is gitignored before any git operations
-    ensure_sdlc_gitignore
 
     # Check if branch already exists (resume scenario)
     if git rev-parse --verify "$branch_name" >/dev/null 2>&1; then
@@ -477,35 +490,7 @@ EOF
 
   # --- COMMIT ---
   if [ "$commit" = "true" ]; then
-    # Build commit message
-    local commit_msg=""
-    if [ -n "$task" ]; then
-      local task_id task_name
-      task_id="$(echo "$task" | cut -d: -f1)"
-      task_name="$(echo "$task" | cut -d: -f2-)"
-      commit_msg="task(${story}/${task_id}): ${task_name}"
-    elif [ -n "$message" ]; then
-      if echo "$message" | grep -qi "staging doc\|documentation\|doc integration"; then
-        commit_msg="docs(${story}): ${message}"
-      else
-        commit_msg="fix(${story}): ${message}"
-      fi
-    else
-      commit_msg="chore(${story}): checkpoint commit (phase ${phase:-unknown})"
-    fi
-
-    # Stage and commit
-    ensure_sdlc_gitignore
-    git add -A
-    if git diff --cached --quiet 2>/dev/null; then
-      echo "No changes to commit"
-      append_history "git" "commit-skip:no-changes|phase:${phase:-?}"
-      return
-    fi
-    git commit -m "$commit_msg"
-
-    append_history "git" "commit:${commit_msg}|phase:${phase:-?}"
-    echo "Committed: ${commit_msg}"
+    do_commit "$story" "$task" "$message" "$phase"
     return
   fi
 
@@ -518,12 +503,23 @@ EOF
 
     local branch_name="story/${story}"
 
-    # Verify we're on the story branch or switch to target
+    # Stash any dirty checkpoint state (e.g. .sdlc/history.log) before switching branches
+    local stashed=false
+    if ! git diff --quiet 2>/dev/null || ! git diff --cached --quiet 2>/dev/null; then
+      git stash push -m "checkpoint-merge-autostash" -- . 2>/dev/null && stashed=true
+    fi
+
+    # Switch to target branch and merge
     git checkout "$target"
     git merge --no-ff "$branch_name" -m "merge(${story}): integrate story branch into ${target}"
 
     # Delete story branch
     git branch -d "$branch_name"
+
+    # Restore stashed checkpoint state if we stashed earlier
+    if [ "$stashed" = true ]; then
+      git stash pop 2>/dev/null || true
+    fi
 
     # Clear branch fields from execution.yaml
     if [ -f "$exec_file" ]; then
@@ -809,6 +805,90 @@ json_escape() {
   printf '%s' "$str"
 }
 
+# ---------------------------------------------------------------------------
+# Shared helpers — used by both standalone subcommands and compound execution
+# ---------------------------------------------------------------------------
+
+# Build a dispatch-log JSON entry and append to dispatch-log.jsonl.
+# Args: event agent dispatch_id [story hub phase task model_profile iteration verdict duration summary]
+build_and_append_dispatch_json() {
+  local d_event="$1" d_agent="$2" d_dispatch_id="$3"
+  local d_story="${4:-}" d_hub="${5:-}" d_phase="${6:-}" d_task="${7:-}"
+  local d_model="${8:-}" d_iteration="${9:-}" d_verdict="${10:-}"
+  local d_duration="${11:-}" d_summary="${12:-}"
+
+  local json="{"
+  json="$json\"timestamp\":\"${TIMESTAMP}\""
+  json="$json,\"event\":\"$(json_escape "$d_event")\""
+
+  [ -n "$d_dispatch_id" ] && json="$json,\"dispatch_id\":\"$(json_escape "$d_dispatch_id")\""
+  [ -n "$d_agent" ]       && json="$json,\"agent\":\"$(json_escape "$d_agent")\""
+
+  if [ "$d_event" = "dispatch" ]; then
+    [ -n "$d_story" ]  && json="$json,\"story\":\"$(json_escape "$d_story")\""
+    [ -n "$d_hub" ]    && json="$json,\"hub\":\"$(json_escape "$d_hub")\""
+    [ -n "$d_phase" ]  && json="$json,\"phase\":\"$(json_escape "$d_phase")\""
+    [ -n "$d_task" ]   && json="$json,\"task\":\"$(json_escape "$d_task")\""
+    [ -n "$d_model" ]  && json="$json,\"model_profile\":\"$(json_escape "$d_model")\""
+    [ -n "$d_iteration" ] && json="$json,\"iteration\":${d_iteration}"
+  fi
+
+  if [ "$d_event" = "response" ]; then
+    [ -n "$d_verdict" ]  && json="$json,\"verdict\":\"$(json_escape "$d_verdict")\""
+    [ -n "$d_duration" ] && json="$json,\"duration_seconds\":${d_duration}"
+    if [ -n "$d_summary" ]; then
+      local excerpt
+      excerpt="$(printf '%.200s' "$d_summary")"
+      json="$json,\"summary_excerpt\":\"$(json_escape "$excerpt")\""
+    fi
+  fi
+
+  json="$json}"
+
+  echo "$json" >> "$DISPATCH_LOG"
+  append_history "dispatch-log" "event:${d_event}|agent:${d_agent:-?}|id:${d_dispatch_id:-?}"
+}
+
+# Stage all changes and commit with an auto-generated message.
+# Args: story [task] [message] [phase]
+# task format: "id:name" — if provided, generates task() prefix.
+# message — if provided (and no task), generates docs() or fix() prefix.
+# Falls back to chore() prefix.
+do_commit() {
+  local c_story="$1" c_task="${2:-}" c_message="${3:-}" c_phase="${4:-}"
+
+  local commit_msg=""
+  if [ -n "$c_task" ]; then
+    local task_id task_name
+    task_id="$(echo "$c_task" | cut -d: -f1)"
+    task_name="$(echo "$c_task" | cut -d: -f2-)"
+    commit_msg="task(${c_story}/${task_id}): ${task_name}"
+  elif [ -n "$c_message" ]; then
+    if echo "$c_message" | grep -qi "staging doc\|documentation\|doc integration"; then
+      commit_msg="docs(${c_story}): ${c_message}"
+    else
+      commit_msg="fix(${c_story}): ${c_message}"
+    fi
+  else
+    commit_msg="chore(${c_story}): checkpoint commit (phase ${c_phase:-unknown})"
+  fi
+
+  git add -A
+  if git diff --cached --quiet 2>/dev/null; then
+    echo "No changes to commit"
+    append_history "git" "commit-skip:no-changes|phase:${c_phase:-?}"
+    return
+  fi
+  git commit -m "$commit_msg"
+
+  append_history "git" "commit:${commit_msg}|phase:${c_phase:-?}"
+  echo "Committed: ${commit_msg}"
+}
+
+# ---------------------------------------------------------------------------
+# DISPATCH-LOG subcommand — structured dispatch/response audit trail
+# ---------------------------------------------------------------------------
+
 cmd_dispatch_log() {
   ensure_sdlc_dir
 
@@ -838,36 +918,9 @@ cmd_dispatch_log() {
     exit 1
   fi
 
-  local json="{"
-  json="$json\"timestamp\":\"${TIMESTAMP}\""
-  json="$json,\"event\":\"$(json_escape "$event")\""
-
-  [ -n "$dispatch_id" ]   && json="$json,\"dispatch_id\":\"$(json_escape "$dispatch_id")\""
-  [ -n "$agent" ]         && json="$json,\"agent\":\"$(json_escape "$agent")\""
-
-  if [ "$event" = "dispatch" ]; then
-    [ -n "$story" ]         && json="$json,\"story\":\"$(json_escape "$story")\""
-    [ -n "$hub" ]           && json="$json,\"hub\":\"$(json_escape "$hub")\""
-    [ -n "$phase" ]         && json="$json,\"phase\":\"$(json_escape "$phase")\""
-    [ -n "$task" ]          && json="$json,\"task\":\"$(json_escape "$task")\""
-    [ -n "$model_profile" ] && json="$json,\"model_profile\":\"$(json_escape "$model_profile")\""
-    [ -n "$iteration" ]     && json="$json,\"iteration\":${iteration}"
-  fi
-
-  if [ "$event" = "response" ]; then
-    [ -n "$verdict" ]  && json="$json,\"verdict\":\"$(json_escape "$verdict")\""
-    [ -n "$duration" ] && json="$json,\"duration_seconds\":${duration}"
-    if [ -n "$summary" ]; then
-      local excerpt
-      excerpt="$(printf '%.200s' "$summary")"
-      json="$json,\"summary_excerpt\":\"$(json_escape "$excerpt")\""
-    fi
-  fi
-
-  json="$json}"
-
-  echo "$json" >> "$DISPATCH_LOG"
-  append_history "dispatch-log" "event:${event}|agent:${agent:-?}|id:${dispatch_id:-?}"
+  build_and_append_dispatch_json "$event" "$agent" "$dispatch_id" \
+    "$story" "$hub" "$phase" "$task" "$model_profile" "$iteration" \
+    "$verdict" "$duration" "$summary"
 }
 
 # ---------------------------------------------------------------------------

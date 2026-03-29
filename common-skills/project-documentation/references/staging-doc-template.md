@@ -1,31 +1,22 @@
 # Staging Document Template
 
-Use this template when creating a staging document for a user story implementation. The architect scaffolds this during Phase 1; the implementer maintains it throughout the dev loop.
+Use this template when creating an execution journal for a user story implementation. The staging document references plan artifacts by section and line range — it does NOT copy plan content. Plan artifacts (story.md, hld.md, api.md, data.md, security.md) are the source of truth; the staging document tracks execution state, task decomposition, and runtime decisions.
 
 ## Template
 
 ```markdown
-# US-NNN – Story Title
+# US-NNN -- Story Title
 
-## Overview
-Brief description of what this story accomplishes and why it's needed.
-
-## Plan References
-- **Story**: `plan/user-stories/US-NNN-name/story.md`
+## Plan Artifact Paths
+- **Story**: `plan/user-stories/US-NNN-name/story.md` (acceptance criteria at lines X-Y)
 - **HLD**: `plan/user-stories/US-NNN-name/hld.md`
 - **API**: `plan/user-stories/US-NNN-name/api.md` (if applicable)
 - **Data**: `plan/user-stories/US-NNN-name/data.md` (if applicable)
 - **Security**: `plan/user-stories/US-NNN-name/security.md` (if applicable)
 - **Design**: `plan/user-stories/US-NNN-name/design/` (if applicable)
-
-## Acceptance Criteria
-[Copied from story.md for traceability — each criterion will be verified]
-1. [Criterion from story.md]
-2. [Criterion from story.md]
-3. ...
+- **Contracts**: `plan/contracts/CON-NNN-name.md` (consumed/provided, if applicable)
 
 ## Tech Stack & Loaded Skills
-- [tech] — skill: `skills/[skill-name]/`
 - [tech] — skill: `skills/[skill-name]/`
 
 ## Review Milestones
@@ -34,61 +25,43 @@ Brief description of what this story accomplishes and why it's needed.
 |----|---------|--------|--------|--------|
 [If story.md has "None — fully autonomous execution", copy that line here instead of the table]
 
-## Context Gathered
+## Browser Verification Classification
+- **Classification**: mandatory | per-task
+- **Rationale**: [why]
 
-### Documentation Reviewed
-- `docs/[domain]/[file].md` — [specific insight gained]
-- `docs/staging/[related].md` — [lessons from related work]
-[List ALL files read, with specific insights gained]
+## Task Decomposition
+[Maps plan DUs/IUs to executable tasks with plan-artifact references]
 
-### Key Insights from Context
-- [Pattern X is used because of Y]
-- [Previous work on Z revealed that...]
-- [Architecture constraint: ...]
+### Task 1: [Name]
+- **Plan refs:**
+  - hld.md [DU/IU reference] (lines N-M): [what to read for spec]
+  - api.md [section] (lines N-M): [what to read for contract]
+  - security.md [section] (lines N-M): [what to read for controls]
+- **Files:** CREATE/MODIFY path/to/file.ext
+- **Status:** pending | Review: 0 | QA: 0
 
-## Implementation Progress
+### Task 2: [Name]
+- **Plan refs:**
+  - hld.md [DU/IU reference] (lines N-M): [what to read for spec]
+- **Files:** CREATE/MODIFY path/to/file.ext
+- **Status:** pending | Review: 0 | QA: 0
 
-### Completed
-- [x] [Task description]
-  - Decision: [what was decided and why]
-  - Files: `path/to/file.ext`
+## Execution Log
 
-### In Progress
-- [ ] [Task description]
-  - Current status: [what's happening]
-  - Blocker: [if any]
+### Technical Decisions (execution-time)
+| Decision | Choice | Rationale | Plan deviation? |
+|----------|--------|-----------|-----------------|
 
-### Planned
-- [ ] [Task description]
+### Issues and Resolutions
+| Issue | Root Cause | Resolution | Lesson |
+|-------|------------|------------|--------|
 
-## Technical Decisions & Rationale
+### Implementation File References
+**Created:** (filled during execution)
+**Modified:** (filled during execution)
 
-### Decision 1: [Title]
-**Choice**: [What was chosen]
-**Rationale**:
-- [Why this choice was made]
-- [What alternatives were considered]
-- [Reference to docs/plan artifacts that informed the decision]
-
-## Issues & Resolutions
-
-| Issue | Root Cause | Resolution | Lesson for Future |
-|-------|------------|------------|-------------------|
-| [description] | [cause] | [fix] | [what to remember] |
-
-## Implementation File References
-
-### Created Files
-- `path/to/new/file.ext` — [purpose]
-
-### Modified Files
-- `path/to/existing/file.ext` — [what changed and why]
-
-## Lessons Learned
-- [Key takeaway for future agents]
-
-## Next Steps
-- [What remains after this story, if anything]
+### Lessons Learned
+(filled during execution)
 ```
 
 ## Scaffolding Instructions
@@ -96,8 +69,17 @@ Brief description of what this story accomplishes and why it's needed.
 When the architect creates this document:
 
 1. Copy the template above into `docs/staging/US-NNN-story-name.md`.
-2. Fill in Plan References from the story's plan folder.
-3. Copy Acceptance Criteria verbatim from `story.md`.
-4. Fill in Tech Stack from the story manifest's `tech_stack` field, mapping each to its skill path.
-5. Copy Review Milestones from `story.md` into the staging doc, adding a Status column (pending / triggered / user-approved). If the story has no milestones, write "None — fully autonomous execution."
-6. Leave Context Gathered, Implementation Progress, Technical Decisions, Issues, File References, and Lessons Learned for the implementer to fill during the dev loop.
+2. Fill in **Plan Artifact Paths** from the story's plan folder. For key sections (acceptance criteria, design units, API contracts), record the line ranges so subagents can read specific sections without scanning entire files.
+3. Fill in **Tech Stack** from the story manifest's `tech_stack` field, mapping each to its skill path.
+4. Copy **Review Milestones** from `story.md` into the staging doc, adding a Status column (pending / triggered / user-approved). If the story has no milestones, write "None — fully autonomous execution."
+5. Determine and record **Browser Verification Classification**.
+6. Build the **Task Decomposition** by breaking HLD design units / implementation units into execution tasks. For each task, record which DU/IU/API/security sections to reference (with line ranges). Do NOT re-write signatures, boundaries, or acceptance signals into the staging doc — the task's plan refs point to where that detail lives.
+7. Leave the **Execution Log** sections empty — they are filled during the dev loop.
+
+## What the staging doc does NOT do
+
+- Do NOT copy acceptance criteria from story.md (reference it by path and line range).
+- Do NOT re-write HLD design units, implementation unit signatures, or boundaries.
+- Do NOT re-state API validation rules, error shapes, or contract details.
+- Do NOT re-state security constraints or data architecture details.
+- All of the above live in the plan artifacts and are referenced by path + line range.

@@ -167,33 +167,29 @@ SDLC Engineering Hub is the execution hub. It converts a scoped issue into an ex
 
 ### phase: staging_documentation (order: 1b)
 
-**Description:** Create and maintain the architecture staging document
+**Description:** Create the execution journal (staging document) with plan-artifact references
 
 **Steps:**
 - Create a staging file using the template from .opencode/skills/project-documentation/references/staging-doc-template.md.
-- Pre-populate Plan References from the story's plan folder.
-- Copy acceptance criteria from story.md.
+- Read each plan artifact file and record its path with line ranges for key sections (acceptance criteria location in story.md, design unit boundaries in hld.md, API contract sections in api.md, security controls in security.md). The hub records WHERE the key content is, not WHAT it says.
 - Fill Tech Stack section from the story manifest.
-- Continuously record technical decisions, rationale, alternatives considered, and reference file paths.
+- Copy Review Milestones from story.md.
+- Determine and record Browser Verification Classification.
+- The staging document does NOT copy acceptance criteria, HLD content, API rules, or security constraints — it references them by path and line range. Plan artifacts are the source of truth.
 
 ### phase: actionable_plan (order: 1c)
 
-**Description:** Produce implementer-ready execution steps with precise specifications
+**Description:** Decompose plan design units into executable tasks with plan-artifact references
 
 **Steps:**
-- Define HLD and LLD outputs with explicit boundaries, dependencies, and acceptance signals.
-- Break work into small implementation units, each with:
-  - Function signatures and parameters
-  - Interface definitions
-  - File paths for each change
-  - Dependency order
-  - Acceptance criteria
-- Create a sequenced task checklist in the staging document with status tracking (pending | in-progress | done | blocked).
-- **Browser verification classification:** Determine whether the story requires mandatory browser verification for all tasks. Classify as **mandatory** when ANY of the following are true:
-  - The story/issue describes a browser-observable problem (site not loading, blank page, rendering broken, HTTP errors when visiting the site, UI regression, etc.).
-  - The story's acceptance criteria include browser-observable outcomes (e.g., "website loads," "page renders correctly," "no console errors").
-  - The story's tech stack is a web application AND the majority of tasks touch the web-serving pipeline.
-  Record the classification in the staging document (e.g., `Browser Verification: mandatory — story describes site not loading` or `Browser Verification: per-task — standard web app story`). When classified as **mandatory**, include the `BROWSER VERIFICATION` block in EVERY implementer and QA dispatch for this story, regardless of whether the individual task appears to touch UI-visible code. When classified as **per-task**, follow the conditional inclusion rules in the dispatch templates (include when the task touches UI-visible code or files that indirectly affect web rendering).
+- Read the HLD's design units and implementation units from hld.md.
+- Break them into executable tasks, grouping related IUs by dependency order.
+- For each task in the staging document, record:
+  - **Plan refs**: which DU/IU sections in hld.md (with line ranges), which API sections in api.md (with line ranges), which security sections in security.md (with line ranges) the task implements.
+  - **Files**: file paths for each change (CREATE/MODIFY).
+  - **Status**: pending | Review: 0 | QA: 0.
+- Do NOT re-write function signatures, interface definitions, boundaries, or acceptance signals into the staging document. The plan refs point to where that detail lives in the plan artifacts. The task decomposition IS the hub's execution-time contribution — the mapping from plan units to execution order.
+- The browser verification classification should already be recorded in Phase 1b. When classified as **mandatory**, include the `BROWSER VERIFICATION` block in EVERY implementer and QA dispatch for this story. When classified as **per-task**, include it only when the task touches UI-visible code or files that indirectly affect web rendering.
 
 ### phase: execution_orchestration (order: 2)
 
@@ -207,11 +203,17 @@ SDLC Engineering Hub is the execution hub. It converts a scoped issue into an ex
     3. Log response with verdict (SUCCESS or FAILURE).
     4. On success: read the infrastructure manifest and fold connection details into the implementer dispatch's INTEGRATION CONTEXT section.
     5. On failure: record blocker in staging doc. Re-dispatch once with resolution guidance if available. If still failing, HALT and escalate.
-  - A2. Log dispatch: `checkpoint.sh dispatch-log --event dispatch` with story, hub, phase, task, agent, model profile, dispatch ID, and iteration.
-  - B. Task tool dispatch to @sdlc-engineering-implementer using the implementer dispatch template. Include TECH SKILLS, DOCUMENTATION, SELF-VERIFICATION, and INTEGRATION CONTEXT sections. If DevOps was dispatched in step A, include infrastructure manifest details in INTEGRATION CONTEXT. If browser verification was classified as **mandatory** in Phase 1c, include the BROWSER VERIFICATION block. If classified as **per-task**, include it when the task meets the conditional inclusion rules in the dispatch template.
-  - C. Log response: `checkpoint.sh dispatch-log --event response` with dispatch ID, agent, duration, and summary excerpt.
+  - A2. Set task and log dispatch in one compound call:
+    `checkpoint.sh execution --task "{id}:{name}" --step implement --dispatch-event dispatch --dispatch-agent sdlc-engineering-implementer --dispatch-id "exec-{story}-t{id}-impl-i1"`
+  - B. Task tool dispatch to @sdlc-engineering-implementer using the implementer dispatch template. Include TECH SKILLS, DOCUMENTATION, SELF-VERIFICATION, PLAN ARTIFACTS, and INTEGRATION CONTEXT sections. If DevOps was dispatched in step A, include infrastructure manifest details in INTEGRATION CONTEXT. **Browser verification per-task skip rule:** If browser verification is classified as **per-task** AND the task touches only domain/data/guard files with zero browser-observable acceptance signals, omit the BROWSER VERIFICATION block entirely from the dispatch — no N/A documentation required. If classified as **mandatory**, always include the BROWSER VERIFICATION block. If classified as **per-task** and the task touches UI-visible code or files that affect web rendering, include it.
+  - C. Log implementer response (compound — also advances step to code_review):
+    `checkpoint.sh execution --step code_review --dispatch-event response --dispatch-agent sdlc-engineering-implementer --dispatch-id "exec-{story}-t{id}-impl-i1" --dispatch-verdict "success"`
   - C2. **Test Existence Gate:** Before dispatching to code reviewer, verify that the implementer created test files for new/modified source modules (check via bash). If no test files exist, re-dispatch implementer with test-only focus (counts as an iteration). Do NOT send to reviewer without tests.
-  - D. On implementer success (with tests confirmed), log dispatch then Task tool dispatch to @sdlc-engineering-code-reviewer using the reviewer dispatch template. Include SECURITY REVIEW flag and DOCUMENTATION CHECK. Log response with verdict.
+  - D. On implementer success (with tests confirmed), log reviewer dispatch (compound):
+    `checkpoint.sh execution --dispatch-event dispatch --dispatch-agent sdlc-engineering-code-reviewer --dispatch-id "exec-{story}-t{id}-review-i1"`
+    Then Task tool dispatch to @sdlc-engineering-code-reviewer using the reviewer dispatch template. Include SECURITY REVIEW flag and DOCUMENTATION CHECK.
+  - D2. Log reviewer response (compound — also advances step to qa_verification):
+    `checkpoint.sh execution --step qa_verification --dispatch-event response --dispatch-agent sdlc-engineering-code-reviewer --dispatch-id "exec-{story}-t{id}-review-i1" --dispatch-verdict "{Approved|Changes Required}"`
   - E. Handle review verdict using the **Adaptive Recovery Protocol**:
     - **Approved:** Proceed to QA (step F).
     - **Changes Required (iterations 1-3):** Re-dispatch to @sdlc-engineering-implementer with the reviewer's COMPLETE feedback verbatim (all Critical, Important, and Suggestion items with original file:line references). Do not summarize or omit any findings.
@@ -223,16 +225,19 @@ SDLC Engineering Hub is the execution hub. It converts a scoped issue into an ex
          - **Progress pattern** (different issues each time): One more guided dispatch to implementer with exact code snippets showing what to change. If that also fails, self-implement.
       4. After self-implementation, the pipeline continues normally (review, QA). No escalation or blocking required.
     - **Hard ceiling at iteration 5:** Architect self-implements regardless. No more implementer dispatches for this task.
-  - F. On review pass, log dispatch then Task tool dispatch to @sdlc-engineering-qa using the QA dispatch template. Include DOCUMENTATION VERIFICATION. Log response with verdict.
-  - G. Handle QA: PASS then mark task done in staging and proceed to next unit. FAIL then Task tool dispatch to @sdlc-engineering-implementer with QA details (max 2 retries).
-  - H. After task-done, git commit: `checkpoint.sh git --commit --story {US-NNN-name} --task "{id}:{name}" --phase 2`
+  - F. On review pass, log QA dispatch (compound):
+    `checkpoint.sh execution --dispatch-event dispatch --dispatch-agent sdlc-engineering-qa --dispatch-id "exec-{story}-t{id}-qa-i1"`
+    Then Task tool dispatch to @sdlc-engineering-qa using the QA dispatch template. Include DOCUMENTATION VERIFICATION.
+  - G. Handle QA: PASS then mark task done + log QA response + commit in one compound call (step H). FAIL then Task tool dispatch to @sdlc-engineering-implementer with QA details (max 2 retries).
+  - H. Mark task done, log QA response, and commit (compound):
+    `checkpoint.sh execution --task-done "{id}" --dispatch-event response --dispatch-agent sdlc-engineering-qa --dispatch-id "exec-{story}-t{id}-qa-i1" --dispatch-verdict "PASS" --commit`
   - I. **Review Milestone check:** After task-done commit, read the staging document's Review Milestones table. If any milestone has a Trigger matching this task (e.g., "After task {id}"):
     1. Execute the milestone's Action (run the command, capture output/artifacts).
     2. Update the milestone's Status to `triggered` in the staging doc.
     3. Return to the coordinator with the milestone results and a MILESTONE_PAUSE status. HALT execution.
     4. On resume (via `/sdlc-continue`), mark the milestone as `user-approved` in the staging doc and continue to the next task.
 - Update task status in staging document after each dispatch cycle.
-- Log every dispatch and response via `checkpoint.sh dispatch-log` alongside checkpoint state updates.
+- **Compound checkpoint calls:** The `execution` subcommand supports `--dispatch-event`, `--dispatch-agent`, `--dispatch-id`, `--dispatch-verdict`, `--dispatch-summary`, and `--commit` flags. Use these to combine execution state updates + dispatch logging + git commits into single calls, reducing per-task overhead from ~11 invocations to ~6.
 
 See .opencode/skills/architect-execution-hub/references/review-cycle.md for iteration limits and escalation rules.
 
@@ -302,7 +307,7 @@ Before Task tool dispatch to @sdlc-engineering-semantic-reviewer, read the QA ag
   - Story has NO Review Milestone with trigger "after all tasks" or "phase 6".
   - Acceptance validation verdict is COMPLETE.
   - No deviations from plan were recorded in the staging doc.
-  - If all conditions met: auto-approve. Merge story branch: `checkpoint.sh git --merge --story {US-NNN-name} --target main`. Record "Auto-approved: no milestones, acceptance COMPLETE, no deviations" in the staging doc. Return to the coordinator with completion summary.
+  - If all conditions met: auto-approve IMMEDIATELY. Do NOT present a summary to the user, do NOT ask for confirmation, do NOT pause for input. Proceed directly to merge: `checkpoint.sh git --merge --story {US-NNN-name} --target main`. Record "Auto-approved: no milestones, acceptance COMPLETE, no deviations" in the staging doc. Return to the coordinator with completion summary.
 - **User review path** (any condition triggers):
   - Story HAS a Review Milestone with trigger "after all tasks" or "phase 6": execute the milestone Action, present results alongside the implementation summary.
   - Acceptance validator reported deviations from plan.
@@ -460,13 +465,10 @@ Dispatch for a single scoped implementation unit.
 
 - **task_id:** Task number from the staging document checklist.
 - **task_name:** Descriptive name matching the checklist item.
-- **specification:** Full task specification from LLD including:
-  - Function signatures and parameters
-  - Interface definitions
-  - File paths for each change
-  - Dependencies on prior tasks
-- **acceptance_criteria:** Testable conditions that define task completion.
-- **staging_path:** Exact path to the staging document for shared context.
+- **plan_artifacts:** Paths to plan artifacts with specific sections and line ranges for this task's specification. The implementer reads these for detailed signatures, interfaces, validation rules, and security constraints.
+- **specification:** Brief task summary referencing the plan artifacts above. Do NOT re-copy full signatures or interface definitions — point to the plan artifact sections.
+- **acceptance_criteria:** Testable conditions that define task completion (reference story.md section if applicable).
+- **staging_path:** Exact path to the staging document for task context and execution log.
 - **boundaries:** Explicit scope limits: what to implement and what NOT to implement.
 - **completion_contract:** Return your final summary with:
   1. Code-change summary (files created/modified with brief description).
@@ -477,11 +479,16 @@ Dispatch for a single scoped implementation unit.
 
 ```
 Task 3: Create IngredientModel
-Specification: Create src/models/ingredient.py with dataclass IngredientModel.
-  Fields: name(str), quantity(float), unit(str), expiry_date(Optional[date]).
-  Methods: __eq__ comparing name+unit, __hash__ on name+unit, is_expired() -> bool.
+
+PLAN ARTIFACTS (read these for detailed specifications):
+- hld.md: plan/user-stories/US-005-ingredient-model/hld.md (DU-2 lines 45-78, IU-3 line 210)
+- api.md: plan/user-stories/US-005-ingredient-model/api.md (section 3.1 lines 30-55)
+- security.md: plan/user-stories/US-005-ingredient-model/security.md (section 4 lines 60-72)
+
+Specification: Implement IU-3 from hld.md — IngredientModel dataclass with fields,
+  equality, hashing, and expiry check as specified in DU-2.
 Acceptance: Unit test test_ingredient_equality passes. test_is_expired passes.
-Staging: docs/staging/T-WOL-8-data-model-migration-baseline.md
+Staging: docs/staging/US-005-ingredient-model.md
 Boundaries: Only create the model file and its test. Do not implement storage or migrations.
 Completion: return your final summary with file list and test results.
 ```
@@ -513,13 +520,23 @@ Dispatch for reviewing a completed implementation unit.
 **Required fields:**
 
 - **task_id:** Task number being reviewed.
-- **staging_path:** Exact path to the staging document.
-- **lld_section:** Specific LLD section or requirements for this task.
-- **implementer_summary:** The implementer's completion summary (files changed, what was done).
+- **staging_path:** Exact path to the staging document for task context and execution state.
+- **plan_artifacts:** Paths to plan artifacts with specific sections relevant to this task. The reviewer reads these for the actual specifications to review against — NOT the staging document summary.
+- **implementer_summary:** The implementer's completion summary (files changed, what was done). This is inline text in the dispatch message, not a file.
 - **completion_contract:** Return your final summary with:
   1. Spec Compliance: PASS/FAIL.
   2. Issues categorized by severity with file:line references.
   3. Overall Assessment: Approved / Changes Required.
+
+**Example plan_artifacts block:**
+
+```
+PLAN ARTIFACTS (review implementation against THESE, not against the staging doc):
+- story.md: plan/user-stories/US-NNN-name/story.md (acceptance criteria lines X-Y)
+- hld.md: plan/user-stories/US-NNN-name/hld.md (DU/IU sections relevant to this task)
+- api.md: plan/user-stories/US-NNN-name/api.md (if task touches API contracts)
+- security.md: plan/user-stories/US-NNN-name/security.md (if SECURITY_REVIEW: true)
+```
 
 ## Dispatch Template: sdlc-engineering-qa
 
@@ -528,8 +545,9 @@ Dispatch for independently verifying a completed and reviewed implementation uni
 **Required fields:**
 
 - **task_id:** Task number being verified.
-- **staging_path:** Exact path to the staging document.
-- **acceptance_criteria:** Testable conditions from the task specification.
+- **staging_path:** Exact path to the staging document for task context.
+- **plan_artifacts:** Paths to plan artifacts (story.md for acceptance criteria, hld.md for spec details) so QA can verify against the source of truth.
+- **acceptance_criteria:** Testable conditions from the task specification (reference story.md lines if applicable).
 - **verification_commands:** Suggested commands to verify each criterion (tests, build, etc.).
 - **completion_contract:** Return your final summary with:
   1. Verification Status: PASS/FAIL.
