@@ -40,7 +40,9 @@
         },
         "qwen3.5-27b-claude-4.6-opus-reasoning-distilled" :{
           "name" : "qwen3.5 27b claude-4.6-opus reasoning distilled"
-
+        },
+        "gpt-oss-20b" : {
+          "name" : "gpt-oss-20b"
         }
       }
     }
