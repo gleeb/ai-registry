@@ -1,7 +1,7 @@
 ---
 description: "Independent verification and quality assurance. Use when code review has passed and the implementation needs an independent verification gate before marking a task complete."
 mode: subagent
-model: lmstudio/qwen3.5-27b-claude-4.6-opus-reasoning-distilled
+model: lmstudio/gpt-oss-20b
 permission:
   edit: deny
   bash:
