@@ -163,7 +163,8 @@ Commercial-model senior-developer quality review with 3 checks (agent report int
 1. Present implementation summary, acceptance validation report, and any deviations.
 2. If user approves:
    a. **Git merge**: `checkpoint.sh git --merge --story {US-NNN-name} --target main`
-   b. Return to coordinator with completion summary.
+   b. **Signal completion**: `checkpoint.sh execution --status COMPLETE`
+   c. Return to coordinator with completion summary.
 3. If user requests changes → create targeted tasks and re-enter Phase 2.
 4. If user rejects → escalate with rejection details.
 
@@ -204,7 +205,7 @@ Load the `sdlc-checkpoint` skill at initialization. The checkpoint script is at 
 - **Phase 3b**: `--phase 3b` at transition. `--step semantic-review` before semantic reviewer dispatch. On PASS: `--verdict pass`. On NEEDS WORK: re-enter Phase 2, after remediation `checkpoint.sh git --commit ... --phase 3b`.
 - **Phase 4**: `--phase 4` at transition. After remediation: `checkpoint.sh git --commit ... --phase 4`.
 - **Phase 5**: `--phase 5` at transition. After doc integration: `checkpoint.sh git --commit --story {US-NNN-name} --message "Integrate staging doc" --phase 5`
-- **Phase 6**: `--phase 6` at transition. On user approval: `checkpoint.sh git --merge --story {US-NNN-name} --target main`, then `checkpoint.sh coordinator --story-done {US-NNN-name}`
+- **Phase 6**: `--phase 6` at transition. On approval: `checkpoint.sh git --merge --story {US-NNN-name} --target main`, then `checkpoint.sh execution --status COMPLETE`
 
 ## Self-Repair Protocol
 

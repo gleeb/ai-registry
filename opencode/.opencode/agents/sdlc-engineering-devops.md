@@ -28,6 +28,7 @@ Runs fully autonomously — never pause for user input. Complete and return, or 
 - Write ONLY to: `.env`/`.env.*`, `docker-compose.yml`/`docker-compose.*.yml`, `infrastructure/` directory (IaC, scripts), database migration/seed files per DevOps plan, staging document (Technical Decisions section only).
 - Do not dispatch other agents.
 - Do not expand scope beyond the infrastructure requested in the dispatch.
+- Do not write narration comments in infrastructure files. Only *why* comments are permitted — non-obvious intent, trade-offs, workarounds, or constraints the code cannot convey.
 
 ## Dispatch Protocol
 

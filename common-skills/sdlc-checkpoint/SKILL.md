@@ -20,6 +20,18 @@ description: >
 
 - Do not load for individual sub-agents (PRD agent, HLD agent, implementer, etc.). Only the orchestrating hub writes checkpoints.
 
+## Hub Scope
+
+Each hub writes ONLY to its own checkpoint file. The coordinator is the sole writer of `coordinator.yaml`.
+
+| Hub | Writes to | References to read |
+|-----|-----------|--------------------|
+| **Coordinator** | `coordinator.yaml` | `api-coordinator.md`, `resume-protocol.md` |
+| **Planning Hub** | `planning.yaml` | `api-planning.md`, `api-dispatch-log.md`, `resume-protocol.md` |
+| **Execution Hub** | `execution.yaml` | `api-execution.md`, `api-git.md`, `api-dispatch-log.md`, `resume-protocol.md` |
+
+The execution hub signals story completion by writing `checkpoint.sh execution --status COMPLETE` to its own state file. The coordinator reads this signal and performs the `--story-done` transition on `coordinator.yaml`.
+
 ## Core Principles
 
 - **Write-ahead**: Always update the checkpoint BEFORE dispatching a sub-agent. If the agent dies mid-dispatch, the checkpoint reflects "about to do X."
@@ -89,7 +101,7 @@ checkpoint.sh continue
 |------|---------|
 | `--hub` | Set the active hub (`planning` or `execution`) |
 | `--story` | Set the current story identifier |
-| `--story-done` | Mark a story as completed |
+| `--story-done` | Mark a story as completed. Auto-transitions: clears `current_story` and `active_hub`, or advances to next story from `stories_remaining` if any |
 
 ```bash
 # Planning hub is active, working on story US-003
@@ -116,6 +128,7 @@ checkpoint.sh coordinator --hub execution --story US-001
 | `--staging-doc` | Set the staging document path |
 | `--acceptance-iteration` | Set the acceptance revalidation counter (0-2) |
 | `--acceptance-verdict` | Set the acceptance verdict (`COMPLETE`, `INCOMPLETE`, `null`) |
+| `--status` | Set execution status (`IN_PROGRESS`, `COMPLETE`, `BLOCKED`). The execution hub sets `COMPLETE` after Phase 6 merge to signal the coordinator |
 
 ```bash
 # Starting execution for a story
@@ -137,6 +150,9 @@ checkpoint.sh execution --phase 3
 checkpoint.sh execution --phase 4 --acceptance-iteration 0
 checkpoint.sh execution --acceptance-iteration 1 --acceptance-verdict INCOMPLETE
 checkpoint.sh execution --acceptance-verdict COMPLETE
+
+# Signal story completion (Phase 6, after merge)
+checkpoint.sh execution --status COMPLETE
 ```
 
 ### Git Flags and Examples

@@ -124,13 +124,15 @@ When the engineering hub subtask returns a completion result:
 
 ### Story Completion Transition
 
+The coordinator is the **sole owner** of `coordinator.yaml`. The engineering hub signals completion via `checkpoint.sh execution --status COMPLETE` and returns a verdict — it does NOT write to `coordinator.yaml`.
+
 When the engineering hub returns a COMPLETE/closeable verdict for a story:
 
 1. **Trust the verdict.** The engineering hub's completion result is authoritative. Do NOT re-read the checkpoint to verify — the checkpoint may be stale.
-2. **Update the checkpoint:** Run `.opencode/skills/sdlc-checkpoint/scripts/checkpoint.sh coordinator --story-done {US-NNN-name}` to mark the story as completed in `coordinator.yaml`. This is REQUIRED before any further routing.
+2. **Update the checkpoint:** Run `.opencode/skills/sdlc-checkpoint/scripts/checkpoint.sh coordinator --story-done {US-NNN-name}`. This marks the story as completed and **auto-transitions** coordinator state: if stories remain in the queue, `current_story` advances to the next one; if none remain, `active_hub` and `current_story` are cleared (idle).
 3. **Find the next story:**
    - **Preferred:** Query Linear MCP for the next ready/in-progress issue.
-   - **Fallback (MCP unavailable):** After updating the checkpoint with `--story-done`, run `.opencode/skills/sdlc-checkpoint/scripts/verify.sh` to get the updated routing recommendation. The checkpoint is now current because you just wrote `--story-done`.
+   - **Fallback (MCP unavailable):** After `--story-done`, run `.opencode/skills/sdlc-checkpoint/scripts/verify.sh` to get the updated routing recommendation. If `--story-done` auto-advanced to a next story, verify.sh will recommend routing to execution. If no stories remain, it will report IDLE.
    - **Last resort:** If no next story is identifiable, report the completion to the user and ask what to work on next.
 4. **Dispatch immediately.** Do NOT pause to ask the user for permission to continue. Dispatch `@sdlc-engineering` for the next story, or report that all stories are complete.
 

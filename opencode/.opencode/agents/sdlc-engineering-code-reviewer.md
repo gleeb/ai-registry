@@ -76,6 +76,11 @@ Every review must produce at minimum one Suggestion-level finding. Treat a clean
 - **Important:** design issues, poor patterns, missing error-path tests. Should fix.
 - **Suggestion:** style improvements, minor refactors. Nice to have.
 
+### Comment policy enforcement
+
+- Narration comments (`// Create user`, `// Return result`, `// Initialize state`, `// Handle error`) = **Important** issue. Flag with file:line and instruct removal.
+- Acceptable comments: non-obvious *why* (trade-offs, workarounds, platform constraints, regulatory requirements), JSDoc/TSDoc for public API contracts.
+
 ### Pitfalls
 
 - **Reviewing without context:** Always read plan artifacts before reviewing code.

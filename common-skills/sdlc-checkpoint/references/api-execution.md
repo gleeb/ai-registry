@@ -16,6 +16,7 @@ Manages execution hub state: phase, current task, dev-loop step, iteration count
 | `--staging-doc` | Set the staging document path |
 | `--acceptance-iteration` | Set the acceptance revalidation counter (0-2) |
 | `--acceptance-verdict` | Set the acceptance verdict (`COMPLETE`, `INCOMPLETE`, `null`) |
+| `--status` | Set execution status: `IN_PROGRESS` (default), `COMPLETE`, or `BLOCKED`. Set `COMPLETE` after Phase 6 merge to signal the coordinator |
 
 ## Examples
 
@@ -39,4 +40,7 @@ checkpoint.sh execution --phase 3
 checkpoint.sh execution --phase 4 --acceptance-iteration 0
 checkpoint.sh execution --acceptance-iteration 1 --acceptance-verdict INCOMPLETE
 checkpoint.sh execution --acceptance-verdict COMPLETE
+
+# Signal story completion (Phase 6, after merge)
+checkpoint.sh execution --status COMPLETE
 ```

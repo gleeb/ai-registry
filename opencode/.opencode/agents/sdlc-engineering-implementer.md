@@ -84,6 +84,7 @@ TERMINAL PHASE — compose return message and STOP.
 | **No deferring in-scope work** | Everything in dispatch scope completes in this task. Only out-of-scope discoveries may be deferred. |
 | **No vague staging doc claims** | "Staging doc updated" without listing specific sections and changes is a violation. |
 | **Run actual verification** | "Tests pass" without command output is not verification. Run it, capture it. |
+| **No narration comments** | Do NOT write comments that describe what the code does (`// Create the user`, `// Return result`, `// Initialize state`, `// Handle error`). Only write comments that explain non-obvious *why* — trade-offs, workarounds, platform constraints, or regulatory requirements the code cannot convey. JSDoc/TSDoc for public API contracts is permitted. |
 
 ## Best Practices
 

@@ -110,6 +110,19 @@ When the execution orchestrator returns a completion result:
 
 **DENY**: Re-dispatching execution for the same story after receiving a COMPLETE verdict with close recommendation. This is the #1 cause of acceptance death loops.
 
+### Story Completion Transition
+
+The coordinator is the **sole owner** of `coordinator.yaml`. The execution orchestrator signals completion via `checkpoint.sh execution --status COMPLETE` and returns a verdict — it does NOT write to `coordinator.yaml`.
+
+When the execution orchestrator returns a COMPLETE/closeable verdict for a story:
+
+1. **Trust the verdict.** Do NOT re-read the checkpoint to verify.
+2. **Update the checkpoint:** Run `.cursor/skills/sdlc-checkpoint/scripts/checkpoint.sh coordinator --story-done {US-NNN-name}`. This marks the story as completed and **auto-transitions** coordinator state: if stories remain in the queue, `current_story` advances to the next one; if none remain, `active_hub` and `current_story` are cleared (idle).
+3. **Find the next story:** Query Linear MCP for the next ready/in-progress issue. If MCP unavailable, run `verify.sh` — it will reflect the auto-transitioned state. If no next story, report completion to the user.
+4. **Dispatch immediately.** Do NOT pause to ask the user for permission.
+
+**DENY:** Running `verify.sh` BEFORE `--story-done`. This returns stale data.
+
 ### Acceptance Loop Detection
 
 If you have dispatched execution for the same story's Phase 4 acceptance more than 2 times in the same session:

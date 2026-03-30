@@ -317,7 +317,7 @@ Before Task tool dispatch to @sdlc-engineering-semantic-reviewer, read the QA ag
   - Story has NO Review Milestone with trigger "after all tasks" or "phase 6".
   - Acceptance validation verdict is COMPLETE.
   - No deviations from plan were recorded in the staging doc.
-  - If all conditions met: auto-approve IMMEDIATELY. Do NOT present a summary to the user, do NOT ask for confirmation, do NOT pause for input. Proceed directly to merge: `checkpoint.sh git --merge --story {US-NNN-name} --target main`. Record "Auto-approved: no milestones, acceptance COMPLETE, no deviations" in the staging doc. Then update the coordinator checkpoint: `checkpoint.sh coordinator --story-done {US-NNN-name}`. Return to the coordinator with completion summary.
+  - If all conditions met: auto-approve IMMEDIATELY. Do NOT present a summary to the user, do NOT ask for confirmation, do NOT pause for input. Proceed directly to merge: `checkpoint.sh git --merge --story {US-NNN-name} --target main`. Record "Auto-approved: no milestones, acceptance COMPLETE, no deviations" in the staging doc. Then signal completion: `checkpoint.sh execution --status COMPLETE`. Return to the coordinator with completion summary.
 - **User review path** (any condition triggers):
   - Story HAS a Review Milestone with trigger "after all tasks" or "phase 6": execute the milestone Action, present results alongside the implementation summary.
   - Acceptance validator reported deviations from plan.
@@ -325,7 +325,7 @@ Before Task tool dispatch to @sdlc-engineering-semantic-reviewer, read the QA ag
   - If user approves:
     - Mark milestone as `user-approved` if applicable.
     - Merge story branch: `checkpoint.sh git --merge --story {US-NNN-name} --target main`
-    - Update coordinator checkpoint: `checkpoint.sh coordinator --story-done {US-NNN-name}`
+    - Signal completion: `checkpoint.sh execution --status COMPLETE`
     - Return to the coordinator with completion summary.
   - If user requests changes → create targeted tasks and re-enter Phase 2.
   - If user rejects → escalate to coordinator with rejection details.
@@ -340,7 +340,7 @@ Before Task tool dispatch to @sdlc-engineering-semantic-reviewer, read the QA ag
 - Documentation integrated into permanent docs (Phase 5).
 - User acceptance received or auto-approved (Phase 6).
 - All Review Milestones resolved (triggered and user-approved, or none defined).
-- Coordinator checkpoint updated with `--story-done`.
+- Execution checkpoint updated with `--status COMPLETE`.
 - Control is returned to coordinator with full completion summary.
 
 ---
@@ -447,6 +447,7 @@ Each implementation unit must include function signatures, parameters, file path
 - **REQUIRE:** Scaffolding check before creating tasks (no package manager config, no source dirs, no docs/ → load scaffold-project skill, Task 0).
 - **REQUIRE:** Verbatim reviewer feedback in all re-dispatches — never summarize or paraphrase.
 - **REQUIRE:** Precise task specifications in every dispatch (function signatures, file paths, acceptance criteria).
+- **DENY:** Narration comments in code. Comments that describe *what* code does (`// Create user`, `// Return result`, `// Handle error`) are prohibited across all engineering agents. Only *why* comments are permitted — non-obvious intent, trade-offs, workarounds, constraints. JSDoc/TSDoc for public API contracts is allowed. Enforce in dispatch context and self-implementation.
 - **DENY:** Direct implementation during iterations 1-3. After Adaptive Recovery, self-implementation is required.
 - **DENY:** Skipping code review or QA for any implementation unit (including architect-implemented code).
 - **DENY:** More than 5 review iterations per task. After 3 identical rejections, self-implement. After 5 total, self-implement unconditionally. Never block the pipeline.

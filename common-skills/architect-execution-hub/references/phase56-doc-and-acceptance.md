@@ -39,4 +39,5 @@ If the user requests changes, create targeted tasks and re-enter Phase 2. Mark t
 
 On user approval (or auto-approve):
 1. **Git merge**: `checkpoint.sh git --merge --story {US-NNN-name} --target main`
-2. `checkpoint.sh coordinator --story-done {US-NNN-name}`
+2. **Signal completion**: `checkpoint.sh execution --status COMPLETE`
+3. Return to coordinator with completion summary. The coordinator owns the `--story-done` transition.

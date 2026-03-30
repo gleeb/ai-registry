@@ -94,6 +94,18 @@ verify_coordinator() {
   echo "status: $([ -n "$hub" ] && [ "$hub" != "null" ] && echo "ACTIVE" || echo "IDLE")"
 
   if [ -n "$hub" ] && [ "$hub" != "null" ]; then
+    # Check if execution hub has already signaled completion
+    if [ "$hub" = "execution" ] && [ -f "$SDLC_DIR/execution.yaml" ]; then
+      local exec_status exec_story
+      exec_status="$(yaml_read "$SDLC_DIR/execution.yaml" "status")"
+      exec_story="$(yaml_read "$SDLC_DIR/execution.yaml" "story")"
+      if [ "$exec_status" = "COMPLETE" ]; then
+        echo "recommendation: story complete -- run checkpoint.sh coordinator --story-done ${exec_story:-${story:-unknown}} to transition"
+        echo "detail: execution hub signaled COMPLETE but coordinator has not transitioned yet"
+        return
+      fi
+    fi
+
     local target_mode="sdlc-planner"
     [ "$hub" = "execution" ] && target_mode="sdlc-architect"
     echo "recommendation: route to ${target_mode}, story ${story:-unknown}"

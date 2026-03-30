@@ -97,6 +97,14 @@ cmd_coordinator() {
     # Remove from remaining list
     cur_remaining="$(echo "$cur_remaining" | tr ' ' '\n' | grep -v "^${story_done}$" | tr '\n' ' ')"
     cur_remaining="$(echo "$cur_remaining" | sed 's/^ *//;s/ *$//;s/  */ /g')"
+
+    # Auto-transition: advance to next story or go idle
+    if [ -n "$cur_remaining" ]; then
+      cur_story="$(echo "$cur_remaining" | awk '{print $1}')"
+    else
+      cur_story=""
+      cur_hub=""
+    fi
   fi
 
   cur_done="$(echo "$cur_done" | sed 's/^ *//;s/ *$//;s/  */ /g')"
@@ -276,7 +284,7 @@ cmd_execution() {
   ensure_sdlc_dir
 
   local story="" phase="" tasks_total="" task="" step="" iteration=""
-  local task_done="" staging_doc=""
+  local task_done="" staging_doc="" status=""
   # Compound dispatch-log flags (optional — writes dispatch-log.jsonl entry alongside state)
   local d_event="" d_agent="" d_dispatch_id="" d_model="" d_verdict="" d_duration="" d_summary=""
   # Compound commit flag (optional — stages + commits after state update)
@@ -292,6 +300,7 @@ cmd_execution() {
       --iteration) iteration="$2"; shift 2 ;;
       --task-done) task_done="$2"; shift 2 ;;
       --staging-doc) staging_doc="$2"; shift 2 ;;
+      --status) status="$2"; shift 2 ;;
       --dispatch-event)   d_event="$2"; shift 2 ;;
       --dispatch-agent)   d_agent="$2"; shift 2 ;;
       --dispatch-id)      d_dispatch_id="$2"; shift 2 ;;
@@ -316,10 +325,12 @@ cmd_execution() {
   cur_step="$(yaml_read "$file" "current_step")"
   cur_iteration="$(yaml_read "$file" "current_iteration")"
   cur_staging_doc="$(yaml_read "$file" "staging_doc")"
-  local cur_completed_phases
+  local cur_completed_phases cur_status
   cur_completed_phases="$(yaml_read_list "$file" "completed_phases")"
+  cur_status="$(yaml_read "$file" "status")"
 
   # Apply patches
+  [ -n "$status" ] && cur_status="$status"
   [ -n "$story" ] && cur_story="$story"
   [ -n "$staging_doc" ] && cur_staging_doc="$staging_doc"
   [ -n "$tasks_total" ] && cur_tasks_total="$tasks_total"
@@ -371,6 +382,7 @@ cmd_execution() {
 last_updated: "${TIMESTAMP}"
 story: ${cur_story:-null}
 staging_doc: ${cur_staging_doc:-null}
+status: ${cur_status:-IN_PROGRESS}
 phase: ${cur_phase:-null}
 completed_phases: ${completed_phases_yaml}
 tasks_total: ${cur_tasks_total:-null}
@@ -387,6 +399,7 @@ EOF
   [ -n "$task" ] && detail="${detail}|task:${task}"
   [ -n "$step" ] && detail="${detail}|step:${step}"
   [ -n "$task_done" ] && detail="${detail}|task-done:${task_done}"
+  [ -n "$status" ] && detail="${detail}|status:${status}"
   append_history "execution" "$detail"
 
   # --- Compound dispatch-log (optional) ---
