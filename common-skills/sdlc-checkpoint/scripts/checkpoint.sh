@@ -655,6 +655,24 @@ cmd_init() {
   # Write coordinator checkpoint
   cmd_coordinator --hub "${hub:-planning}" ${current_story:+--story "$current_story"}
 
+  # Sync stories_remaining from planning artifacts if available
+  if [ -d "plan/user-stories" ]; then
+    local sync_script
+    for candidate in \
+      "$(dirname "$0")/../../scripts/sync-coordinator.sh" \
+      "./sync-coordinator.sh" \
+      "scripts/sync-coordinator.sh"; do
+      if [ -x "$candidate" ]; then
+        sync_script="$candidate"
+        break
+      fi
+    done
+    if [ -n "${sync_script:-}" ]; then
+      echo ""
+      "$sync_script"
+    fi
+  fi
+
   echo "Checkpoint initialized. State written to .sdlc/"
   echo "  coordinator.yaml: hub=${hub}"
   [ -n "$current_story" ] && echo "  current_story: ${current_story}"

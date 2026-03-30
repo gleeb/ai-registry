@@ -150,10 +150,11 @@ If a SaaS sync skill was loaded:
 ### Phase 7: Handoff
 
 1. `checkpoint.sh planning --phase 7`
-2. `checkpoint.sh coordinator --hub execution --story {first-story-by-execution-order}`
-3. Present a planning completion summary to the user.
-4. Hand off to `sdlc-coordinator` for execution orchestration.
-5. The handoff includes: what was planned, which story to execute first (execution_order: 1), the full dependency graph, and the path to `plan/cross-cutting/testing-strategy.md` (coverage thresholds and AC traceability for execution agents).
+2. `sync-coordinator.sh` — derives `stories_remaining` from `plan/user-stories/` artifacts sorted by `execution_order`, sets `current_story` to the first remaining story.
+3. `checkpoint.sh coordinator --hub execution`
+4. Present a planning completion summary to the user.
+5. Hand off to `sdlc-coordinator` for execution orchestration.
+6. The handoff includes: what was planned, which story to execute first, the full dependency graph, and the path to `plan/cross-cutting/testing-strategy.md` (coverage thresholds and AC traceability for execution agents).
 
 ## Brownfield Change Protocol
 

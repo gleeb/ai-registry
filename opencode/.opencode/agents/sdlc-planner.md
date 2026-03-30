@@ -139,11 +139,12 @@ For each story in `execution_order`:
 
 ## Phase 7: Handoff
 
-- Produce **summary** of the plan.
-- **Hand off to sdlc-coordinator** with:
-  - First story in execution order.
-  - Dependency graph.
-- Coordinator takes over execution.
+1. `checkpoint.sh planning --phase 7`
+2. `sync-coordinator.sh` — derives `stories_remaining` from `plan/user-stories/` artifacts sorted by `execution_order`, sets `current_story` to the first remaining story.
+3. `checkpoint.sh coordinator --hub execution`
+4. Produce **summary** of the plan.
+5. **Hand off to sdlc-coordinator** with the full dependency graph.
+6. Coordinator takes over execution.
 
 ## Brownfield Protocol
 

@@ -104,9 +104,12 @@ If a SaaS sync skill was loaded, sync plan artifacts to the external system.
 
 ## Phase 7: Handoff
 
-1. Present planning completion summary to the user.
-2. Transition to the **SDLC Execution Orchestrator** rule for implementation.
-3. Include: what was planned, which story to execute first, the full dependency graph, and the path to `plan/cross-cutting/testing-strategy.md` (coverage thresholds and AC traceability for execution agents).
+1. `checkpoint.sh planning --phase 7`
+2. `sync-coordinator.sh` — derives `stories_remaining` from `plan/user-stories/` artifacts sorted by `execution_order`, sets `current_story` to the first remaining story.
+3. `checkpoint.sh coordinator --hub execution`
+4. Present planning completion summary to the user.
+5. Transition to the **SDLC Execution Orchestrator** rule for implementation.
+6. Include: what was planned, the full dependency graph, and the path to `plan/cross-cutting/testing-strategy.md` (coverage thresholds and AC traceability for execution agents).
 
 ## Brownfield Change Protocol
 
@@ -145,7 +148,7 @@ Load the `sdlc-checkpoint` skill at initialization. The checkpoint script is at 
 - **Phase 2**: `--dispatch sdlc-planner-architecture`, `--completed architecture`, `--dispatch sdlc-planner-stories`, `--completed stories`
 - **Phase 3**: `--phase 3 --story {US-NNN-name} --agents-pending "{domains}"`, then per agent: `--dispatch {slug}` before, `--completed {domain}` after, `--story-done {US-NNN-name}` when story complete. Also update coordinator: `checkpoint.sh coordinator --hub planning --story {US-NNN-name}`
 - **Phase 4**: `--phase 4`, then `--dispatch`/`--completed` for security-rollup, devops, testing
-- **Phase 5-7**: `--phase {N}` at each transition. At Phase 7 handoff: `checkpoint.sh coordinator --hub execution --story {first-story}`
+- **Phase 5-7**: `--phase {N}` at each transition. At Phase 7 handoff: `sync-coordinator.sh` then `checkpoint.sh coordinator --hub execution`
 
 ## Error Handling
 
