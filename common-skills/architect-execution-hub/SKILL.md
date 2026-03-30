@@ -59,9 +59,9 @@ Phase 5: Documentation Integration
 Phase 6: User Acceptance
 ```
 
-## Phase References
+## Phase Quick Index
 
-Load the reference for your current phase. Do NOT load all phases at once.
+Full phase procedures are in the agent. Load the reference for your current phase for operational detail (dispatch templates, checkpoint command patterns, gate conditions).
 
 | Phase | Reference | Load when |
 |-------|-----------|-----------|
@@ -74,6 +74,8 @@ Load the reference for your current phase. Do NOT load all phases at once.
 | 4 | [`references/phase4-acceptance-flow.md`](references/phase4-acceptance-flow.md) | Entering Phase 4 |
 | 5-6 | [`references/phase56-doc-and-acceptance.md`](references/phase56-doc-and-acceptance.md) | Entering Phase 5 or 6 |
 | — | [`references/self-repair-protocol.md`](references/self-repair-protocol.md) | Operational issue (branch, checkpoint) before escalating |
+
+---
 
 ## Key Rules
 
@@ -100,3 +102,5 @@ Load the reference for your current phase. Do NOT load all phases at once.
 - [`references/skill-loading-protocol.md`](references/skill-loading-protocol.md) — Tech stack to skill mapping
 - [`references/testing-skills-index.md`](references/testing-skills-index.md) — Testing skill loading guide (which skill, when, for which agent)
 - [`references/review-cycle.md`](references/review-cycle.md) — Iteration limits and escalation
+- [`references/doc-integration-protocol.md`](references/doc-integration-protocol.md) — Phase 5 documentation integration
+- [`references/user-acceptance-protocol.md`](references/user-acceptance-protocol.md) — Phase 6 user acceptance format

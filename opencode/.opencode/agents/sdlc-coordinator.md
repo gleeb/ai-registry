@@ -107,7 +107,7 @@ Compose and send a delegation message via the Task tool following the mandatory 
 
 After dispatched work completes, read the subagent’s final summary and decide next action:
 - Determine next action: dispatch next issue, report completion, or handle a blocker.
-- If engineering hub reports issue complete: check for remaining issues; dispatch the next if any.
+- If engineering hub reports issue complete: follow the **Story Completion Transition** below.
 - If engineering hub reports a blocker: classify using the Escalation Taxonomy (see Error Handling → Engineering hub reports blocker). Operational blockers → return to the engineering hub with instructions to use its Self-Repair Protocol. Product/planning blockers → Task tool dispatch to `@sdlc-project-research` for investigation, then re-dispatch `@sdlc-engineering`.
 - If planner reports artifacts ready: transition to execution phase (dispatch engineering hub).
 
@@ -115,12 +115,26 @@ After dispatched work completes, read the subagent’s final summary and decide 
 
 When the engineering hub subtask returns a completion result:
 1. The subtask's completion result is the **AUTHORITATIVE** source of truth.
-2. If the subtask reports acceptance COMPLETE with close recommendation, you MUST proceed to the next phase (e.g. Phase 5 / doc integration) or the next story. Do NOT re-read the checkpoint to second-guess the result.
+2. If the subtask reports acceptance COMPLETE with close recommendation, you MUST follow the Story Completion Transition. Do NOT re-read the checkpoint to second-guess the result.
 3. Only re-read the checkpoint if the result is ambiguous or reports an error requiring state verification.
 
 **DENY**: Re-dispatching the engineering hub for the same story after receiving a COMPLETE verdict with close recommendation. This is the #1 cause of acceptance death loops.
 
 (See **Error Handling → Acceptance Loop Detection** if Phase 4 acceptance has been dispatched more than twice in the same session.)
+
+### Story Completion Transition
+
+When the engineering hub returns a COMPLETE/closeable verdict for a story:
+
+1. **Trust the verdict.** The engineering hub's completion result is authoritative. Do NOT re-read the checkpoint to verify — the checkpoint may be stale.
+2. **Update the checkpoint:** Run `.opencode/skills/sdlc-checkpoint/scripts/checkpoint.sh coordinator --story-done {US-NNN-name}` to mark the story as completed in `coordinator.yaml`. This is REQUIRED before any further routing.
+3. **Find the next story:**
+   - **Preferred:** Query Linear MCP for the next ready/in-progress issue.
+   - **Fallback (MCP unavailable):** After updating the checkpoint with `--story-done`, run `.opencode/skills/sdlc-checkpoint/scripts/verify.sh` to get the updated routing recommendation. The checkpoint is now current because you just wrote `--story-done`.
+   - **Last resort:** If no next story is identifiable, report the completion to the user and ask what to work on next.
+4. **Dispatch immediately.** Do NOT pause to ask the user for permission to continue. Dispatch `@sdlc-engineering` for the next story, or report that all stories are complete.
+
+**DENY:** Running `verify.sh` to find the next story BEFORE updating the checkpoint with `--story-done`. This returns stale data and is the primary cause of incorrect routing after story completion.
 
 ## Best Practices
 
