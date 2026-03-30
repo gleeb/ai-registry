@@ -8,11 +8,15 @@ set -euo pipefail
 # sorts by that order, diffs against stories_done in .sdlc/coordinator.yaml,
 # and writes the result back as stories_remaining.
 #
-# Run from the target project root (where .sdlc/ and plan/ live).
-#
 # Usage:
-#   sync-coordinator.sh
+#   sync-coordinator.sh [project-root]
+#
+# If project-root is provided, operates on that directory.
+# Otherwise operates on the current working directory.
 # =============================================================================
+
+PROJECT_ROOT="${1:-.}"
+cd "$PROJECT_ROOT"
 
 SDLC_DIR=".sdlc"
 COORD_FILE="$SDLC_DIR/coordinator.yaml"
@@ -42,7 +46,8 @@ yaml_read_list() {
 # --- Preflight checks ---
 
 if [ ! -d "$STORIES_DIR" ]; then
-  echo "ERROR: $STORIES_DIR not found. Run from the target project root." >&2
+  echo "ERROR: $STORIES_DIR not found in $(pwd)." >&2
+  echo "Usage: sync-coordinator.sh [project-root]" >&2
   exit 1
 fi
 
