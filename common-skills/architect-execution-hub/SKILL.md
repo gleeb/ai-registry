@@ -35,7 +35,7 @@ Load the `sdlc-checkpoint` skill at architect initialization. The checkpoint scr
 
 Dispatch ID format: `exec-{story}-t{task-id}-{agent-short}-i{iteration}` (e.g., `exec-US001-t3-impl-i1`).
 
-**REQUIRE**: Before logging a dispatch event, verify the dispatch_id does not already exist in `dispatch-log.jsonl`. If it does, append a disambiguating suffix (e.g., timestamp). For acceptance revalidation rounds, use `exec-{story}-phase4-acceptance-r{round}` with a monotonically increasing round number.
+Dispatch IDs are unique by construction — do NOT read `dispatch-log.jsonl` to verify. On **resume only** (checkpoint shows a dispatch was already logged), run `grep -c '{dispatch-id}' .sdlc/dispatch-log.jsonl`; if count > 0, append a timestamp suffix. For acceptance revalidation rounds, use `exec-{story}-phase4-acceptance-r{round}` with a monotonically increasing round number.
 
 See the `sdlc-checkpoint` skill for the full `dispatch-log` API and flags.
 

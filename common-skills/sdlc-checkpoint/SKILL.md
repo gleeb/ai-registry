@@ -188,7 +188,7 @@ The `--dispatch-id` correlates dispatch/response pairs. Format: `{hub}-{story}-t
 
 **REQUIRE**: Dispatch IDs MUST be globally unique within a story's execution. For acceptance revalidation, use: `exec-{story}-phase4-acceptance-r{round}` where round is a monotonically increasing integer (r1, r2, r3).
 
-**DENY**: Reusing a dispatch-id that already appears in `dispatch-log.jsonl`. If in doubt, include a timestamp suffix: `exec-US001-phase4-acceptance-r2-1711100000`.
+Dispatch IDs are unique by construction — do NOT read `dispatch-log.jsonl` to verify during normal flow. On **resume only** (checkpoint shows a dispatch was already logged for the current task/step), run `grep -c '{dispatch-id}' .sdlc/dispatch-log.jsonl`; if count > 0, append a timestamp suffix (e.g., `exec-US001-phase4-acceptance-r2-1711100000`).
 
 ```bash
 # Before dispatching implementer (write-ahead)
