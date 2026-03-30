@@ -72,7 +72,7 @@ story_pairs=""
 for story_file in "$STORIES_DIR"/*/story.md; do
   [ -f "$story_file" ] || continue
   slug="$(basename "$(dirname "$story_file")")"
-  order="$(grep -E "^- execution_order:" "$story_file" 2>/dev/null | head -1 | sed 's/.*execution_order: *//' | tr -d ' ')"
+  order="$(grep -E "^-?\s*execution_order:" "$story_file" 2>/dev/null | head -1 | sed 's/.*execution_order: *//' | tr -d ' ' || true)"
   if [ -z "$order" ]; then
     order="999"
   fi
