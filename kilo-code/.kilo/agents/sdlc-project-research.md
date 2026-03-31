@@ -1,6 +1,7 @@
 ---
 description: "Investigate and analyze codebase structure. Use when you need to thoroughly investigate and understand a codebase structure, analyze project architecture, or gather comprehensive context about existing implementations. Ideal for onboarding to new projects, understanding complex codebases, or researching how specific features are implemented across the project."
 mode: subagent
+model: openai/gpt-5.4-mini
 permission:
   edit: deny
   bash:

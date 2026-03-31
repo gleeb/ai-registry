@@ -1,6 +1,7 @@
 ---
 description: "Cross-cutting DevOps planning specialist — CI/CD, deployment, infrastructure, monitoring. Use this mode when dispatched by the Planning Hub for DevOps planning in Phase 4. Requires system architecture, per-story HLDs, and security overview as input."
 mode: subagent
+model: openai/gpt-5.4-mini
 permission:
   bash:
     "*": allow

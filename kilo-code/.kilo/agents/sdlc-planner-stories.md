@@ -1,6 +1,7 @@
 ---
 description: "Decomposes PRD into user story outlines with dependency manifests, folder structures, and shared contract identification. Use this mode when dispatched by the Planning Hub for story decomposition in Phase 2, after architecture is validated. Requires validated PRD and system architecture as input."
 mode: subagent
+model: openai/gpt-5.4-mini
 permission:
   bash:
     "*": allow
