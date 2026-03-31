@@ -1,0 +1,29 @@
+{
+	"mcpServers": {
+		"context7": {
+			"command": "npx",
+			"args": [
+				"-y",
+				"@upstash/context7-mcp@latest"
+			]
+		},
+		"linear": {
+			"command": "npx",
+			"args": [
+				"-y",
+				"@ibraheem4/linear-mcp@latest"
+			],
+			"env": {
+				"LINEAR_API_KEY": "${env:LINEAR_API_KEY}"
+			},
+			"disabled": false
+		},
+		"playwright": {
+			"command": "npx",
+			"args": [
+				"@playwright/mcp@latest"
+			],
+			"disabled": false
+		}
+	}
+}
