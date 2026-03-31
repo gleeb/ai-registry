@@ -81,6 +81,7 @@ clean_registry_links() {
     "$TARGET_DIR/.kilocodemodes"
     "$TARGET_DIR/.kilo"
     "$TARGET_DIR/.kilocode"
+    "$TARGET_DIR/kilo.jsonc"
     "$TARGET_DIR/CLAUDE.md"
     "$TARGET_DIR/AGENTS.md"
     "$TARGET_DIR/.opencode/AGENTS.md"
@@ -168,9 +169,9 @@ install_kilo() {
   local errors=0
   echo ""
   echo "Installing Kilo Code links..."
-  create_link "$REGISTRY_DIR/kilo-code/.kilocodemodes" "$TARGET_DIR/.kilocodemodes" ".kilocodemodes" || ((errors++))
   create_link "$REGISTRY_DIR/kilo-code/.kilo" "$TARGET_DIR/.kilo" ".kilo/" || ((errors++))
-  create_link "$REGISTRY_DIR/common-skills" "$TARGET_DIR/.kilocode/skills" ".kilocode/skills/" || ((errors++))
+  create_link "$REGISTRY_DIR/kilo-code/kilo.jsonc" "$TARGET_DIR/kilo.jsonc" "kilo.jsonc" || ((errors++))
+  create_link "$REGISTRY_DIR/kilo-code/AGENTS.md" "$TARGET_DIR/AGENTS.md" "AGENTS.md (Kilo)" || ((errors++))
   return $errors
 }
 
@@ -215,7 +216,7 @@ show_menu() {
   echo "║                                                                ║"
   echo "║  [1] Cursor   - .cursor/rules, .cursor/agents, .cursor/skills  ║"
   echo "║  [2] Roo Code - .roomodes, .roo                               ║"
-  echo "║  [3] Kilo     - .kilocodemodes, .kilo, .kilocode/skills       ║"
+  echo "║  [3] Kilo     - .kilo/, kilo.jsonc, AGENTS.md                  ║"
   echo "║  [4] Claude   - CLAUDE.md                                     ║"
   echo "║  [5] Codex    - AGENTS.md                                     ║"
   echo "║  [6] OpenCode - .opencode/, opencode.json, .opencode/AGENTS.md  ║"

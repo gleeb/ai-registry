@@ -1,0 +1,146 @@
+{
+  "$schema": "https://app.kilo.ai/config.json",
+  "model": "openai/gpt-5.3-codex",
+  "instructions": ["AGENTS.md"],
+  "mcp": {
+    "context7": {
+      "type": "local",
+      "command": ["npx", "-y", "@upstash/context7-mcp@latest"]
+    },
+    "linear": {
+      "type": "local",
+      "command": ["npx", "-y", "@ibraheem4/linear-mcp@latest"],
+      "environment": {
+        "LINEAR_API_KEY": "{env:LINEAR_API_KEY}"
+      }
+    },
+    "playwright": {
+      "type": "local",
+      "command": ["npx", "@playwright/mcp@latest"],
+      "enabled": true
+    }
+  },
+  "provider": {
+    "lmstudio": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "LM Studio (local)",
+      "options": {
+        "baseURL": "http://192.168.1.105:1234/v1",
+        "timeout": 1200000,
+        "chunkTimeout": 600000
+      },
+      "models": {
+        "qwen3-coder-30b": {
+          "name": "Qwen3 Coder 30B"
+        },
+        "qwen3.5-35b-a3b": {
+          "name": "Qwen3.5 35B-A3B"
+        },
+        "qwen3.5-27b-claude-4.6-opus-reasoning-distilled": {
+          "name": "qwen3.5 27b claude-4.6-opus reasoning distilled"
+        },
+        "gpt-oss-20b": {
+          "name": "gpt-oss-20b"
+        }
+      }
+    }
+  },
+  "permission": {
+    "*": "allow",
+    "edit": "allow",
+    "bash": "allow",
+    "task": "allow"
+  },
+  "agent": {
+    // Override the built-in code agent to restrict task dispatch to SDLC entry points
+    "code": {
+      "permission": {
+        "task": {
+          "*": "deny",
+          "sdlc-coordinator": "allow",
+          "sdlc-engineering": "allow",
+          "sdlc-planner": "allow",
+          "sdlc-project-research": "allow"
+        }
+      }
+    },
+
+    // --- Orchestrators: Commercial ---
+    "sdlc-coordinator": {
+      "model": "openai/gpt-5.3-codex"
+    },
+    "sdlc-planner": {
+      "model": "openai/gpt-5.3-codex"
+    },
+    "sdlc-engineering": {
+      "model": "openai/gpt-5.3-codex"
+    },
+
+    // --- Foundational Planning: Commercial ---
+    "sdlc-planner-prd": {
+      "model": "openai/gpt-5.3-codex"
+    },
+    "sdlc-planner-architecture": {
+      "model": "openai/gpt-5.3-codex"
+    },
+
+    // --- Validation & Mentoring: Commercial ---
+    "sdlc-plan-validator": {
+      "model": "openai/gpt-5.3-codex"
+    },
+    "sdlc-engineering-semantic-reviewer": {
+      "model": "openai/gpt-5.3-codex"
+    },
+
+    // --- Domain Planning Workers: Local-Planning ---
+    "sdlc-planner-stories": {
+      "model": "lmstudio/qwen3.5-35b-a3b"
+    },
+    "sdlc-planner-hld": {
+      "model": "lmstudio/qwen3.5-35b-a3b"
+    },
+    "sdlc-planner-api": {
+      "model": "lmstudio/qwen3.5-35b-a3b"
+    },
+    "sdlc-planner-data": {
+      "model": "lmstudio/qwen3.5-35b-a3b"
+    },
+    "sdlc-planner-security": {
+      "model": "lmstudio/qwen3.5-35b-a3b"
+    },
+    "sdlc-planner-devops": {
+      "model": "lmstudio/qwen3.5-35b-a3b"
+    },
+    "sdlc-planner-design": {
+      "model": "lmstudio/qwen3.5-35b-a3b"
+    },
+    "sdlc-planner-testing": {
+      "model": "lmstudio/qwen3.5-35b-a3b"
+    },
+
+    // --- Execution Workers: Local-Coder / Commercial ---
+    "sdlc-engineering-implementer": {
+      "model": "openai/gpt-5.4-mini"
+    },
+    "sdlc-engineering-code-reviewer": {
+      "model": "lmstudio/gpt-oss-20b"
+    },
+    "sdlc-engineering-qa": {
+      "model": "lmstudio/gpt-oss-20b"
+    },
+    "sdlc-engineering-devops": {
+      "model": "openai/gpt-5.3-codex"
+    },
+    "sdlc-engineering-acceptance-validator": {
+      "model": "lmstudio/gpt-oss-20b"
+    },
+
+    // --- Utility ---
+    "sdlc-project-research": {
+      "model": "lmstudio/gpt-oss-20b"
+    },
+    "sdlc-engineering-documentation-writer": {
+      "model": "lmstudio/qwen3.5-35b-a3b"
+    }
+  }
+}
