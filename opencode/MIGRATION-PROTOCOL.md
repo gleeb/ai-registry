@@ -312,8 +312,7 @@ opencode/
       sdlc-engineering-qa.md
       sdlc-engineering-acceptance-validator.md
       sdlc-engineering-semantic-reviewer.md  # Semantic review
-      sdlc-project-research.md               # 2 utility agents
-      sdlc-engineering-documentation-writer.md
+      sdlc-engineering-documentation-writer.md  # utility agent
     commands/                            # SDLC entry points
       sdlc.md                           # /sdlc <project>
       sdlc-continue.md                  # /sdlc-continue

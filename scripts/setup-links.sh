@@ -170,6 +170,7 @@ install_kilo() {
   echo ""
   echo "Installing Kilo Code links..."
   create_link "$REGISTRY_DIR/kilo-code/.kilo" "$TARGET_DIR/.kilo" ".kilo/" || ((errors++))
+  create_link "$REGISTRY_DIR/kilo-code/.kilocodemodes" "$TARGET_DIR/.kilocodemodes" ".kilocodemodes" || ((errors++))
   create_link "$REGISTRY_DIR/kilo-code/kilo.jsonc" "$TARGET_DIR/kilo.jsonc" "kilo.jsonc" || ((errors++))
   create_link "$REGISTRY_DIR/kilo-code/AGENTS.md" "$TARGET_DIR/AGENTS.md" "AGENTS.md (Kilo)" || ((errors++))
   return $errors
