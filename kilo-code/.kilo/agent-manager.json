@@ -1,0 +1,24 @@
+{
+  "worktrees": {
+    "wt-1774971019009-2": {
+      "branch": "certain-viscountess",
+      "path": "/home/gleeb/workspace/Aicoholoic/.kilo/worktrees/certain-viscountess",
+      "parentBranch": "story/US-006-photo-intake-draft-confirmation",
+      "createdAt": "2026-03-31T15:30:19.009Z"
+    }
+  },
+  "sessions": {
+    "ses_2bb7bcc91ffe7do0RQk7JuXHEY": {
+      "worktreeId": null,
+      "createdAt": "2026-03-31T15:30:07.856Z"
+    },
+    "ses_2bb6e77b8ffezEGHuELJhjcsbw": {
+      "worktreeId": "wt-1774971019009-2",
+      "createdAt": "2026-03-31T15:44:41.546Z"
+    },
+    "ses_2bb69a4a8ffeluUdfseA3xqpsH": {
+      "worktreeId": "wt-1774971019009-2",
+      "createdAt": "2026-03-31T15:49:57.722Z"
+    }
+  }
+}
