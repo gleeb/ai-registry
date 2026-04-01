@@ -51,7 +51,7 @@ Follow the guidance package format from `skills/semantic-review/references/guida
 
 1. **Reason about the better result** — explain what correct looks like and why, using deeper reasoning.
 2. **Identify knowledge gaps** — what the local model misunderstands, with evidence from its output.
-3. **Address gaps with documentation** — fetch directly via context7, provide fetch instructions, or both.
+3. **Address gaps with documentation** — fetch directly via context7, provide fetch instructions, or both. When the gap involves library/framework API usage, format as a `DOCUMENTATION SEARCH` directive so the hub can propagate it directly to the implementer re-dispatch.
 4. **Compose guidance package** — corrections, gaps, documentation, improvement instructions.
 
 ### Phase B (Lite): Proactive Observations (PASS)

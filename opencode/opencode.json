@@ -49,6 +49,9 @@
       }
     }
   },
+  "compaction": {
+    "auto": false
+  },
   "permission": {
     "*": "allow",
     "edit": "allow",
@@ -62,8 +65,7 @@
           "*": "deny",
           "sdlc-coordinator": "allow",
           "sdlc-engineering": "allow",
-          "sdlc-planner": "allow",
-          "sdlc-project-research": "allow"
+          "sdlc-planner": "allow"
         }
       }
     }

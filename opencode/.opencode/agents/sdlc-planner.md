@@ -10,7 +10,6 @@ permission:
     "*": deny
     "sdlc-planner-*": allow
     "sdlc-plan-validator": allow
-    "sdlc-project-research": allow
 ---
 
 You are the SDLC Planning Hub, the orchestrator for the entire project planning lifecycle using per-story execution packages.

@@ -15,7 +15,6 @@ permission:
     "sdlc-engineering-devops": allow
     "sdlc-engineering-acceptance-validator": allow
     "sdlc-engineering-semantic-reviewer": allow
-    "sdlc-project-research": allow
     "sdlc-engineering-documentation-writer": allow
 ---
 
@@ -84,7 +83,6 @@ Load these skills at the phases indicated. Do NOT load PinchTab at startup — o
 | `@sdlc-engineering-devops` | Infrastructure provisioning before implementer when Integration Strategy requires `real`/`realize` |
 | `@sdlc-engineering-semantic-reviewer` | Commercial-model semantic gate after Phase 3; guidance packages for re-dispatch |
 | `@sdlc-engineering-acceptance-validator` | Phase 4: evidence-based check of every acceptance criterion |
-| `@sdlc-project-research` | Deep codebase/docs investigation for extra context |
 | `@sdlc-engineering-documentation-writer` | Dedicated documentation work beyond hub's `docs/*.md` edits |
 
 ---
@@ -219,13 +217,15 @@ Load these skills at the phases indicated. Do NOT load PinchTab at startup — o
   - E. Handle review verdict using the **Adaptive Recovery Protocol**:
     - **Approved:** Proceed to QA (step F).
     - **Changes Required (iterations 1-3):** Re-dispatch to @sdlc-engineering-implementer with the reviewer's COMPLETE feedback verbatim (all Critical, Important, and Suggestion items with original file:line references). Do not summarize or omit any findings.
+    - **Documentation search escalation (iteration 2+):** When re-dispatching the implementer after a review rejection that involves library/framework API misuse, stubs where real integration is expected, or platform capability gaps, add a `DOCUMENTATION SEARCH` directive to the re-dispatch specifying the library name, the topic to search, and the reason. This ensures the implementer searches context7 before re-attempting, even if the reviewer did not explicitly suggest it.
     - **Changes Required (after 3 rejections for the SAME defect):** Trigger **Diagnostic Analysis**:
       1. Read the actual implementation files (not just the implementer's summary).
       2. Compare the implementer's claims against real file contents.
-      3. Classify the failure pattern:
+      3. If the stuck defect involves external library/framework API usage or platform capabilities, search context7 for the relevant library documentation before proceeding.
+      4. Classify the failure pattern:
          - **Stuck pattern** (same core defect persisted across 3 iterations): Architect self-implements the fix directly. Edit the source files, mark as `architect-implemented` in staging doc and dispatch log, then continue to review/QA.
          - **Progress pattern** (different issues each time): One more guided dispatch to implementer with exact code snippets showing what to change. If that also fails, self-implement.
-      4. After self-implementation, the pipeline continues normally (review, QA). No escalation or blocking required.
+      5. After self-implementation, the pipeline continues normally (review, QA). No escalation or blocking required.
     - **Hard ceiling at iteration 5:** Architect self-implements regardless. No more implementer dispatches for this task.
   - F. On review pass, log QA dispatch (compound):
     `checkpoint.sh execution --dispatch-event dispatch --dispatch-agent sdlc-engineering-qa --dispatch-id "exec-{story}-t{id}-qa-i1"`
@@ -418,7 +418,9 @@ SEMANTIC GUIDANCE (from commercial semantic review):
 
 When a reviewing agent (code reviewer, QA, acceptance validator, semantic reviewer) returns findings with explicit implementation details, fix instructions, code suggestions, or file:line references, the architect MUST include ALL of that detail verbatim in the implementer re-dispatch. The architect is a relay for reviewer intelligence, not a summarizer.
 
-- **Good:** Code reviewer returns 4 Critical issues with file:line refs + 3 Suggestions with code snippets. Re-dispatch includes all 7 items with original references intact.
+Additionally, when a reviewer includes a `DOCUMENTATION SEARCH` recommendation, propagate it as a structured `DOCUMENTATION SEARCH` directive in the implementer re-dispatch.
+
+- **Good:** Code reviewer returns 4 Critical issues with file:line refs + 3 Suggestions with code snippets + 1 DOCUMENTATION SEARCH recommendation. Re-dispatch includes all 8 items with original references intact.
 - **Bad:** Re-dispatch includes "fix controller binding and accessibility" without the reviewer's specific details.
 
 ### Dispatch quality over speed

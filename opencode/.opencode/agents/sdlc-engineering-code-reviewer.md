@@ -58,6 +58,7 @@ Follow the **code-review** skill (`skills/code-review/`) for the review framewor
 4. Automated Checks: lint, typecheck, test results with exit codes.
 5. Overall Assessment: Approved or Changes Required.
 6. If Changes Required: each issue with file:line and recommended fix.
+7. Documentation Search Recommendations: When a finding involves incorrect or missing library/framework API usage, include a `DOCUMENTATION SEARCH` recommendation specifying the library name and what to look up. This is propagated to the implementer by the hub.
 
 Run verdict consistency check before returning (see Verdict Rules below).
 
