@@ -1,7 +1,7 @@
 ---
 description: "Infrastructure provisioning during execution. Dispatched by the engineering hub before implementer tasks that need real infrastructure (containers, databases, cloud resources, env config). Returns an infrastructure manifest with connection details."
 mode: subagent
-model: openai/gpt-5.3-codex
+model: openai/gpt-5.4-mini
 permission:
   edit: allow
   bash:

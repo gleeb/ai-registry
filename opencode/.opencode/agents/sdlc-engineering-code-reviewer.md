@@ -1,7 +1,7 @@
 ---
 description: "Plan-aligned code review and quality assessment. Use when an implementation task is complete and needs review against the architecture plan and coding standards."
 mode: subagent
-model: lmstudio/qwen3-coder-30b
+model: openai/gpt-5.4-mini
 permission:
   edit: deny
   bash:
