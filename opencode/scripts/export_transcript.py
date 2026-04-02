@@ -88,6 +88,48 @@ def fetch_session_tree(
     _walk(root_id, 0)
     return sessions
 
+
+def discover_child_sessions_from_messages(
+    base_url: str,
+    sessions: dict[str, dict],
+    messages_cache: dict[str, list[dict]],
+    max_depth: int = 20,
+) -> None:
+    """Scan task tool outputs for child session IDs not found via the children API.
+
+    Iterates until no new sessions are discovered (fixed-point), so deeply
+    nested task-spawned sub-agents are captured even when the /children
+    endpoint doesn't link them.
+    """
+    visited: set[str] = set()
+
+    while True:
+        new_ids: set[str] = set()
+        for sid in list(sessions):
+            if sid in visited:
+                continue
+            visited.add(sid)
+            if sid not in messages_cache:
+                messages_cache[sid] = fetch_messages(base_url, sid)
+            for msg in messages_cache[sid]:
+                for part in msg.get("parts", []):
+                    if part.get("type") == "tool" and part.get("tool") == "task":
+                        state = part.get("state", {})
+                        for text in [state.get("output", ""), state.get("error", "")]:
+                            child_id = extract_child_session_id(text)
+                            if child_id and child_id not in sessions:
+                                new_ids.add(child_id)
+        if not new_ids:
+            break
+        for cid in new_ids:
+            try:
+                sess = fetch_session(base_url, cid)
+                sessions[cid] = sess
+                print(f"  Discovered child session {cid} from task output", file=sys.stderr)
+            except SystemExit:
+                print(f"  Warning: could not fetch child session {cid}", file=sys.stderr)
+
+
 # ---------------------------------------------------------------------------
 # Formatting helpers
 # ---------------------------------------------------------------------------
@@ -585,6 +627,15 @@ def render_session(
 
                 child_sid = extract_child_session_id(output_text or error_text or "")
 
+                # On-demand fetch: if the session wasn't in the pre-built tree,
+                # try fetching it directly from the API.
+                if child_sid and child_sid not in sessions:
+                    try:
+                        sess = fetch_session(base_url, child_sid)
+                        sessions[child_sid] = sess
+                    except SystemExit:
+                        child_sid = None
+
                 # Fallback: if we can't extract from output, try next unmatched child
                 if not child_sid or child_sid not in sessions:
                     for fallback in unmatched_child_iter:
@@ -687,13 +738,20 @@ def build_full_transcript(base_url: str, root_id: str, max_depth: int = 20) -> t
     """Build the complete transcript markdown + raw data for optional JSON dump."""
     print(f"Fetching session tree from {root_id}...", file=sys.stderr)
     sessions = fetch_session_tree(base_url, root_id, max_depth=max_depth)
-    print(f"  Found {len(sessions)} session(s) in tree", file=sys.stderr)
+    print(f"  Found {len(sessions)} session(s) via API children", file=sys.stderr)
 
     messages_cache: dict[str, list[dict]] = {}
     diffs_cache: dict[str, list[dict]] = {}
 
-    # Pre-fetch all messages
+    # Discover child sessions embedded in task tool outputs (the /children
+    # API often doesn't link them).  This also pre-populates messages_cache.
+    discover_child_sessions_from_messages(base_url, sessions, messages_cache, max_depth)
+    print(f"  Found {len(sessions)} session(s) total (after task-output scan)", file=sys.stderr)
+
+    # Pre-fetch messages for any sessions not yet cached
     for i, sid in enumerate(sessions):
+        if sid in messages_cache:
+            continue
         print(f"  Fetching messages for {sid} ({i+1}/{len(sessions)})...", file=sys.stderr)
         messages_cache[sid] = fetch_messages(base_url, sid)
 
