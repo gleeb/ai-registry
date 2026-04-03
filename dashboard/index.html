@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Registry Explorer</title>
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap');
+  :root {
+    --bg-primary: #0a0e1a;
+    --bg-secondary: #111827;
+    --bg-tertiary: #1a2235;
+    --bg-hover: #1e293b;
+    --border: #2a3550;
+    --text-primary: #e2e8f0;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --gold: #f59e0b; --gold-dim: #92610a;
+    --blue: #3b82f6; --blue-dim: #1e3a6e;
+    --teal: #14b8a6; --teal-dim: #0a5c53;
+    --green: #22c55e; --green-dim: #126e33;
+    --purple: #a855f7; --purple-dim: #5b2d8e;
+    --rose: #f43f5e; --rose-dim: #7e1d2e;
+    --cyan: #06b6d4;
+    --link-color: #60a5fa;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg-primary); color: var(--text-primary); overflow: hidden; height: 100vh; }
+  header { display: flex; align-items: center; justify-content: space-between; padding: 12px 24px; background: var(--bg-secondary); border-bottom: 1px solid var(--border); z-index: 10; position: relative; }
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo-icon { width: 32px; height: 32px; background: linear-gradient(135deg, var(--gold), var(--blue)); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; color: #fff; }
+  .logo h1 { font-size: 18px; font-weight: 600; letter-spacing: -0.3px; }
+  .logo h1 span { color: var(--text-muted); font-weight: 400; }
+  .header-controls { display: flex; align-items: center; gap: 8px; }
+  .view-tabs { display: flex; background: var(--bg-tertiary); border-radius: 8px; padding: 3px; gap: 2px; }
+  .view-tab { padding: 6px 16px; border-radius: 6px; border: none; background: transparent; color: var(--text-secondary); font-family: inherit; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+  .view-tab:hover { color: var(--text-primary); }
+  .view-tab.active { background: var(--blue); color: #fff; }
+  .search-box { position: relative; margin-left: 12px; }
+  .search-box input { background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 8px; padding: 7px 12px 7px 34px; color: var(--text-primary); font-family: inherit; font-size: 13px; width: 240px; outline: none; transition: border-color 0.2s; }
+  .search-box input:focus { border-color: var(--blue); }
+  .search-box input::placeholder { color: var(--text-muted); }
+  .search-box svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
+  .search-results { position: absolute; top: 100%; right: 0; margin-top: 4px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; width: 320px; max-height: 360px; overflow-y: auto; z-index: 100; display: none; box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+  .search-results.visible { display: block; }
+  .search-result-item { padding: 10px 14px; cursor: pointer; border-bottom: 1px solid var(--border); transition: background 0.15s; }
+  .search-result-item:last-child { border-bottom: none; }
+  .search-result-item:hover { background: var(--bg-hover); }
+  .search-result-item .sr-name { font-weight: 500; font-size: 13px; margin-bottom: 2px; }
+  .search-result-item .sr-path { font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+  .breadcrumb { display: flex; align-items: center; gap: 4px; padding: 8px 24px; background: var(--bg-secondary); border-bottom: 1px solid var(--border); font-size: 12px; min-height: 36px; }
+  .breadcrumb-item { color: var(--text-muted); cursor: pointer; padding: 2px 6px; border-radius: 4px; transition: all 0.15s; white-space: nowrap; }
+  .breadcrumb-item:hover { color: var(--text-primary); background: var(--bg-hover); }
+  .breadcrumb-item.current { color: var(--text-primary); cursor: default; }
+  .breadcrumb-item.current:hover { background: transparent; }
+  .breadcrumb-sep { color: var(--text-muted); opacity: 0.5; }
+  .main-container { display: flex; height: calc(100vh - 96px); position: relative; }
+  .tree-pane { flex: 1; position: relative; overflow: hidden; }
+  .tree-pane svg { width: 100%; height: 100%; }
+  .detail-panel { width: 420px; min-width: 420px; background: var(--bg-secondary); border-left: 1px solid var(--border); overflow-y: auto; padding: 0; display: flex; flex-direction: column; }
+  .detail-header { padding: 20px; border-bottom: 1px solid var(--border); }
+  .detail-header .type-badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+  .badge-coordinator { background: var(--gold-dim); color: var(--gold); }
+  .badge-orchestrator { background: var(--blue-dim); color: var(--blue); }
+  .badge-agent { background: var(--teal-dim); color: var(--teal); }
+  .badge-skill { background: var(--green-dim); color: var(--green); }
+  .badge-root { background: var(--blue-dim); color: var(--cyan); }
+  .detail-header h2 { font-size: 18px; font-weight: 600; line-height: 1.3; }
+  .detail-tabs { display: flex; border-bottom: 1px solid var(--border); }
+  .detail-tab { flex: 1; padding: 10px; text-align: center; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); cursor: pointer; border: none; background: transparent; font-family: inherit; transition: all 0.2s; border-bottom: 2px solid transparent; }
+  .detail-tab:hover { color: var(--text-secondary); }
+  .detail-tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+  .detail-content { flex: 1; overflow-y: auto; }
+  .detail-section { padding: 16px 20px; border-bottom: 1px solid var(--border); }
+  .detail-section h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); margin-bottom: 8px; font-weight: 600; }
+  .detail-section p, .detail-section li { font-size: 13px; line-height: 1.6; color: var(--text-secondary); }
+  .detail-section ul { list-style: none; padding: 0; }
+  .detail-section ul li { padding: 4px 0; padding-left: 16px; position: relative; }
+  .detail-section ul li::before { content: ''; position: absolute; left: 0; top: 12px; width: 6px; height: 6px; border-radius: 50%; background: var(--border); }
+  .file-path { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--link-color); word-break: break-all; }
+  .dispatches-list .dispatch-tag { display: inline-block; padding: 3px 8px; margin: 2px 4px 2px 0; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 4px; font-size: 12px; font-family: 'JetBrains Mono', monospace; color: var(--teal); cursor: pointer; transition: background 0.15s; }
+  .dispatches-list .dispatch-tag:hover { background: var(--bg-hover); }
+  .phase-list { counter-reset: phase; }
+  .phase-list li { counter-increment: phase; padding-left: 28px !important; }
+  .phase-list li::before { content: counter(phase) !important; width: 18px !important; height: 18px !important; border-radius: 50% !important; background: var(--bg-tertiary) !important; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; color: var(--text-secondary); position: absolute; left: 0; top: 5px; }
+
+  .md-content { padding: 20px; font-size: 13px; line-height: 1.7; color: var(--text-secondary); }
+  .md-content h1 { font-size: 20px; font-weight: 700; color: var(--text-primary); margin: 24px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  .md-content h2 { font-size: 16px; font-weight: 600; color: var(--text-primary); margin: 20px 0 10px; }
+  .md-content h3 { font-size: 14px; font-weight: 600; color: var(--text-primary); margin: 16px 0 8px; }
+  .md-content h4 { font-size: 13px; font-weight: 600; color: var(--text-primary); margin: 12px 0 6px; }
+  .md-content p { margin: 8px 0; }
+  .md-content ul, .md-content ol { margin: 8px 0; padding-left: 24px; }
+  .md-content li { margin: 4px 0; list-style: disc; padding-left: 0; }
+  .md-content li::before { display: none; }
+  .md-content ol li { list-style: decimal; }
+  .md-content code { font-family: 'JetBrains Mono', monospace; font-size: 12px; background: var(--bg-tertiary); padding: 2px 5px; border-radius: 3px; color: var(--teal); }
+  .md-content pre { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin: 12px 0; overflow-x: auto; }
+  .md-content pre code { background: none; padding: 0; color: var(--text-secondary); font-size: 12px; line-height: 1.6; }
+  .md-content table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 12px; }
+  .md-content th, .md-content td { border: 1px solid var(--border); padding: 8px 10px; text-align: left; }
+  .md-content th { background: var(--bg-tertiary); color: var(--text-primary); font-weight: 600; }
+  .md-content blockquote { border-left: 3px solid var(--blue); padding: 8px 16px; margin: 12px 0; color: var(--text-muted); background: var(--bg-tertiary); border-radius: 0 4px 4px 0; }
+  .md-content strong { color: var(--text-primary); }
+  .md-content hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+  .md-loading { padding: 40px; text-align: center; color: var(--text-muted); }
+
+  .node-box { cursor: pointer; transition: opacity 0.2s; }
+  .node-box:hover rect { filter: brightness(1.3); }
+  .node-box text { font-family: 'Inter', sans-serif; font-size: 12px; fill: var(--text-primary); pointer-events: none; user-select: none; }
+  .link-path { fill: none; stroke: var(--border); stroke-width: 1.5; opacity: 0.5; }
+  .flow-container { width: 100%; height: 100%; display: none; overflow: auto; padding: 20px; }
+  .flow-container.active { display: flex; align-items: center; justify-content: center; }
+  .tree-pane svg.hidden { display: none; }
+  .tooltip { position: absolute; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; font-size: 12px; color: var(--text-secondary); max-width: 280px; pointer-events: none; z-index: 200; opacity: 0; transition: opacity 0.15s; box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
+  .tooltip.visible { opacity: 1; }
+  .tooltip .tt-name { font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
+  .placeholder-msg { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--text-muted); text-align: center; padding: 40px; gap: 12px; }
+  .placeholder-msg .big-icon { font-size: 48px; opacity: 0.3; }
+  .placeholder-msg p { font-size: 13px; line-height: 1.6; }
+  .stats-bar { display: flex; gap: 16px; padding: 8px 24px; background: var(--bg-secondary); border-top: 1px solid var(--border); font-size: 12px; color: var(--text-muted); position: fixed; bottom: 0; left: 0; right: 0; z-index: 10; }
+  .stats-bar .stat-item span { color: var(--text-secondary); font-weight: 500; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">
+    <div class="logo-icon">AI</div>
+    <h1>AI Registry <span>Explorer</span></h1>
+  </div>
+  <div class="header-controls">
+    <div class="view-tabs">
+      <button class="view-tab active" data-view="tree">Tree</button>
+      <button class="view-tab" data-view="flow">Workflow</button>
+    </div>
+    <div class="search-box">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <input type="text" id="searchInput" placeholder="Search agents, skills..." autocomplete="off">
+      <div class="search-results" id="searchResults"></div>
+    </div>
+  </div>
+</header>
+<div class="breadcrumb" id="breadcrumb"><span class="breadcrumb-item current">SDLC System</span></div>
+<div class="main-container">
+  <div class="tree-pane" id="treePane">
+    <svg id="treeSvg"></svg>
+    <div class="flow-container" id="flowContainer"></div>
+  </div>
+  <div class="detail-panel" id="detailPanel">
+    <div class="placeholder-msg">
+      <div class="big-icon">&#9672;</div>
+      <p>Select a node to view details.<br>Click to expand, double-click to drill down.</p>
+    </div>
+  </div>
+  <div class="tooltip" id="tooltip"></div>
+</div>
+<div class="stats-bar">
+  <div class="stat-item">Agents: <span id="statAgents">0</span></div>
+  <div class="stat-item">Skills: <span id="statSkills">0</span></div>
+  <div class="stat-item">Total: <span id="statTotal">0</span></div>
+</div>
+
+<script>
+const DATA = {
+  name: "SDLC Coordinator",
+  type: "coordinator",
+  summary: "State-aware phase router. Determines project state via Linear MCP and routes to planning or execution. Enforces strict delegation — dispatches only to Planner Hub or Engineering Hub. Owns story-completion checkpoint transitions.",
+  filePath: "opencode/.opencode/agents/sdlc-coordinator.md",
+  dispatches: ["Planner Hub", "Engineering Hub"],
+  phases: [
+    "Initialization: parse project/issue identifier",
+    "State Assessment: query Linear MCP — classify STATE_NONE through STATE_DONE",
+    "Routing Decision: map state to planning or execution, apply command overrides",
+    "Dispatch: compose delegation context for target hub",
+    "Progress Synthesis: trust hub verdicts, advance story queue, handle blockers"
+  ],
+  children: [
+    {
+      name: "Planner Hub",
+      type: "orchestrator",
+      summary: "7-phase planning orchestrator. Dispatches specialized planning sub-agents and coordinates outputs through validation gates. Does not author plan content directly. Handles greenfield and brownfield workflows.",
+      filePath: "opencode/.opencode/agents/sdlc-planner.md",
+      dispatches: ["PRD Planner","Architecture Planner","Story Decomposer","HLD Planner","Security Planner","API Design Planner","Data Architecture Planner","DevOps Planner","Design Planner","Testing Strategy Planner","Plan Validator"],
+      phases: [
+        "Phase 1: Requirements — PRD planner + validate",
+        "Phase 2: Architecture + Story Decomposition — sequential with gates",
+        "Phase 3: Per-Story Planning — HLD always, API/Data/Security/Design conditional",
+        "Phase 4: Cross-Cutting — security rollup, devops, testing in parallel",
+        "Phase 5: Execution Readiness — full-chain validation",
+        "Phase 6: Optional SaaS Sync",
+        "Phase 7: Handoff to Engineering Hub"
+      ],
+      children: [
+        { name: "PRD Planner", type: "agent", summary: "Rigorous requirements architect and sparring partner. Challenges requirements, drafts PRDs with a 14-section template, validates across 8 quality dimensions. Output: plan/prd.md.", filePath: "opencode/.opencode/agents/sdlc-planner-prd.md",
+          children: [{ name: "planning-prd", type: "skill", summary: "PRD authoring skill with requirements sparring, 14-section template, 8 validation dimensions.", filePath: "common-skills/planning-prd/SKILL.md" }] },
+        { name: "Architecture Planner", type: "agent", summary: "Defines system topology, component boundaries, technology stack, and integration patterns from a validated PRD. Output: plan/system-architecture.md.", filePath: "opencode/.opencode/agents/sdlc-planner-architecture.md",
+          children: [{ name: "planning-system-architecture", type: "skill", summary: "System architecture sparring on topology, boundaries, and tech choices.", filePath: "common-skills/planning-system-architecture/SKILL.md" }] },
+        { name: "Story Decomposer", type: "agent", summary: "Splits validated PRD + architecture into right-sized user stories (~30-60 min) with dependency manifests, acceptance criteria, and shared contracts.", filePath: "opencode/.opencode/agents/sdlc-planner-stories.md",
+          children: [{ name: "planning-stories", type: "skill", summary: "Story decomposition turning PRD and architecture into story folders, manifests, and contracts.", filePath: "common-skills/planning-stories/SKILL.md" }] },
+        { name: "HLD Planner", type: "agent", summary: "Per-story high-level design: components, flows, integrations, AC traceability to design decisions and implementation units. Output: hld.md per story.", filePath: "opencode/.opencode/agents/sdlc-planner-hld.md",
+          children: [{ name: "planning-hld", type: "skill", summary: "Per-story Phase 3 high-level design covering components, flows, integrations.", filePath: "common-skills/planning-hld/SKILL.md" }] },
+        { name: "Security Planner", type: "agent", summary: "Dual-mode: Phase 3 per-story threat models (STRIDE, controls), Phase 4 rollup to cross-cutting security overview. Security upfront, not deferred.", filePath: "opencode/.opencode/agents/sdlc-planner-security.md",
+          children: [{ name: "planning-security", type: "skill", summary: "Dual-mode security planning — per-story controls and cross-cutting rollup.", filePath: "common-skills/planning-security/SKILL.md" }] },
+        { name: "API Design Planner", type: "agent", summary: "Per-story API contracts: endpoints, schemas, errors, auth, versioning, rate limits. Aligned to architecture and contracts.", filePath: "opencode/.opencode/agents/sdlc-planner-api.md",
+          children: [{ name: "planning-api-design", type: "skill", summary: "Per-story API specialist that analyzes surfaces, contracts, and writes api.md.", filePath: "common-skills/planning-api-design/SKILL.md" }] },
+        { name: "Data Architecture Planner", type: "agent", summary: "Per-story entities, schemas, indexes, migrations, PII notes. Aligned to contracts and architecture.", filePath: "opencode/.opencode/agents/sdlc-planner-data.md",
+          children: [{ name: "planning-data-architecture", type: "skill", summary: "Per-story data specialist for schemas, access patterns, and migrations.", filePath: "common-skills/planning-data-architecture/SKILL.md" }] },
+        { name: "DevOps Planner", type: "agent", summary: "Cross-cutting Phase 4: CI/CD, deployment, environments, monitoring/DR from HLDs + architecture + security overview. Planning only.", filePath: "opencode/.opencode/agents/sdlc-planner-devops.md",
+          children: [{ name: "planning-devops", type: "skill", summary: "Cross-cutting Phase 4 DevOps planning — CI/CD, deployment, infrastructure.", filePath: "common-skills/planning-devops/SKILL.md" }] },
+        { name: "Design Planner", type: "agent", summary: "7-phase per-story design: UX through HTML/CSS mockups, WCAG 2.2 AA audit, developer handoff. Shared brand under plan/design/.", filePath: "opencode/.opencode/agents/sdlc-planner-design.md",
+          children: [{ name: "planning-design", type: "skill", summary: "Seven-phase design workflow from UX through mockups and developer handoff.", filePath: "common-skills/planning-design/SKILL.md" }] },
+        { name: "Testing Strategy Planner", type: "agent", summary: "Cross-cutting Phase 4: test pyramid, AC-to-test mapping, specialized testing (API, security, a11y, performance), CI gate definitions.", filePath: "opencode/.opencode/agents/sdlc-planner-testing.md",
+          children: [{ name: "planning-testing-strategy", type: "skill", summary: "Cross-cutting testing plan — pyramid, coverage mapping, CI gates.", filePath: "common-skills/planning-testing-strategy/SKILL.md" }] },
+        { name: "Plan Validator", type: "agent", summary: "Read-only 4-mode validator (phase, per-story, cross-story, impact). Defaults to NEEDS WORK until proven otherwise. Mentor-style guidance packages.", filePath: "opencode/.opencode/agents/sdlc-plan-validator.md",
+          children: [{ name: "planning-validator", type: "skill", summary: "Four-mode validator that defaults to NEEDS WORK and outputs mentor-style guidance.", filePath: "common-skills/planning-validator/SKILL.md" }] }
+      ]
+    },
+    {
+      name: "Engineering Hub",
+      type: "orchestrator",
+      summary: "Full implementation lifecycle orchestrator. Readiness, scaffolding, staging doc, implement-review-verify loops, story integration, semantic review, acceptance validation, documentation, and user acceptance. Autonomous except at review milestones.",
+      filePath: "opencode/.opencode/agents/sdlc-engineering.md",
+      dispatches: ["Implementer","Code Reviewer","QA Verifier","Semantic Reviewer","Acceptance Validator","Documentation Writer","DevOps"],
+      phases: [
+        "Phase 0: Resume + Readiness + Story Branch",
+        "Phase 0b: Greenfield Scaffolding (if needed)",
+        "Phase 1: Context + Testing Strategy + Staging Doc + Task Decomposition",
+        "Phase 2: Per-Task — DevOps → Implement → Coverage Gate → Review → QA",
+        "Phase 3: Story Integration + Pre-Flight Gate",
+        "Phase 3b: Semantic Review (commercial mentor)",
+        "Phase 4: Acceptance Validation",
+        "Phase 5: Documentation Integration",
+        "Phase 6: User Acceptance / Auto-Merge"
+      ],
+      children: [
+        { name: "Implementer", type: "agent", summary: "Implements and self-verifies code within assigned architecture scope. Updates staging doc, runs quality gates, returns completion summary or blocker to hub.", filePath: "opencode/.opencode/agents/sdlc-engineering-implementer.md",
+          children: [
+            { name: "test-driven-development", type: "skill", summary: "Red-green TDD discipline — write the test first, observe failure, then minimal code to pass.", filePath: "common-skills/test-driven-development/SKILL.md" },
+            { name: "verification-before-completion", type: "skill", summary: "Gates success claims on fresh verification commands. Never asserts 'done' without evidence.", filePath: "common-skills/verification-before-completion/SKILL.md" },
+            { name: "nodejs-backend-patterns", type: "skill", summary: "Patterns for production Node.js backends — Express/Fastify, middleware, errors, auth, databases.", filePath: "common-skills/nodejs-backend-patterns/SKILL.md" }
+          ] },
+        { name: "Code Reviewer", type: "agent", summary: "Read-only plan-aligned senior review. Compares implementation to plan artifacts, runs automated checks, classifies findings (Critical/Important/Suggestion).", filePath: "opencode/.opencode/agents/sdlc-engineering-code-reviewer.md",
+          children: [
+            { name: "code-review", type: "skill", summary: "Structured review against architecture/spec — alignment, quality, patterns, severity.", filePath: "common-skills/code-review/SKILL.md" }
+          ] },
+        { name: "QA Verifier", type: "agent", summary: "Independent verification: re-runs lint/typecheck/tests/build fresh, checks coverage vs thresholds, optional browser verification. Evidence-based PASS/FAIL.", filePath: "opencode/.opencode/agents/sdlc-engineering-qa.md",
+          children: [
+            { name: "webapp-testing", type: "skill", summary: "Toolkit for testing local web apps with Python Playwright scripts and server lifecycle helpers.", filePath: "common-skills/webapp-testing/SKILL.md" },
+            { name: "playwright-best-practices", type: "skill", summary: "Broad Playwright reference — flakiness, POM, CI, auth, a11y, performance, security.", filePath: "common-skills/playwright-best-practices/SKILL.md" },
+            { name: "verification-before-completion", type: "skill", summary: "Gates success claims on fresh verification commands. Never asserts 'done' without evidence.", filePath: "common-skills/verification-before-completion/SKILL.md" }
+          ] },
+        { name: "Semantic Reviewer", type: "agent", summary: "Commercial-model senior review (Phase 3b). Three checks: agent report integrity, code quality + fresh re-runs, terminology/contracts. PASS or NEEDS WORK with guidance.", filePath: "opencode/.opencode/agents/sdlc-engineering-semantic-reviewer.md",
+          children: [
+            { name: "semantic-review", type: "skill", summary: "Commercial-model review validating agent reports and code quality with structured guidance.", filePath: "common-skills/semantic-review/SKILL.md" }
+          ] },
+        { name: "Acceptance Validator", type: "agent", summary: "Maps each story AC to code (file:line), runs fresh verification per criterion. COMPLETE or INCOMPLETE with failure guidance. Max 3 total runs.", filePath: "opencode/.opencode/agents/sdlc-engineering-acceptance-validator.md",
+          children: [
+            { name: "acceptance-validation", type: "skill", summary: "Framework for verifying every acceptance criterion with fresh evidence. Default: INCOMPLETE.", filePath: "common-skills/acceptance-validation/SKILL.md" }
+          ] },
+        { name: "Documentation Writer", type: "agent", summary: "Creates/updates READMEs, API docs, guides, install/runbooks. Edits docs within hub boundaries.", filePath: "opencode/.opencode/agents/sdlc-engineering-documentation-writer.md", children: [] },
+        { name: "DevOps", type: "agent", summary: "Provisions infrastructure during implementation: Docker, local, cloud per plan. Configures .env, verifies health, returns infrastructure manifest.", filePath: "opencode/.opencode/agents/sdlc-engineering-devops.md",
+          children: [
+            { name: "devops-execution", type: "skill", summary: "Provisions real infrastructure — containers, databases, cloud, env config — with health evidence.", filePath: "common-skills/devops-execution/SKILL.md" }
+          ] }
+      ]
+    }
+  ]
+};
+
+const COLORS = {
+  root:         { fill: '#06b6d4', stroke: '#0891b2' },
+  coordinator:  { fill: '#f59e0b', stroke: '#d97706' },
+  orchestrator: { fill: '#3b82f6', stroke: '#2563eb' },
+  agent:        { fill: '#14b8a6', stroke: '#0d9488' },
+  skill:        { fill: '#22c55e', stroke: '#16a34a' }
+};
+
+let currentRoot = null, navStack = [], selectedNode = null, treeSvg, treeG, zoomBehavior;
+const nodeWidths = new Map();
+const CHAR_W = 7.2, PAD_X = 16, PAD_Y = 6, BOX_R = 5;
+
+function estimateWidth(name) { return name.length * CHAR_W + PAD_X * 2; }
+
+function init() {
+  currentRoot = d3.hierarchy(DATA);
+  computeStats(currentRoot);
+  setupTree();
+  setupFlowView();
+  setupEventListeners();
+  renderTree(currentRoot);
+}
+
+function computeStats(root) {
+  let agents = 0, skills = 0, total = 0;
+  root.each(d => { total++; if (d.data.type === 'agent') agents++; if (d.data.type === 'skill') skills++; });
+  document.getElementById('statAgents').textContent = agents;
+  document.getElementById('statSkills').textContent = skills;
+  document.getElementById('statTotal').textContent = total;
+}
+
+function setupTree() {
+  const svg = d3.select('#treeSvg');
+  zoomBehavior = d3.zoom().scaleExtent([0.15, 3]).on('zoom', e => treeG.attr('transform', e.transform));
+  svg.call(zoomBehavior).on('dblclick.zoom', null);
+  treeG = svg.append('g').attr('class', 'tree-group');
+}
+
+function collapseDeep(node, maxDepth, depth = 0) {
+  if (!node.children) return;
+  for (const c of node.children) collapseDeep(c, maxDepth, depth + 1);
+  if (depth >= maxDepth && node.children) { node._children = node.children; node.children = null; node._expanded = false; }
+  else node._expanded = true;
+}
+
+function renderTree(rootNode, animate = true) {
+  collapseDeep(rootNode, 2);
+  rootNode._expanded = true;
+  updateTree(rootNode, animate);
+}
+
+function updateTree(rootNode, animate = true) {
+  const container = document.getElementById('treePane');
+  const cW = container.clientWidth, cH = container.clientHeight;
+  const leaves = []; rootNode.eachBefore(d => { if (!d.children) leaves.push(d); });
+  const dH = Math.max(cH - 40, leaves.length * 34);
+  const treeLayout = d3.tree().size([dH, Math.max(cW - 500, 600)]).separation((a, b) => a.parent === b.parent ? 1 : 1.5);
+  treeLayout(rootNode);
+  const nodes = rootNode.descendants(), links = rootNode.links();
+
+  nodes.forEach(d => { d._w = estimateWidth(d.data.name); d._h = 24; });
+
+  const linkGen = d => {
+    const sw = d.source._w || 100, sx = d.source.y + 60 + sw / 2, sy = d.source.x + 20;
+    const tw = d.target._w || 100, tx = d.target.y + 60 - tw / 2, ty = d.target.x + 20;
+    const mx = (sx + tx) / 2;
+    return `M${sx},${sy} C${mx},${sy} ${mx},${ty} ${tx},${ty}`;
+  };
+
+  const linkSel = treeG.selectAll('.link-path').data(links, d => d.target.data.name + '|' + (d.target.parent?.data.name || ''));
+  linkSel.exit().transition().duration(animate ? 300 : 0).attr('opacity', 0).remove();
+  const linkE = linkSel.enter().append('path').attr('class', 'link-path').attr('opacity', 0);
+  linkSel.merge(linkE).transition().duration(animate ? 500 : 0).attr('opacity', 0.5).attr('d', linkGen);
+
+  const nodeSel = treeG.selectAll('.node-box').data(nodes, d => d.data.name + '|' + (d.parent?.data.name || ''));
+  nodeSel.exit().transition().duration(animate ? 300 : 0).attr('opacity', 0).remove();
+
+  const nodeE = nodeSel.enter().append('g').attr('class', 'node-box')
+    .attr('transform', d => `translate(${d.y + 60},${d.x + 20})`).attr('opacity', 0);
+
+  nodeE.append('rect')
+    .attr('x', d => -d._w / 2).attr('y', d => -d._h / 2)
+    .attr('width', d => d._w).attr('height', d => d._h)
+    .attr('rx', BOX_R)
+    .attr('fill', d => (COLORS[d.data.type]?.fill || '#555') + '25')
+    .attr('stroke', d => COLORS[d.data.type]?.stroke || '#444')
+    .attr('stroke-width', 1.5);
+
+  nodeE.append('text').attr('text-anchor', 'middle').attr('dy', '0.35em')
+    .attr('font-weight', d => (d.data.type === 'coordinator' || d.data.type === 'orchestrator') ? '600' : '400')
+    .text(d => d.data.name);
+
+  nodeE.append('text').attr('class', 'collapse-badge')
+    .attr('x', d => d._w / 2 - 6).attr('y', -4)
+    .attr('text-anchor', 'middle').attr('font-size', '9px').attr('fill', 'var(--text-muted)').text('');
+
+  const merged = nodeSel.merge(nodeE);
+  merged.transition().duration(animate ? 500 : 0)
+    .attr('transform', d => `translate(${d.y + 60},${d.x + 20})`).attr('opacity', 1);
+
+  merged.select('rect')
+    .attr('x', d => -d._w / 2).attr('width', d => d._w)
+    .attr('fill', d => d === selectedNode ? (COLORS[d.data.type]?.fill || '#555') + '55' : (COLORS[d.data.type]?.fill || '#555') + '25')
+    .attr('stroke', d => d === selectedNode ? '#fff' : (COLORS[d.data.type]?.stroke || '#444'))
+    .attr('stroke-width', d => d === selectedNode ? 2 : 1.5);
+
+  merged.select('.collapse-badge').text(d => d._children ? `+${d._children.length}` : '');
+
+  merged.on('click', (ev, d) => {
+    ev.stopPropagation();
+    if (d.children) { d._children = d.children; d.children = null; d._expanded = false; }
+    else if (d._children) { d.children = d._children; d._children = null; d._expanded = true; }
+    selectNode(d); updateTree(currentRoot);
+  }).on('dblclick', (ev, d) => {
+    ev.stopPropagation();
+    if (d.data.children?.length) drillDown(d);
+  }).on('mouseenter', (ev, d) => showTooltip(ev, d.data)).on('mouseleave', hideTooltip);
+
+  if (animate && nodes.length > 0) {
+    const xE = d3.extent(nodes, d => d.x), yE = d3.extent(nodes, d => d.y);
+    const tH = (xE[1] - xE[0]) + 80, tW = (yE[1] - yE[0]) + 300;
+    const sc = Math.min((cW - 40) / tW, (cH - 40) / tH, 1.4);
+    const svg = d3.select('#treeSvg');
+    svg.transition().duration(500).call(zoomBehavior.transform,
+      d3.zoomIdentity.translate(cW / 2 - (d3.mean(yE) + 60) * sc, cH / 2 - (d3.mean(xE) + 20) * sc).scale(sc));
+  }
+}
+
+function drillDown(node) {
+  navStack.push({ root: currentRoot, selected: selectedNode });
+  currentRoot = d3.hierarchy(node.data);
+  selectedNode = null;
+  currentRoot._expanded = true;
+  if (currentRoot.children) currentRoot.children.forEach(c => { c._expanded = true; });
+  updateBreadcrumb(); renderTree(currentRoot); selectNode(currentRoot);
+}
+
+function drillUp(idx) {
+  if (idx < 0 || idx >= navStack.length) return;
+  const t = navStack[idx]; navStack = navStack.slice(0, idx);
+  currentRoot = t.root; selectedNode = null;
+  updateBreadcrumb(); renderTree(currentRoot);
+}
+
+function selectNode(node) {
+  selectedNode = node;
+  renderDetailPanel(node.data);
+  updateTree(currentRoot, false);
+}
+
+function updateBreadcrumb() {
+  const bc = document.getElementById('breadcrumb'); bc.innerHTML = '';
+  const r = document.createElement('span');
+  r.className = 'breadcrumb-item' + (navStack.length === 0 ? ' current' : '');
+  r.textContent = 'SDLC System';
+  r.onclick = () => { if (navStack.length > 0) drillUp(0); };
+  bc.appendChild(r);
+  navStack.forEach((e, i) => {
+    bc.appendChild(Object.assign(document.createElement('span'), { className: 'breadcrumb-sep', textContent: '›' }));
+    const it = document.createElement('span');
+    it.className = 'breadcrumb-item';
+    const nm = navStack[i + 1] ? navStack[i + 1].root.data.name : currentRoot.data.name;
+    it.textContent = nm; it.onclick = () => drillUp(i + 1); bc.appendChild(it);
+  });
+  if (navStack.length > 0) {
+    bc.appendChild(Object.assign(document.createElement('span'), { className: 'breadcrumb-sep', textContent: '›' }));
+    bc.appendChild(Object.assign(document.createElement('span'), { className: 'breadcrumb-item current', textContent: currentRoot.data.name }));
+  }
+}
+
+let activeDetailTab = 'summary';
+const mdCache = {};
+
+function renderDetailPanel(data) {
+  const panel = document.getElementById('detailPanel');
+  const badge = `badge-${data.type}`;
+  panel.innerHTML = `
+    <div class="detail-header">
+      <div class="type-badge ${badge}">${data.type}</div>
+      <h2>${data.name}</h2>
+    </div>
+    <div class="detail-tabs">
+      <button class="detail-tab ${activeDetailTab === 'summary' ? 'active' : ''}" data-tab="summary">Summary</button>
+      <button class="detail-tab ${activeDetailTab === 'fullfile' ? 'active' : ''}" data-tab="fullfile">Full File</button>
+    </div>
+    <div class="detail-content" id="detailContent"></div>`;
+  panel.querySelectorAll('.detail-tab').forEach(t => t.addEventListener('click', () => {
+    activeDetailTab = t.dataset.tab;
+    panel.querySelectorAll('.detail-tab').forEach(x => x.classList.toggle('active', x.dataset.tab === activeDetailTab));
+    renderDetailContent(data);
+  }));
+  renderDetailContent(data);
+}
+
+function renderDetailContent(data) {
+  const el = document.getElementById('detailContent');
+  if (activeDetailTab === 'summary') {
+    let h = '';
+    if (data.summary) h += `<div class="detail-section"><h3>Summary</h3><p>${data.summary}</p></div>`;
+    if (data.phases?.length) h += `<div class="detail-section"><h3>Phases</h3><ul class="phase-list">${data.phases.map(p => `<li>${p}</li>`).join('')}</ul></div>`;
+    if (data.dispatches?.length) h += `<div class="detail-section"><h3>Dispatches</h3><div class="dispatches-list">${data.dispatches.map(d => `<span class="dispatch-tag" onclick="navigateToNode('${d}')">${d}</span>`).join('')}</div></div>`;
+    if (data.children?.length) {
+      const skills = data.children.filter(c => c.type === 'skill');
+      const agents = data.children.filter(c => c.type !== 'skill');
+      if (skills.length) h += `<div class="detail-section"><h3>Skills</h3><div class="dispatches-list">${skills.map(s => `<span class="dispatch-tag" style="color:var(--green)" onclick="navigateToNode('${s.name}')">${s.name}</span>`).join('')}</div></div>`;
+      if (agents.length) h += `<div class="detail-section"><h3>Children (${agents.length})</h3><ul>${agents.map(c => `<li><strong>${c.name}</strong> <span style="color:${COLORS[c.type]?.fill || '#666'}">[${c.type}]</span></li>`).join('')}</ul></div>`;
+    }
+    if (data.filePath) h += `<div class="detail-section"><h3>Source File</h3><div class="file-path">${data.filePath}</div></div>`;
+    el.innerHTML = h;
+  } else {
+    if (!data.filePath) { el.innerHTML = '<div class="md-loading">No source file available.</div>'; return; }
+    if (mdCache[data.filePath]) { el.innerHTML = `<div class="md-content">${marked.parse(mdCache[data.filePath])}</div>`; return; }
+    el.innerHTML = '<div class="md-loading">Loading file...</div>';
+    const basePath = window.location.pathname.replace(/\/dashboard\/.*$/, '/');
+    fetch(basePath + data.filePath)
+      .then(r => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then(txt => {
+        let content = txt;
+        if (content.startsWith('---')) { const end = content.indexOf('---', 3); if (end > 0) content = content.slice(end + 3).trim(); }
+        mdCache[data.filePath] = content;
+        el.innerHTML = `<div class="md-content">${marked.parse(content)}</div>`;
+      })
+      .catch(() => { el.innerHTML = `<div class="md-loading">Could not load file. Serve from repo root:<br><code>cd ai-registry && python3 -m http.server 8765</code></div>`; });
+  }
+}
+
+function showTooltip(ev, data) {
+  const t = document.getElementById('tooltip');
+  t.innerHTML = `<div class="tt-name">${data.name}</div><div>${data.summary ? data.summary.slice(0, 140) + (data.summary.length > 140 ? '...' : '') : ''}</div>`;
+  t.classList.add('visible');
+  t.style.left = Math.min(ev.pageX + 12, window.innerWidth - 300) + 'px';
+  t.style.top = (ev.pageY - 8) + 'px';
+}
+function hideTooltip() { document.getElementById('tooltip').classList.remove('visible'); }
+
+function setupFlowView() {
+  const container = document.getElementById('flowContainer');
+  const svg = d3.select(container).append('svg').attr('width', '100%').attr('height', '100%')
+    .attr('viewBox', '0 0 1180 680').attr('preserveAspectRatio', 'xMidYMid meet').style('max-width', '1200px');
+  const defs = svg.append('defs');
+  defs.append('marker').attr('id', 'arrow').attr('viewBox', '0 0 10 7').attr('refX', 10).attr('refY', 3.5)
+    .attr('markerWidth', 8).attr('markerHeight', 6).attr('orient', 'auto')
+    .append('polygon').attr('points', '0 0, 10 3.5, 0 7').attr('fill', '#475569');
+
+  const phases = [
+    { id: 'user', label: 'User', x: 30, y: 310, w: 90, h: 50, color: '#64748b' },
+    { id: 'coord', label: 'SDLC\nCoordinator', x: 175, y: 290, w: 120, h: 90, color: '#f59e0b' },
+    { id: 'assess', label: 'State\nAssessment', x: 350, y: 290, w: 110, h: 90, color: '#f59e0b' },
+    { id: 'planning', label: 'Planner\nHub', x: 530, y: 100, w: 120, h: 70, color: '#3b82f6' },
+    { id: 'execution', label: 'Engineering\nHub', x: 530, y: 500, w: 120, h: 70, color: '#3b82f6' },
+    { id: 'prd', label: 'PRD', x: 710, y: 25, w: 75, h: 36, color: '#14b8a6' },
+    { id: 'arch', label: 'Architecture', x: 710, y: 70, w: 75, h: 36, color: '#14b8a6' },
+    { id: 'stories', label: 'Stories', x: 710, y: 115, w: 75, h: 36, color: '#14b8a6' },
+    { id: 'hld', label: 'HLD', x: 805, y: 25, w: 75, h: 36, color: '#14b8a6' },
+    { id: 'sec_p', label: 'Security', x: 805, y: 70, w: 75, h: 36, color: '#14b8a6' },
+    { id: 'api', label: 'API', x: 805, y: 115, w: 75, h: 36, color: '#14b8a6' },
+    { id: 'data_p', label: 'Data', x: 900, y: 25, w: 75, h: 36, color: '#14b8a6' },
+    { id: 'devops_p', label: 'DevOps', x: 900, y: 70, w: 75, h: 36, color: '#14b8a6' },
+    { id: 'design', label: 'Design', x: 900, y: 115, w: 75, h: 36, color: '#14b8a6' },
+    { id: 'test_p', label: 'Testing', x: 995, y: 25, w: 75, h: 36, color: '#14b8a6' },
+    { id: 'valid', label: 'Validator', x: 995, y: 70, w: 75, h: 36, color: '#14b8a6' },
+    { id: 'impl', label: 'Implementer', x: 710, y: 440, w: 85, h: 36, color: '#14b8a6' },
+    { id: 'review', label: 'Code Review', x: 710, y: 485, w: 85, h: 36, color: '#14b8a6' },
+    { id: 'qa', label: 'QA', x: 710, y: 530, w: 85, h: 36, color: '#14b8a6' },
+    { id: 'semantic', label: 'Semantic', x: 820, y: 440, w: 85, h: 36, color: '#14b8a6' },
+    { id: 'accept', label: 'Acceptance', x: 820, y: 485, w: 85, h: 36, color: '#14b8a6' },
+    { id: 'docs', label: 'Docs', x: 820, y: 530, w: 85, h: 36, color: '#14b8a6' },
+    { id: 'devops_e', label: 'DevOps', x: 820, y: 575, w: 85, h: 36, color: '#14b8a6' },
+    { id: 'complete', label: 'Story\nComplete', x: 1030, y: 490, w: 100, h: 50, color: '#22c55e' }
+  ];
+
+  const edges = [
+    { from: 'user', to: 'coord', label: 'request', order: 1 },
+    { from: 'coord', to: 'assess', label: 'query state', order: 2 },
+    { from: 'assess', to: 'planning', label: 'STATE_NONE\nSTATE_PLANNED', order: 3 },
+    { from: 'assess', to: 'execution', label: 'STATE_READY\nIN_PROGRESS', order: 4 },
+    { from: 'planning', to: 'prd', order: 5 },
+    { from: 'planning', to: 'arch', order: 6 },
+    { from: 'planning', to: 'stories', order: 7 },
+    { from: 'planning', to: 'hld', order: 8 },
+    { from: 'planning', to: 'sec_p', order: 9 },
+    { from: 'planning', to: 'api', order: 10 },
+    { from: 'planning', to: 'data_p', order: 11 },
+    { from: 'planning', to: 'devops_p', order: 12 },
+    { from: 'planning', to: 'design', order: 13 },
+    { from: 'planning', to: 'test_p', order: 14 },
+    { from: 'planning', to: 'valid', order: 15 },
+    { from: 'execution', to: 'impl', order: 16 },
+    { from: 'execution', to: 'review', order: 17 },
+    { from: 'execution', to: 'qa', order: 18 },
+    { from: 'execution', to: 'semantic', order: 19 },
+    { from: 'execution', to: 'accept', order: 20 },
+    { from: 'execution', to: 'docs', order: 21 },
+    { from: 'execution', to: 'devops_e', order: 22 },
+    { from: 'accept', to: 'complete', label: 'PASS', order: 23 },
+    { from: 'complete', to: 'coord', label: 'next story', order: 24 }
+  ];
+
+  const pm = {}; phases.forEach(p => pm[p.id] = p);
+
+  svg.insert('rect', ':first-child').attr('x', 490).attr('y', 5).attr('width', 600).attr('height', 165).attr('rx', 10).attr('fill', '#3b82f608').attr('stroke', '#3b82f622');
+  svg.insert('rect', ':first-child').attr('x', 490).attr('y', 420).attr('width', 600).attr('height', 210).attr('rx', 10).attr('fill', '#3b82f608').attr('stroke', '#3b82f622');
+  svg.append('text').attr('x', 1080).attr('y', 18).attr('text-anchor', 'end').attr('fill', '#3b82f6').attr('font-size', '10px').attr('font-weight', '600').attr('opacity', 0.5).text('PLANNING');
+  svg.append('text').attr('x', 1080).attr('y', 433).attr('text-anchor', 'end').attr('fill', '#3b82f6').attr('font-size', '10px').attr('font-weight', '600').attr('opacity', 0.5).text('EXECUTION');
+
+  phases.forEach((p, i) => {
+    const g = svg.append('g').style('cursor', 'pointer').on('click', () => {
+      const m = findNodeByName(DATA, p.label.replace('\n', ' '));
+      if (m) navigateToNode(m.name);
+    });
+    g.append('rect').attr('x', p.x).attr('y', p.y).attr('width', p.w).attr('height', p.h).attr('rx', 7)
+      .attr('fill', p.color + '22').attr('stroke', p.color).attr('stroke-width', 1.5)
+      .style('opacity', 0).transition().delay(i * 30).duration(350).style('opacity', 1);
+    p.label.split('\n').forEach((ln, li, arr) => {
+      g.append('text').attr('x', p.x + p.w / 2).attr('y', p.y + p.h / 2 + (li - (arr.length - 1) / 2) * 14)
+        .attr('text-anchor', 'middle').attr('dominant-baseline', 'middle').attr('fill', '#e2e8f0')
+        .attr('font-size', '11px').attr('font-family', 'Inter, sans-serif').attr('font-weight', '500').text(ln)
+        .style('opacity', 0).transition().delay(i * 30 + 150).duration(300).style('opacity', 1);
+    });
+  });
+
+  edges.forEach((e, i) => {
+    const f = pm[e.from], t = pm[e.to]; if (!f || !t) return;
+    const x1 = f.x + f.w, y1 = f.y + f.h / 2, x2 = t.x, y2 = t.y + t.h / 2;
+    let path;
+    if (e.from === 'complete' && e.to === 'coord') {
+      path = `M${x1},${y1} C${x1 + 30},${y1} ${x1 + 30},${670} ${175 + 60},${670} L${175 + 60},${290 + 90}`;
+    } else { const mx = (x1 + x2) / 2; path = `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`; }
+
+    svg.append('path').attr('d', path).attr('fill', 'none').attr('stroke', '#475569').attr('stroke-width', 1.2)
+      .attr('marker-end', 'url(#arrow)').style('opacity', 0).transition().delay(i * 20 + 200).duration(350).style('opacity', 0.7);
+
+    if (e.order) {
+      let cx, cy;
+      if (e.from === 'complete' && e.to === 'coord') { cx = x1 + 30; cy = 670; }
+      else { cx = x1 + (x2 - x1) * 0.3; cy = y1 + (y2 - y1) * 0.3; }
+      const ng = svg.append('g').style('opacity', 0);
+      ng.transition().delay(i * 20 + 400).duration(300).style('opacity', 1);
+      ng.append('circle').attr('cx', cx).attr('cy', cy).attr('r', 9).attr('fill', '#1e293b').attr('stroke', '#475569').attr('stroke-width', 1);
+      ng.append('text').attr('x', cx).attr('y', cy).attr('text-anchor', 'middle').attr('dominant-baseline', 'central')
+        .attr('fill', '#94a3b8').attr('font-size', '8px').attr('font-weight', '600').attr('font-family', 'Inter').text(e.order);
+    }
+
+    if (e.label) {
+      const lx = (x1 + x2) / 2, ly = (y1 + y2) / 2;
+      e.label.split('\n').forEach((ln, li, arr) => {
+        svg.append('text').attr('x', lx).attr('y', ly + (li - (arr.length - 1) / 2) * 11 - 14)
+          .attr('text-anchor', 'middle').attr('fill', '#94a3b8').attr('font-size', '9px').attr('font-family', 'Inter').text(ln)
+          .style('opacity', 0).transition().delay(i * 20 + 400).duration(300).style('opacity', 1);
+      });
+    }
+  });
+}
+
+function findNodeByName(data, name) {
+  const n = name.toLowerCase().replace(/\s+/g, ' ');
+  if (data.name.toLowerCase().includes(n) || n.includes(data.name.toLowerCase())) return data;
+  if (data.children) for (const c of data.children) { const f = findNodeByName(c, name); if (f) return f; }
+  return null;
+}
+
+function flattenTree(node, path = []) {
+  const r = [{ data: node, path: [...path, node.name] }];
+  if (node.children) for (const c of node.children) r.push(...flattenTree(c, [...path, node.name]));
+  return r;
+}
+
+function setupEventListeners() {
+  document.querySelectorAll('.view-tab').forEach(t => t.addEventListener('click', () => switchView(t.dataset.view)));
+  const si = document.getElementById('searchInput'), sr = document.getElementById('searchResults');
+  const all = flattenTree(DATA);
+  si.addEventListener('input', () => {
+    const q = si.value.toLowerCase().trim();
+    if (q.length < 2) { sr.classList.remove('visible'); return; }
+    const m = all.filter(n => n.data.name.toLowerCase().includes(q) || (n.data.summary?.toLowerCase().includes(q))).slice(0, 12);
+    if (!m.length) { sr.classList.remove('visible'); return; }
+    sr.innerHTML = m.map(x => `<div class="search-result-item" data-name="${x.data.name}"><div class="sr-name" style="color:${COLORS[x.data.type]?.fill || '#ccc'}">${x.data.name}</div><div class="sr-path">${x.path.join(' › ')}</div></div>`).join('');
+    sr.classList.add('visible');
+    sr.querySelectorAll('.search-result-item').forEach(it => it.addEventListener('click', () => { navigateToNode(it.dataset.name); sr.classList.remove('visible'); si.value = ''; }));
+  });
+  si.addEventListener('blur', () => setTimeout(() => sr.classList.remove('visible'), 200));
+  si.addEventListener('keydown', e => { if (e.key === 'Escape') { sr.classList.remove('visible'); si.blur(); } });
+  document.addEventListener('keydown', e => {
+    if (e.key === '/' && document.activeElement !== si) { e.preventDefault(); si.focus(); }
+    if (e.key === 'Escape' && navStack.length > 0) drillUp(navStack.length - 1);
+  });
+}
+
+function navigateToNode(name) {
+  switchView('tree');
+  while (navStack.length > 0) drillUp(0);
+  currentRoot = d3.hierarchy(DATA);
+  function expandTo(nd, target) {
+    if (nd.data.name === target) return true;
+    const ch = nd.children || nd._children;
+    if (ch) { if (nd._children) { nd.children = nd._children; nd._children = null; } nd._expanded = true;
+      for (const c of nd.children) if (expandTo(c, target)) return true; }
+    return false;
+  }
+  expandTo(currentRoot, name);
+  updateTree(currentRoot);
+  let found = null; currentRoot.each(d => { if (d.data.name === name) found = d; });
+  if (found) selectNode(found);
+}
+
+function switchView(view) {
+  document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
+  document.querySelector(`.view-tab[data-view="${view}"]`).classList.add('active');
+  const ts = document.getElementById('treeSvg'), fc = document.getElementById('flowContainer'), dp = document.getElementById('detailPanel');
+  if (view === 'tree') { ts.classList.remove('hidden'); fc.classList.remove('active'); dp.style.display = ''; if (currentRoot) updateTree(currentRoot, false); }
+  else { ts.classList.add('hidden'); fc.classList.add('active'); dp.style.display = 'none'; }
+}
+
+window.addEventListener('resize', () => { if (currentRoot) updateTree(currentRoot, false); });
+window.addEventListener('hashchange', () => {
+  const h = decodeURIComponent(location.hash.slice(1));
+  if (h) navigateToNode(h);
+});
+init();
+if (location.hash) { const h = decodeURIComponent(location.hash.slice(1)); if (h) setTimeout(() => navigateToNode(h), 100); }
+</script>
+</body>
+</html>
