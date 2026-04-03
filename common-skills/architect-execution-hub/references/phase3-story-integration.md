@@ -4,8 +4,8 @@
 
 After all per-task dev loops pass:
 
-1. **Final holistic code review** — dispatch sdlc-code-reviewer for full-story review (existing behavior from review-cycle.md).
-2. **Final holistic QA** — dispatch sdlc-qa for full-story verification (existing behavior).
+1. **Final holistic code review** — dispatch `sdlc-engineering-story-reviewer` for full-story review (uses larger model for cross-file reasoning across the entire story scope). Include `SECURITY_REVIEW: true` if any task had security review.
+2. **Final holistic QA** — dispatch `sdlc-engineering-story-qa` for full-story verification (uses larger model for comprehensive cross-task verification).
 3. **Performance validation** — if tech skills include performance budgets (e.g., react-native), verify metrics meet targets.
 4. **Accessibility check** — if story has `design` in `candidate_domains`, verify accessibility requirements.
 

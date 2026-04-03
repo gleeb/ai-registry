@@ -65,3 +65,5 @@ This project uses a structured SDLC workflow. When the user asks to work on a pr
 - The coordinator routes to planning or execution based on project state.
 
 When you need to search documentation, use `context7` tools.
+
+When you need to search the web for current documentation, solutions, or library information, use Tavily MCP tools (`tavily-search`, `tavily-extract`). Use Tavily when context7 lacks coverage, or when you need to verify current library versions, compatibility matrices, known limitations, GitHub issues, or Stack Overflow answers.

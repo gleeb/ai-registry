@@ -16,6 +16,9 @@ permission:
     "sdlc-engineering-acceptance-validator": allow
     "sdlc-engineering-semantic-reviewer": allow
     "sdlc-engineering-documentation-writer": allow
+    "sdlc-engineering-story-reviewer": allow
+    "sdlc-engineering-story-qa": allow
+    "sdlc-engineering-oracle": allow
 ---
 
 ## Role
@@ -82,6 +85,9 @@ Load these skills at the phases indicated. Do NOT load PinchTab at startup — o
 | `@sdlc-engineering-qa` | Independent verification after review (per task and full story) |
 | `@sdlc-engineering-devops` | Infrastructure provisioning before implementer when Integration Strategy requires `real`/`realize` |
 | `@sdlc-engineering-semantic-reviewer` | Commercial-model semantic gate after Phase 3; guidance packages for re-dispatch |
+| `@sdlc-engineering-story-reviewer` | Phase 3 full-story holistic code review (larger model for cross-file reasoning) |
+| `@sdlc-engineering-story-qa` | Phase 3 full-story QA verification (larger model for comprehensive cross-task verification) |
+| `@sdlc-engineering-oracle` | Last-resort escalation for stuck implementation loops (most powerful model) |
 | `@sdlc-engineering-acceptance-validator` | Phase 4: evidence-based check of every acceptance criterion |
 | `@sdlc-engineering-documentation-writer` | Dedicated documentation work beyond hub's `docs/*.md` edits |
 
@@ -180,9 +186,11 @@ Load these skills at the phases indicated. Do NOT load PinchTab at startup — o
 **Steps:**
 - Read the HLD's design units and implementation units from hld.md.
 - Break them into executable tasks, grouping related IUs by dependency order.
+- **Apply task sizing constraints** (from `phase1-task-decomposition.md`): max 4 production files per task, max 3 integration points per task. If a design unit exceeds these limits, split it into sub-tasks before recording. Integration/wiring tasks must be separate from individual service tasks. External library integration should be its own task when feasible.
 - For each task in the staging document, record:
   - **Plan refs**: which DU/IU sections in hld.md (with line ranges), which API sections in api.md (with line ranges), which security sections in security.md (with line ranges) the task implements.
   - **Files**: file paths for each change (CREATE/MODIFY).
+  - **External libraries**: list all external libraries/SDKs/platform APIs this task integrates with, extracted from the HLD's design units and the story's tech stack. These feed the `EXTERNAL LIBRARIES` section in every implementer dispatch.
   - **Status**: pending | Review: 0 | QA: 0.
 - Do NOT re-write function signatures, interface definitions, boundaries, or acceptance signals into the staging document. The plan refs point to where that detail lives in the plan artifacts. The task decomposition IS the hub's execution-time contribution — the mapping from plan units to execution order.
 - The browser verification classification should already be recorded in Phase 1b. When classified as **mandatory**, include the `BROWSER VERIFICATION` block in EVERY implementer and QA dispatch for this story. When classified as **per-task**, include it only when the task touches UI-visible code or files that indirectly affect web rendering.
@@ -207,6 +215,11 @@ Load these skills at the phases indicated. Do NOT load PinchTab at startup — o
   - B. Task tool dispatch to @sdlc-engineering-implementer using the implementer dispatch template. Include TECH SKILLS, DOCUMENTATION, SELF-VERIFICATION, PLAN ARTIFACTS, and INTEGRATION CONTEXT sections. If DevOps was dispatched in step A, include infrastructure manifest details in INTEGRATION CONTEXT. **Browser verification per-task skip rule:** If browser verification is classified as **per-task** AND the task touches only domain/data/guard files with zero browser-observable acceptance signals, omit the BROWSER VERIFICATION block entirely from the dispatch — no N/A documentation required. If classified as **mandatory**, always include the BROWSER VERIFICATION block. If classified as **per-task** and the task touches UI-visible code or files that affect web rendering, include it.
   - C. Log implementer response (compound — also advances step to code_review):
     `checkpoint.sh execution --step code_review --dispatch-event response --dispatch-agent sdlc-engineering-implementer --dispatch-id "exec-{story}-t{id}-impl-i1" --dispatch-verdict "success"`
+  - C1b. **Implementation Completeness Gate:** Read the implementer's return message. Check the STATUS field:
+    1. `STATUS: BLOCKED` — Skip review entirely. Record the blocker in the staging doc. Re-dispatch with blocker resolution context, or escalate if unresolvable.
+    2. `STATUS: PARTIAL` — Skip review. Re-dispatch implementer with focused instructions for the missing ACs listed in the PARTIAL status. This counts as an iteration.
+    3. `STATUS: COMPLETE` — Verify `git diff --stat` shows changes to the expected files from the staging doc task entry. If zero changes to expected files, skip review and re-dispatch with "no code changes detected" context.
+    Only proceed to the Test Existence Gate and code reviewer when the implementer reports COMPLETE AND file changes exist. This prevents wasting review cycles on failed or incomplete implementations.
   - C2. **Test Existence Gate:** Before dispatching to code reviewer, verify that the implementer created test files for new/modified source modules (check via bash using patterns: `**/__tests__/**/*.{test,spec}.*`, `**/*.{test,spec}.*`). Exempt: docs, config, type declarations, test utilities. If no test files exist, re-dispatch implementer with test-only focus (counts as an iteration). Do NOT send to reviewer without tests.
   - C2b. **Coverage Gate:** After test existence is confirmed, run `npx jest --coverage --coverageReporters=json-summary` (or project equivalent). Parse `coverage/coverage-summary.json` and compare new/modified file coverage against thresholds from `plan/cross-cutting/testing-strategy.md` (defaults: 80% lines, 70% branches). On failure, re-dispatch implementer with the coverage report and specific uncovered lines (counts as an iteration). Include coverage summary in reviewer dispatch context.
   - D. On implementer success (with tests confirmed), log reviewer dispatch (compound):
@@ -217,7 +230,7 @@ Load these skills at the phases indicated. Do NOT load PinchTab at startup — o
   - E. Handle review verdict using the **Adaptive Recovery Protocol**:
     - **Approved:** Proceed to QA (step F).
     - **Changes Required (iterations 1-3):** Re-dispatch to @sdlc-engineering-implementer with the reviewer's COMPLETE feedback verbatim (all Critical, Important, and Suggestion items with original file:line references). Do not summarize or omit any findings.
-    - **Documentation search escalation (iteration 2+):** When re-dispatching the implementer after a review rejection that involves library/framework API misuse, stubs where real integration is expected, or platform capability gaps, add a `DOCUMENTATION SEARCH` directive to the re-dispatch specifying the library name, the topic to search, and the reason. This ensures the implementer searches context7 before re-attempting, even if the reviewer did not explicitly suggest it.
+    - **Documentation search escalation (iteration 1+):** When re-dispatching the implementer after ANY review rejection that involves library/framework API misuse, stubs where real integration is expected, or platform capability gaps, add a `DOCUMENTATION SEARCH` directive to the re-dispatch specifying the library name, the topic to search, and the reason. This triggers from the FIRST rejection — no free pass. The implementer must search context7 and/or Tavily before re-attempting.
     - **Changes Required (after 3 rejections for the SAME defect):** Trigger **Diagnostic Analysis**:
       1. Read the actual implementation files (not just the implementer's summary).
       2. Compare the implementer's claims against real file contents.
@@ -227,6 +240,7 @@ Load these skills at the phases indicated. Do NOT load PinchTab at startup — o
          - **Progress pattern** (different issues each time): One more guided dispatch to implementer with exact code snippets showing what to change. If that also fails, self-implement.
       5. After self-implementation, the pipeline continues normally (review, QA). No escalation or blocking required.
     - **Hard ceiling at iteration 5:** Architect self-implements regardless. No more implementer dispatches for this task.
+    - **Tier 4 — Oracle escalation (after architect self-implementation also fails):** If the architect's self-implemented code is also rejected by review or QA (total pipeline exhaustion), dispatch `@sdlc-engineering-oracle` with the complete failure chain: all implementer attempts, all reviewer feedback, architect self-implementation code and its rejection reasons, plan artifacts (story.md, hld.md, relevant domain artifacts), and staging doc with full history. If Oracle returns a FIX: mark as `oracle-implemented` in staging doc and dispatch log, continue pipeline normally (review + QA on Oracle's code). If Oracle returns an ESCALATION REPORT: return the report to the coordinator, which presents structured options to the user.
   - F. On review pass, log QA dispatch (compound):
     `checkpoint.sh execution --dispatch-event dispatch --dispatch-agent sdlc-engineering-qa --dispatch-id "exec-{story}-t{id}-qa-i1"`
     Then Task tool dispatch to @sdlc-engineering-qa using the QA dispatch template. Include DOCUMENTATION VERIFICATION.
@@ -249,10 +263,11 @@ See .opencode/skills/architect-execution-hub/references/review-cycle.md for addi
 `checkpoint.sh execution --phase 3`
 
 **Steps:**
-- Task tool dispatch to @sdlc-engineering-code-reviewer for full-story holistic review (with SECURITY_REVIEW: true if any task had security review).
-- If Approved → Task tool dispatch to @sdlc-engineering-qa for full-story verification.
+- Task tool dispatch to @sdlc-engineering-story-reviewer for full-story holistic review (with SECURITY_REVIEW: true if any task had security review). This uses a larger model capable of cross-file reasoning across the entire story scope.
+- If Approved → Task tool dispatch to @sdlc-engineering-story-qa for full-story verification. This uses a larger model for comprehensive cross-task verification.
 - If Changes Required → identify affected tasks, Task tool dispatch to @sdlc-engineering-implementer for those only.
 - If final QA passes → proceed to Pre-Flight Evidence Gate.
+- Note: Per-task Phase 2 reviews/QA continue to use `@sdlc-engineering-code-reviewer` and `@sdlc-engineering-qa` (mini-model agents). Only Phase 3 story-level review/QA use the story-level agents.
 
 **Pre-Flight Evidence Gate (before Phase 3b):**
 Before Task tool dispatch to @sdlc-engineering-semantic-reviewer, read the QA agent's structured evidence from the Phase 3 story-level QA completion. Confirm all automated quality gates are clean: lint 0 errors, typecheck 0 errors, tests all passing, build exit 0, coverage meets thresholds (lines >= X%, branches >= Y% from testing strategy or defaults: 80%/70%), browser smoke test passes (web app stories only — key routes load without console errors). If any fail (including coverage below threshold), return to Phase 2 for targeted fixes. Do NOT dispatch the semantic reviewer until all automated gates are clean. The hub reads evidence — it does not re-run commands.
@@ -368,8 +383,9 @@ Task tool dispatch to @sdlc-engineering-qa with acceptance criteria and verifica
   - If stuck (same defect 3x): self-implement the fix directly.
   - If making progress (different issues): one more guided dispatch with code snippets, then self-implement if it fails.
 - **Hard ceiling at iteration 5:** Architect self-implements regardless. No more implementer dispatches.
-- **After self-implementation:** Mark as `architect-implemented` in staging doc and dispatch log. Continue pipeline normally (review, QA). No escalation or blocking.
-- Do NOT mark the task as blocked or return to coordinator for review iteration limits. The architect resolves it.
+- **After self-implementation:** Mark as `architect-implemented` in staging doc and dispatch log. Continue pipeline normally (review, QA).
+- **If architect self-implementation is also rejected** (review or QA): Dispatch `@sdlc-engineering-oracle` (Tier 4). The Oracle either fixes the issue or produces an escalation report for the user.
+- Do NOT mark the task as blocked or return to coordinator for review iteration limits unless the Oracle escalates.
 
 **qa_retries (max: 2):**
 After 2 QA failures for the same task: mark task as blocked in staging with QA failure evidence. Return to the coordinator with blocker details.
@@ -394,8 +410,8 @@ Tracking fields: review iteration count (0+), QA retry count (0-2), last review 
 ### Final Issue Review
 
 After all individual tasks are done, run a final full-issue review cycle followed by semantic review:
-- Task tool dispatch to @sdlc-engineering-code-reviewer with full issue scope and combined task summaries.
-- If Approved: Task tool dispatch to @sdlc-engineering-qa for full-issue verification.
+- Task tool dispatch to @sdlc-engineering-story-reviewer with full issue scope and combined task summaries (uses larger model for cross-file reasoning).
+- If Approved: Task tool dispatch to @sdlc-engineering-story-qa for full-issue verification (uses larger model for cross-task verification).
 - If Changes Required: identify which task(s) need fixes, Task tool dispatch to @sdlc-engineering-implementer for those specific tasks only.
 - If final QA passes: proceed to semantic review (Phase 3b).
 
@@ -453,7 +469,7 @@ Each implementation unit must include function signatures, parameters, file path
 - **DENY:** Narration comments in code. Comments that describe *what* code does (`// Create user`, `// Return result`, `// Handle error`) are prohibited across all engineering agents. Only *why* comments are permitted — non-obvious intent, trade-offs, workarounds, constraints. JSDoc/TSDoc for public API contracts is allowed. Enforce in dispatch context and self-implementation.
 - **DENY:** Direct implementation during iterations 1-3. After Adaptive Recovery, self-implementation is required.
 - **DENY:** Skipping code review or QA for any implementation unit (including architect-implemented code).
-- **DENY:** More than 5 review iterations per task. After 3 identical rejections, self-implement. After 5 total, self-implement unconditionally. Never block the pipeline.
+- **DENY:** More than 5 review iterations per task. After 3 identical rejections, self-implement. After 5 total, self-implement unconditionally. If self-implementation also fails, Oracle escalation (Tier 4). Never block the pipeline without Oracle verdict.
 - **DENY:** Self-dispatch. This hub MUST NOT invoke itself (`sdlc-engineering`) via the Task tool. Phase re-entry is an internal control-flow loop, not a new dispatch.
 - **ALLOW:** Loading `systematic-debugging` skill for persistent test failures before self-implementing.
 
@@ -503,10 +519,11 @@ Each implementation unit must include function signatures, parameters, file path
   4. If different issues each time but iteration 5 reached: self-implement the remaining fixes.
   5. After self-implementation, mark as `architect-implemented` in staging doc and dispatch log.
   6. Continue pipeline normally — dispatch to reviewer and QA for the self-implemented code.
+  7. If architect self-implementation is also rejected by review/QA: dispatch `@sdlc-engineering-oracle` with the complete failure chain (Tier 4). Oracle either fixes or escalates to user.
 
 **prohibited_actions:**
-- Do not mark the task as blocked for review iteration limits. Resolve it via self-implementation.
-- Do not escalate review iteration limits to the coordinator. The architect handles this.
+- Do not mark the task as blocked for review iteration limits. Resolve via self-implementation or Oracle escalation.
+- Do not escalate review iteration limits to the coordinator unless the Oracle escalates.
 - Do not keep re-dispatching the same feedback to the implementer after 3 identical failures.
 
 ### scenario: qa_verification_failure

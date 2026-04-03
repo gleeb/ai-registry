@@ -24,6 +24,13 @@ TECH SKILLS:
   Load and apply patterns from this skill during implementation.
 [Include all tech skills identified in Phase 0. Omit section if no tech skills apply.]
 
+EXTERNAL LIBRARIES (search documentation before implementing):
+- [library-name] (topic: [what to look up])
+- [library-name-2] (topic: [what to look up])
+[List every external library/SDK/platform API this task integrates with.
+The implementer MUST search context7 and/or Tavily for each before writing
+integration code. Omit only if the task uses no external libraries.]
+
 REQUIRED CONTEXT (read before writing any code):
 1. Project documentation: Read docs/index.md and the relevant domain docs
    (e.g., docs/frontend/, docs/backend/) for project structure and conventions.
@@ -95,6 +102,9 @@ BOUNDARIES:
 - IN SCOPE: [what to implement]
 - OUT OF SCOPE: [what NOT to implement]
 - Do not expand scope beyond this task specification.
+- TASK SIZE CONSTRAINT: This task should modify at most 4 production files
+  (excluding tests). If you find yourself needing to modify more, HALT and
+  report to the hub that the task should be split.
 
 SELF-VERIFICATION:
 Before returning your final summary to the parent agent:

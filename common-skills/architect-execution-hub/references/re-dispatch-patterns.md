@@ -30,10 +30,12 @@ When the architect has analyzed the actual code and determined the implementer n
 ## Final Story Review
 
 After all individual tasks are `done` (Phase 3):
-1. Dispatch sdlc-code-reviewer for full-story holistic review (with `SECURITY_REVIEW: true` if any task had security review).
-2. If Approved → dispatch sdlc-qa for full-story verification.
+1. Dispatch `sdlc-engineering-story-reviewer` for full-story holistic review (uses larger model for cross-file reasoning). Include `SECURITY_REVIEW: true` if any task had security review.
+2. If Approved → dispatch `sdlc-engineering-story-qa` for full-story verification (uses larger model for cross-task verification).
 3. If Changes Required → identify affected tasks, re-dispatch implementer for those only.
 4. If final QA passes → proceed to Phase 3b (Semantic Review).
+
+Note: Per-task Phase 2 reviews/QA continue to use `sdlc-engineering-code-reviewer` and `sdlc-engineering-qa` (mini-model agents). Only Phase 3 story-level review/QA use the story-level agents.
 
 ## Semantic Review (Phase 3b)
 

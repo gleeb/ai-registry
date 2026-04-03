@@ -58,7 +58,8 @@ Follow the **code-review** skill (`skills/code-review/`) for the review framewor
 4. Automated Checks: lint, typecheck, test results with exit codes.
 5. Overall Assessment: Approved or Changes Required.
 6. If Changes Required: each issue with file:line and recommended fix.
-7. Documentation Search Recommendations: When a finding involves incorrect or missing library/framework API usage, include a `DOCUMENTATION SEARCH` recommendation specifying the library name and what to look up. This is propagated to the implementer by the hub.
+7. Documentation Search Recommendations: When a finding involves incorrect or missing library/framework API usage, include a `DOCUMENTATION SEARCH` recommendation specifying: the library name, what to look up, and why (e.g., "incorrect event handler signature — search context7 for expo-image-picker event API"). This is propagated to the implementer by the hub as a structured directive.
+8. Documentation Evidence Check: If the dispatch included `EXTERNAL LIBRARIES` for this task and the implementer's completion summary lacks a `## context7 Lookups` section, flag as **Important** — "Missing documentation evidence: implementer did not record context7/Tavily lookups for listed external libraries." This signals the hub to re-dispatch with documentation-search-only focus.
 
 Run verdict consistency check before returning (see Verdict Rules below).
 

@@ -17,7 +17,26 @@ Review iterations follow a tiered recovery strategy instead of a hard block:
 - Architect self-implements regardless. No more implementer dispatches for this task.
 - Pipeline continues normally (review, QA). No escalation or blocking required.
 
+## Tier 4: Oracle escalation (after architect self-implementation also fails)
+
+When the architect's self-implemented code is also rejected by review or QA (total pipeline exhaustion for this task):
+
+1. Dispatch `@sdlc-engineering-oracle` with the complete failure chain:
+   - All implementer attempts and their summaries
+   - All reviewer feedback (every iteration)
+   - Architect self-implementation code and its rejection reasons
+   - Plan artifacts (story.md, hld.md, relevant domain artifacts)
+   - Staging doc with full history
+2. Oracle diagnoses root cause using context7, Tavily web search, and deep analysis.
+3. If Oracle produces a **FIX**: mark as `oracle-implemented` in staging doc and dispatch log. Continue pipeline normally (review + QA on Oracle's code).
+4. If Oracle produces an **ESCALATION REPORT**: return to coordinator for user decision. The report includes: root cause analysis, what was tried, why it failed, and structured user options (drop feature, simplify scope, defer, provide manual guidance, alternative approach).
+
 ## Audit trail for self-implementation
 - Log the self-implementation in the dispatch log: `checkpoint.sh dispatch-log --event dispatch --agent architect-self-impl`.
 - Update the staging doc's task status board with `architect-implemented` in the notes column.
 - The self-implemented code still goes through review and QA like any other implementation.
+
+## Audit trail for Oracle escalation
+- Log the Oracle dispatch: `checkpoint.sh dispatch-log --event dispatch --agent sdlc-engineering-oracle --dispatch-id exec-{story}-t{id}-oracle-i1`.
+- If Oracle fixes: mark as `oracle-implemented` in staging doc notes column and dispatch log.
+- If Oracle escalates: log with verdict `ESCALATION` and return the report to the coordinator.

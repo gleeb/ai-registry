@@ -184,6 +184,20 @@ ALL dispatch templates include a reference to [`references/shared-sparring-rules
 - Each dispatch includes: context (which plan docs to read), scope (what to plan), existing artifacts, requirements from higher dimensions, shared sparring rules reference, and a completion contract.
 - See [`references/planning-phases.md`](references/planning-phases.md) for the full phase dependency graph.
 
+### MCP Server Context for All Dispatches
+
+Include the following in the shared context for all planning agent dispatches:
+
+```
+MCP SERVERS AVAILABLE:
+- context7: Library documentation search. Use to verify external library
+  APIs and capabilities before making design decisions.
+- tavily: Web search for current documentation, compatibility info, and
+  known limitations of libraries in the tech stack.
+```
+
+This ensures all planning agents are aware of and can use documentation search tools to ground their plan artifacts in actual library capabilities.
+
 ## Plan Folder Structure
 
 See [`references/plan-structure.md`](references/plan-structure.md) for the per-story folder layout.

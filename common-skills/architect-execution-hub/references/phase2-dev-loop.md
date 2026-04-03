@@ -14,6 +14,12 @@ For each implementation unit in the task checklist:
 3. `checkpoint.sh dispatch-log --event dispatch --story {US-NNN} --hub execution --phase 2 --task "{id}:{name}" --agent sdlc-implementer --model-profile {profile} --dispatch-id exec-{story}-t{id}-impl-i{N} --iteration {N}`
 4. **Implement** → dispatch `sdlc-implementer` using [`implementer-dispatch-template.md`](implementer-dispatch-template.md). If the DevOps agent was dispatched in step 2, include the infrastructure manifest details in the `INTEGRATION CONTEXT` section.
 4. `checkpoint.sh dispatch-log --event response --dispatch-id exec-{story}-t{id}-impl-i{N} --agent sdlc-implementer --duration {seconds} --summary "{excerpt}"`
+4b. **Implementation Completeness Gate**: Read the implementer's return message STATUS field:
+   - `STATUS: BLOCKED` → Skip review. Record blocker in staging doc. Re-dispatch with resolution context or escalate.
+   - `STATUS: PARTIAL` → Skip review. Re-dispatch implementer with focused instructions for missing ACs (counts as iteration).
+   - `STATUS: COMPLETE` → Verify `git diff --stat` shows changes to expected files. If zero changes, skip review and re-dispatch with "no code changes detected."
+   Only proceed to step 5 when STATUS is COMPLETE AND file changes exist.
+4c. **Documentation Evidence Gate**: If the dispatch included `EXTERNAL LIBRARIES`, verify the implementer's completion summary includes a `## context7 Lookups` section. If missing, re-dispatch with documentation-search-only focus (counts as iteration).
 5. `checkpoint.sh execution --step review --iteration 1`
 6. `checkpoint.sh dispatch-log --event dispatch ... --agent sdlc-code-reviewer --dispatch-id exec-{story}-t{id}-review-i{N}`
 7. **Review** → dispatch `sdlc-code-reviewer` using [`reviewer-dispatch-template.md`](reviewer-dispatch-template.md)

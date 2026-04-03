@@ -35,3 +35,14 @@ After the Test Existence Gate passes and before dispatching to the code reviewer
 5. **On success**: Include the coverage summary in the reviewer dispatch for reference.
 
 **Note**: The Coverage Gate runs the test suite to collect metrics — this is separate from the QA agent's independent execution later in the pipeline.
+
+## Documentation Evidence Gate
+
+After the Coverage Gate passes and before dispatching to the code reviewer, check whether the task's dispatch included an `EXTERNAL LIBRARIES` section:
+
+1. **Check dispatch**: Did the implementer dispatch list any external libraries?
+2. **If yes**: Verify the implementer's completion summary includes a `## context7 Lookups` section with at least one query per listed library. Each entry should include the library searched, query used, and key findings.
+3. **On failure**: Re-dispatch implementer with documentation-search-only focus — instruct them to search context7 and/or Tavily for each listed library and add the `## context7 Lookups` section to their completion summary. This counts as an iteration but does NOT require re-implementation — only documentation lookup and recording.
+4. **On success**: Include the documentation evidence in the reviewer dispatch so the reviewer can verify API usage against documented capabilities.
+
+**Note**: This gate ensures implementations involving external libraries are grounded in actual documentation, preventing "guess and iterate" loops that waste review cycles.

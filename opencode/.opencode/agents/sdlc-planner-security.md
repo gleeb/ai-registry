@@ -44,6 +44,16 @@ Do not create or modify any other files.
 - Planning state and phase handoffs are coordinated by the Planning Hub; your output artifacts are **`plan/user-stories/US-NNN-name/security.md`** (per-story mode) or **`plan/cross-cutting/security-overview.md`** (rollup mode), per dispatch.
 - When the parent instructs checkpoint or resume behavior, load the **`sdlc-checkpoint`** skill. The checkpoint script is at `.opencode/skills/sdlc-checkpoint/scripts/checkpoint.sh`.
 
+## Documentation Search (context7 + Tavily)
+
+When the security design references specific external libraries, SDKs, authentication frameworks, or platform APIs from the tech stack:
+
+1. **Search context7** for the library's documentation to verify API capabilities, security features, constraints, and current best practices before making security decisions that depend on them.
+2. **Search Tavily** when context7 lacks coverage, or when you need to verify current library versions, known vulnerabilities, CVEs, or security advisories.
+3. **Record sources** in the artifact's metadata section: which libraries were verified, what documentation was consulted, and any constraints discovered.
+
+This ensures security artifacts are grounded in actual library capabilities and known vulnerability data rather than assumptions that may cause implementation failures downstream.
+
 ## Workflow
 
 # Dual-Mode Security Workflow

@@ -39,6 +39,16 @@ Do not create or modify any other files.
 - Planning state and phase handoffs are coordinated by the Planning Hub; your output artifact is **`plan/cross-cutting/devops.md`**.
 - When the parent instructs checkpoint or resume behavior, load the **`sdlc-checkpoint`** skill. The checkpoint script is at `.opencode/skills/sdlc-checkpoint/scripts/checkpoint.sh`.
 
+## Documentation Search (context7 + Tavily)
+
+When the DevOps plan references specific infrastructure tools, CI/CD platforms, container orchestrators, or cloud services from the tech stack:
+
+1. **Search context7** for the tool's documentation to verify capabilities, configuration options, and current best practices before making infrastructure decisions that depend on them.
+2. **Search Tavily** when context7 lacks coverage, or when you need to verify current tool versions, compatibility matrices, pricing, or known limitations.
+3. **Record sources** in the artifact's metadata section: which tools were verified, what documentation was consulted, and any constraints discovered.
+
+This ensures DevOps plan artifacts are grounded in actual tool capabilities rather than assumptions that may cause implementation failures downstream.
+
 ## Workflow
 
 # Cross-Cutting DevOps Workflow (Phase 4)

@@ -43,6 +43,16 @@ Do not create or modify any other files.
 - Planning state and phase handoffs are coordinated by the Planning Hub; your output artifacts are **`plan/user-stories/US-NNN-name/design/`** and updates under **`plan/design/`** (including the gallery).
 - When the parent instructs checkpoint or resume behavior, load the **`sdlc-checkpoint`** skill. The checkpoint script is at `.opencode/skills/sdlc-checkpoint/scripts/checkpoint.sh`.
 
+## Documentation Search (context7 + Tavily)
+
+When the design references specific UI libraries, component frameworks, or platform APIs from the tech stack:
+
+1. **Search context7** for the library's documentation to verify component APIs, capabilities, constraints, and current best practices before making design decisions that depend on them.
+2. **Search Tavily** when context7 lacks coverage, or when you need to verify current library versions, compatibility matrices, or known limitations.
+3. **Record sources** in the artifact's metadata section: which libraries were verified, what documentation was consulted, and any constraints discovered.
+
+This ensures design artifacts are grounded in actual library capabilities rather than assumptions that may cause implementation failures downstream.
+
 ## Workflow
 
 # Per-Story Design Workflow

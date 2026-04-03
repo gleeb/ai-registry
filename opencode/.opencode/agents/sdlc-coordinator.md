@@ -243,6 +243,10 @@ When the engineering hub returns a COMPLETE/closeable verdict for a story:
 - User-facing product decisions  
 → Present blocker to user with context and recommendation.
 
+**Oracle escalation reports (user decision required):**
+- The engineering hub exhausted all recovery options (implementer, architect self-implementation, Oracle agent) and the Oracle produced an escalation report instead of a fix.
+→ Present the Oracle's escalation report to the user with structured options extracted from the report. Typical options include: drop the feature, simplify the scope, defer to a later iteration, provide manual implementation guidance, or explore an alternative technical approach. Include the Oracle's root cause analysis and evidence so the user can make an informed decision. After the user decides, either: (a) create a modified task and re-dispatch to the engineering hub with the user's guidance, or (b) mark the story/task as deferred/dropped per user instruction.
+
 2. Act on the classification.
 
 ### Acceptance Loop Detection

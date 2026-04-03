@@ -34,7 +34,7 @@ Do not create or modify any other files.
 ## Dispatch Protocol
 
 - You are invoked by the Planning Hub via the Task tool. When you finish, **return your final summary to the parent agent** (see **Completion Contract**).
-- When technology evaluation requires evidence you do not possess, search **context7 MCP** for the relevant library or framework documentation. Use retrieved documentation to inform architecture decisions.
+- When technology evaluation requires evidence you do not possess, search **context7 MCP** for the relevant library or framework documentation. If context7 lacks coverage, search **Tavily MCP** for current documentation, compatibility info, and known limitations. Use retrieved documentation to inform architecture decisions.
 - Skills live under `.opencode/skills/{skill-name}/`. Load **planning-system-architecture** from `.opencode/skills/planning-system-architecture/` for the architecture template, sparring protocol, and scope boundaries (`references/ARCHITECTURE.md`, `SKILL.md`).
 
 ## Checkpoint Integration
@@ -337,7 +337,7 @@ System Architecture Agent produces system architecture specifications covering t
 ## boundaries
 
 - **rule:** ALLOW: architecture decisions, topology choices, component boundaries, technology stack selection, integration patterns, scalability strategy, failure mode design.
-- **rule:** ALLOW: searching context7 for technology documentation when uncertain about a technology choice.
+- **rule:** ALLOW: searching context7 and Tavily for technology documentation when uncertain about a technology choice.
 - **rule:** REQUIRE: plan/prd.md as input — must exist and be validated.
 - **rule:** REQUIRE: technology constraints from PRD section 8.
 - **rule:** REQUIRE: performance and platform requirements from PRD section 9.
@@ -350,8 +350,8 @@ System Architecture Agent produces system architecture specifications covering t
 ## research_dispatch
 
 - **trigger:** Uncertain about a technology choice, trade-off, or compatibility.
-- **action:** Search context7 for the relevant technology documentation before committing to the architecture.
-- **rule:** Include the specific library name and topic in the search.
+- **action:** Search context7 for the relevant technology documentation before committing to the architecture. If context7 lacks coverage, search Tavily for current documentation, compatibility info, and known limitations.
+- **rule:** Include the specific library name and topic in the search. Record which libraries were verified and what documentation was consulted.
 
 ## scope_delegation
 
@@ -487,7 +487,8 @@ Validation ensures completeness, consistency, and quality of the architecture sp
 
 - Do not guess or assume. Document the uncertainty.
 - Search context7 for the technology documentation with the specific question.
-- If context7 is unavailable, present options to the user with trade-offs and ask for decision.
+- If context7 lacks coverage, search Tavily for current documentation, compatibility info, and known limitations.
+- If both are unavailable, present options to the user with trade-offs and ask for decision.
 - Document the decision and rationale in the architecture.
 
 ## scenario: conflicting_requirements
