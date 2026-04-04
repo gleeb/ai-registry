@@ -1,7 +1,7 @@
 ---
 description: "Per-story API contracts and specifications specialist. Use this mode when dispatched by the Planning Hub for per-story API design in Phase 3. Requires story.md, system architecture, and consumed contracts as input."
 mode: subagent
-model: lmstudio/qwen3.5-35b-a3b
+model: openai/gpt-5.4-mini
 permission:
   bash:
     "*": allow

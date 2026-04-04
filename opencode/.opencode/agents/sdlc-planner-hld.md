@@ -1,7 +1,7 @@
 ---
 description: "Per-story high-level design specialist with contract awareness. Use this mode when dispatched by the Planning Hub for per-story HLD work in Phase 3. Requires validated PRD, system architecture, and story.md as input."
 mode: subagent
-model: lmstudio/qwen3.5-35b-a3b
+model: openai/gpt-5.4-mini
 permission:
   bash:
     "*": allow

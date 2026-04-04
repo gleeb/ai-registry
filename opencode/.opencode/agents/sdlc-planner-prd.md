@@ -1,7 +1,7 @@
 ---
 description: "Rigorous PRD sparring partner and requirements architect. Use this mode when dispatched by the Planning Hub for PRD work. Handles ideation, requirements sparring, PRD drafting, and 8-dimension validation."
 mode: subagent
-model: openai/gpt-5.3-codex
+model: openai/gpt-5.4
 permission:
   bash:
     "*": allow

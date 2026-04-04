@@ -1,7 +1,7 @@
 ---
 description: "System architecture planning specialist. Use this mode when dispatched by the Planning Hub for system architecture work. Requires validated PRD as input."
 mode: subagent
-model: openai/gpt-5.3-codex
+model: openai/gpt-5.4
 permission:
   bash:
     "*": allow

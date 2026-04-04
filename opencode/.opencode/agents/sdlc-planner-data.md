@@ -1,7 +1,7 @@
 ---
 description: "Per-story data models and storage strategy specialist. Use this mode when dispatched by the Planning Hub for per-story data architecture in Phase 3. Requires story.md, system architecture, and consumed contracts as input."
 mode: subagent
-model: lmstudio/qwen3.5-35b-a3b
+model: openai/gpt-5.4-mini
 permission:
   bash:
     "*": allow
