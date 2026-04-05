@@ -1,5 +1,7 @@
 # PRD Agent Dispatch Template
 
+**DISPATCH TO**: `sdlc-planner-prd`
+
 Use this template when dispatching `sdlc-planner-prd` via the Task tool.
 
 ## Required Message Structure

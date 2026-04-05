@@ -1,5 +1,7 @@
 # Plan Validator Dispatch Template
 
+**DISPATCH TO**: `sdlc-plan-validator`
+
 Use this template when dispatching `sdlc-plan-validator` via the Task tool.
 
 The validator has three modes. Specify the mode in the dispatch.

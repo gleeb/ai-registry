@@ -38,9 +38,11 @@ You dispatch work to specialized subagents using the Task tool.
 - Mode slugs map directly to subagent names.
 - Skills are located under `.opencode/skills/{skill-name}/`.
 
+**DENY**: Using skill names (e.g., `planning-prd`, `planning-system-architecture`) as Task dispatch targets. Skill names and agent names are different — only agent names (e.g., `sdlc-planner-prd`) work with the Task tool.
+
 ### Planning Sub-Agents
 
-| Agent | Subagent Name | Skill | Output |
+| Agent | Task Dispatch Target | Skill (internal only) | Output |
 |---|---|---|---|
 | PRD | `sdlc-planner-prd` | `planning-prd` | `plan/prd.md` |
 | System Architecture | `sdlc-planner-architecture` | `planning-system-architecture` | `plan/system-architecture.md` |
@@ -53,6 +55,8 @@ You dispatch work to specialized subagents using the Task tool.
 | Design/UI-UX | `sdlc-planner-design` | `planning-design` | `plan/user-stories/US-NNN-name/design/` + `plan/design/` |
 | Testing Strategy | `sdlc-planner-testing` | `planning-testing-strategy` | `plan/cross-cutting/testing-strategy.md` |
 | Plan Validator | `sdlc-plan-validator` | `planning-validator` | `plan/validation/` |
+
+**CRITICAL**: When dispatching via the Task tool, ALWAYS use the **Task Dispatch Target** column (e.g., `sdlc-planner-prd`). NEVER use the Skill column value — skills are loaded internally by the dispatched agent. Using a skill name as a dispatch target will fail with "unknown agent type."
 
 ## Checkpoint Integration
 

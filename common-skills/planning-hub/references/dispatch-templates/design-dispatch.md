@@ -1,5 +1,7 @@
 # Design/UI-UX Agent Dispatch Template
 
+**DISPATCH TO**: `sdlc-planner-design`
+
 Use this template when dispatching `sdlc-planner-design` via the Task tool for per-story design work (Phase 3).
 
 ## Required Message Structure

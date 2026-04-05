@@ -1,5 +1,7 @@
 # API Design Agent Dispatch Template
 
+**DISPATCH TO**: `sdlc-planner-api`
+
 Use this template when dispatching `sdlc-planner-api` via the Task tool for a single user story.
 
 ## Required Message Structure

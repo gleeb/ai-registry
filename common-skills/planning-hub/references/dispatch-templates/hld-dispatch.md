@@ -1,5 +1,7 @@
 # HLD Agent Dispatch Template
 
+**DISPATCH TO**: `sdlc-planner-hld`
+
 Use this template when dispatching `sdlc-planner-hld` via the Task tool for a single user story.
 
 ## Required Message Structure

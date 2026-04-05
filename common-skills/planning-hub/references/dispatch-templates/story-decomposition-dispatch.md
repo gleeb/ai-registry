@@ -1,5 +1,7 @@
 # Story Decomposition Agent Dispatch Template
 
+**DISPATCH TO**: `sdlc-planner-stories`
+
 Use this template when dispatching `sdlc-planner-stories` via the Task tool.
 
 ## Required Message Structure

@@ -1,5 +1,7 @@
 # DevOps Agent Dispatch Template
 
+**DISPATCH TO**: `sdlc-planner-devops`
+
 Use this template when dispatching `sdlc-planner-devops` via the Task tool for Phase 4 cross-cutting DevOps planning.
 
 ## Required Message Structure

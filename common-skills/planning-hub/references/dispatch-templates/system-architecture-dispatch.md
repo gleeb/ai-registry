@@ -1,5 +1,7 @@
 # System Architecture Agent Dispatch Template
 
+**DISPATCH TO**: `sdlc-planner-architecture`
+
 Use this template when dispatching `sdlc-planner-architecture` via the Task tool.
 
 ## Required Message Structure

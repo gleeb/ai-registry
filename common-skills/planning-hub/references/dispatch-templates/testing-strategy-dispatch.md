@@ -1,5 +1,7 @@
 # Testing Strategy Agent Dispatch Template
 
+**DISPATCH TO**: `sdlc-planner-testing`
+
 Use this template when dispatching `sdlc-planner-testing` via the Task tool for Phase 4 cross-cutting testing strategy.
 
 ## Required Message Structure

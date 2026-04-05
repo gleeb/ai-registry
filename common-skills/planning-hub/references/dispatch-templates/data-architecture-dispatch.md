@@ -1,5 +1,7 @@
 # Data Architecture Agent Dispatch Template
 
+**DISPATCH TO**: `sdlc-planner-data`
+
 Use this template when dispatching `sdlc-planner-data` via the Task tool for a single user story.
 
 ## Required Message Structure

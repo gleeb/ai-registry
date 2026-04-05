@@ -37,6 +37,8 @@ You dispatch work to specialized subagents using the Task tool.
 - Mode slugs map directly to subagent names.
 - Skills are located under `.opencode/skills/{skill-name}/`.
 
+**DENY**: Using skill names (e.g., `planning-prd`, `planning-hub`) as Task dispatch targets. Skill names and agent names are different — only agent names (e.g., `sdlc-planner`, `sdlc-engineering`) work with the Task tool.
+
 ## Initialization
 
 1. Parse the user's request to extract a project name, initiative name, or issue number.

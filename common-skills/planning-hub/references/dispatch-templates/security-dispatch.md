@@ -1,5 +1,7 @@
 # Security Agent Dispatch Template
 
+**DISPATCH TO**: `sdlc-planner-security`
+
 Use this template when dispatching `sdlc-planner-security` via the Task tool for per-story security controls (Phase 3).
 
 For security overview rollup (Phase 4), use `security-rollup-dispatch.md` instead.

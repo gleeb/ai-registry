@@ -1,5 +1,7 @@
 # Impact Analysis Dispatch Template
 
+**DISPATCH TO**: `sdlc-plan-validator`
+
 Use this template when dispatching `sdlc-plan-validator` in impact analysis mode for brownfield changes.
 
 ## Required Message Structure

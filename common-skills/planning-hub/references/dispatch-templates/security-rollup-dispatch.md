@@ -1,5 +1,7 @@
 # Security Rollup Dispatch Template
 
+**DISPATCH TO**: `sdlc-planner-security`
+
 Use this template when dispatching `sdlc-planner-security` in rollup mode for Phase 4 cross-cutting security overview.
 
 ## Required Message Structure

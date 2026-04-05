@@ -30,7 +30,7 @@ description: Orchestration hub for project planning. Use when starting a new pro
 
 ## Planning Sub-Agents
 
-| Agent | Mode Slug | Skill | Output |
+| Agent | Task Dispatch Target | Skill (internal only) | Output |
 |---|---|---|---|
 | PRD | `sdlc-planner-prd` | `planning-prd` | `plan/prd.md` |
 | System Architecture | `sdlc-planner-architecture` | `planning-system-architecture` | `plan/system-architecture.md` |
@@ -43,6 +43,8 @@ description: Orchestration hub for project planning. Use when starting a new pro
 | Design/UI-UX | `sdlc-planner-design` | `planning-design` | `plan/user-stories/US-NNN-name/design/` + `plan/design/` |
 | Testing Strategy | `sdlc-planner-testing` | `planning-testing-strategy` | `plan/cross-cutting/testing-strategy.md` |
 | Plan Validator | `sdlc-plan-validator` | `planning-validator` | `plan/validation/` |
+
+**CRITICAL**: When dispatching via the Task tool, ALWAYS use the **Task Dispatch Target** column (e.g., `sdlc-planner-prd`). NEVER use the Skill column value — skills are loaded internally by the dispatched agent. Using a skill name as a dispatch target will fail with "unknown agent type."
 
 ## Checkpoint Integration
 
