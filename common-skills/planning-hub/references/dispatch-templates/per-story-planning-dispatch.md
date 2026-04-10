@@ -55,6 +55,11 @@ EXECUTION ORDER: {N}
    - Check internal consistency of all artifacts in the story folder
 
 6. GATE: Per-story validation must pass before moving to next story.
-   - If FAIL: identify which agent(s) need re-dispatch, re-dispatch with findings.
+   - If FAIL with MINOR_PATCH findings only:
+     Apply patches directly, log via checkpoint.sh dispatch-log --event direct-patch,
+     then re-run validation to confirm.
+   - If FAIL with REQUIRES_REDISPATCH findings:
+     Re-dispatch the identified agent(s) with specific findings.
+   - If FAIL with a mix: apply minor patches first, then re-dispatch for the rest.
    - If PASS: proceed to next story in execution_order.
 ```

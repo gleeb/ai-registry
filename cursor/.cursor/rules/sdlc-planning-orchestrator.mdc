@@ -43,7 +43,24 @@ Shared skills and dispatch templates use Roo Code paths. When reading or composi
 - **Internal planning is king.** All plan artifacts live in the `plan/` folder. No external SaaS system is required.
 - **Per-story execution packages.** Each user story gets its own folder with all artifacts an execution agent needs.
 - **Dispatch and validate.** Every phase uses dispatch templates; every phase has a validation gate.
-- **Never author plan content directly.** Dispatch to the appropriate sub-agent.
+- **Never author plan content directly.** Dispatch to the appropriate sub-agent (exception: MINOR_PATCH fixes — see Validation Failure Handling).
+
+## Continuous Execution
+
+**REQUIRE**: After a validation gate passes, proceed immediately to the next phase or story. Do not stop to present a summary and wait for user input.
+
+**REQUIRE**: Emit progress as inline status updates within the same turn, not as conversation-ending messages. Example: "Phase 2 architecture validated PASS. Proceeding to story decomposition." — then immediately dispatch the next agent.
+
+**DENY**: Ending your turn to present a status summary unless one of these conditions is met:
+- A validation gate FAILED and you need user input on how to proceed.
+- A sparring question requires a user decision (e.g., the PRD agent surfaced a scope question).
+- The user explicitly asked for a pause or status report.
+- All planning phases are complete (Phase 7 handoff).
+- An unrecoverable error occurred that requires user intervention.
+
+**DENY**: Treating phase boundaries as natural stopping points. Phase transitions are internal orchestration events, not user-facing milestones that require acknowledgment.
+
+When the run completes (Phase 7) or hits a blocking issue, present a full status summary with: phases completed, stories planned, validation results, and next action.
 
 ## Initialization
 
@@ -71,17 +88,31 @@ Sequential within this phase:
 
 ## Phase 3: Per-Story Planning (loop)
 
-For each user story in `execution_order`:
-1. Read the story's `candidate_domains` from its dependency manifest.
-2. Dispatch relevant agents based on candidate_domains:
+### Phase 3 Initialization (one-time, after Phase 2 gate passes)
+
+1. Run `checkpoint.sh planning --build-queue` to build the ordered `story_queue` in `planning.yaml`.
+2. Read `planning.yaml` and confirm `story_queue` is populated and `total_stories` is set.
+
+### Phase 3 Loop
+
+**REQUIRE**: Before dispatching agents for the next story, ALWAYS read `planning.yaml` to determine `current_story`. NEVER derive the next story from memory or context — the checkpoint is the single source of truth.
+
+For each iteration:
+1. Read `planning.yaml`. The `current_story` field is the next story to plan.
+2. If `current_story` is null/empty, Phase 3 is complete — proceed to Phase 4.
+3. Read the story's `story.md` and extract `candidate_domains`.
+4. Dispatch relevant agents based on candidate_domains:
    - `/sdlc-planner-hld` — Always.
    - `/sdlc-planner-api` — If `api` in domains.
    - `/sdlc-planner-data` — If `data` in domains.
    - `/sdlc-planner-security` — If `security` in domains (per-story mode).
    - `/sdlc-planner-design` — If `design` in domains (depends on HLD completion).
-3. HLD, API, Data, Security can run in parallel. Design waits on HLD.
-4. On completion, dispatch `/sdlc-plan-validator` in per-story mode (12 checks including Check 12: Story Testability Assessment — HLD must have testability section with per-AC test types).
-5. **GATE**: Per-story validation (including testability) must pass before the next story.
+5. HLD, API, Data, Security can run in parallel. Design waits on HLD.
+6. On completion, dispatch `/sdlc-plan-validator` in per-story mode (12 checks including Check 12: Story Testability Assessment — HLD must have testability section with per-AC test types).
+7. **GATE**: Per-story validation (including testability) must pass before the next story.
+8. After per-story validation passes, run `checkpoint.sh planning --story-done {US-NNN-name}`.
+9. The checkpoint script auto-advances `current_story` to the next unplanned story.
+10. Loop back to step 1.
 
 ## Phase 4: Cross-Cutting Concerns
 
@@ -125,6 +156,10 @@ When the user proposes a change to an existing plan:
 - First failure: Re-dispatch the agent with specific feedback.
 - Repeated failures (2-3 cycles): Escalate to user with options: (a) iterate with guidance, (b) accept partial with gaps, (c) skip with acknowledgment.
 - Never bypass a gate without user acknowledgment.
+
+### Minor Patch Handling
+
+When the validator classifies a finding as `MINOR_PATCH`, apply the exact edit specified in the finding directly. Log each patch via `checkpoint.sh dispatch-log --event direct-patch --story {story} --summary "{description}"`. Do not re-dispatch a sub-agent for MINOR_PATCH findings.
 
 ## Checkpoint Integration
 

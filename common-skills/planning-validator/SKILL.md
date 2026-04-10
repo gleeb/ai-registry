@@ -134,9 +134,11 @@ Write the validation report to `plan/validation/cross-validation-report.md` (or 
 
 ### {Check Name}
 - **Status**: PASS | FAIL
+- **Classification**: MINOR_PATCH | REQUIRES_REDISPATCH (if FAIL)
 - **Evidence examined**: {specific documents and sections}
 - **Finding**: {what was found}
 - **Required action**: {if FAIL, what needs to change}
+- **File / Line / Exact edit**: {if MINOR_PATCH}
 
 ## Observations
 {Non-blocking items, questions, areas for deeper review}
@@ -144,6 +146,43 @@ Write the validation report to `plan/validation/cross-validation-report.md` (or 
 ## Recommendation
 [Proceed to next phase / Re-dispatch specific agents]
 ```
+
+## Finding Classification
+
+Every NEEDS WORK finding MUST be classified as one of:
+
+- **MINOR_PATCH** — The fix is mechanical and unambiguous. The validator specifies the exact file, line, and edit. The orchestrator applies it directly without re-dispatching a sub-agent.
+- **REQUIRES_REDISPATCH** — The fix requires domain reasoning or design decisions. The orchestrator re-dispatches the appropriate sub-agent.
+
+### MINOR_PATCH conditions (ALL must be true)
+
+1. The correct content is **unambiguous** — no judgment call needed.
+2. The fix changes **fewer than 10 lines** in a single file.
+3. The fix does **not alter** acceptance criteria, scope, security controls, API contracts, data model semantics, or architectural boundaries.
+
+### MINOR_PATCH examples
+
+- Adding a missing file to a "Files Affected" table.
+- Adding a missing consumer to a contract's Consumers list.
+- Adding a missing `depends_on_stories` or `consumes_contracts` entry.
+- Fixing a cross-reference typo (wrong story ID, contract name).
+- Adding a missing `provides_contracts` or `candidate_domains` entry.
+
+### Never MINOR_PATCH
+
+- HLD content, security analysis, API design, data architecture.
+- Acceptance criteria changes or additions.
+- Scope decisions. Any fix requiring PRD/architecture reasoning.
+
+### MINOR_PATCH output format
+
+For each MINOR_PATCH finding, include in the report:
+
+    - **Classification**: MINOR_PATCH
+    - **File**: plan/user-stories/US-004/story.md
+    - **Line**: 7
+    - **Action**: Add 'theme-preference' to consumes_contracts
+    - **Exact edit**: `- consumes_contracts: [inventory-item, provider-settings, theme-preference]`
 
 ## Output
 - `plan/validation/cross-validation-report.md` (Modes 1-3)

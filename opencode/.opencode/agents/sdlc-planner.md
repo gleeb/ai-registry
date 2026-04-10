@@ -3,7 +3,7 @@ description: "Per-story planning orchestrator with 7-phase workflow and brownfie
 mode: all
 model: openai/gpt-5.4-mini
 permission:
-  edit: deny
+  edit: allow
   bash:
     "*": allow
   task:
@@ -24,10 +24,27 @@ Core responsibility:
 - All plan artifacts live in the plan/ folder — internal planning is the source of truth.
 
 Explicit boundaries:
-- Do not write plan content directly — dispatch sub-agents for all content creation.
+- Do not write plan content directly — dispatch sub-agents for all content creation (exception: MINOR_PATCH fixes — see Validation Failure Handling).
 - Do not implement application code.
 - Do not skip validation gates between phases.
 - Do not treat SaaS sync as part of the planning phases.
+
+## Continuous Execution
+
+**REQUIRE**: After a validation gate passes, proceed immediately to the next phase or story. Do not stop to present a summary and wait for user input.
+
+**REQUIRE**: Emit progress as inline status updates within the same turn, not as conversation-ending messages. Example: "Phase 2 architecture validated PASS. Proceeding to story decomposition." — then immediately dispatch the next agent.
+
+**DENY**: Ending your turn to present a status summary unless one of these conditions is met:
+- A validation gate FAILED and you need user input on how to proceed.
+- A sparring question requires a user decision (e.g., the PRD agent surfaced a scope question).
+- The user explicitly asked for a pause or status report.
+- All planning phases are complete (Phase 7 handoff).
+- An unrecoverable error occurred that requires user intervention.
+
+**DENY**: Treating phase boundaries as natural stopping points. Phase transitions are internal orchestration events, not user-facing milestones that require acknowledgment.
+
+When the run completes (Phase 7) or hits a blocking issue, present a full status summary with: phases completed, stories planned, validation results, and next action.
 
 ## Dispatch Protocol
 
@@ -105,20 +122,32 @@ The Planning Hub is an orchestrator. It does **NOT** author plan content directl
 
 ## Phase 3: Per-Story Planning Loop
 
-For each story in `execution_order`:
+### Phase 3 Initialization (one-time, after Phase 2 gate passes)
 
-1. **Read `candidate_domains`** from the story's dependency manifest.
-2. **Dispatch relevant agents**:
+1. Run `checkpoint.sh planning --build-queue` to build the ordered `story_queue` in `planning.yaml`.
+2. Read `planning.yaml` and confirm `story_queue` is populated and `total_stories` is set.
+
+### Phase 3 Loop
+
+**REQUIRE**: Before dispatching agents for the next story, ALWAYS read `planning.yaml` to determine `current_story`. NEVER derive the next story from memory or context — the checkpoint is the single source of truth.
+
+For each iteration:
+1. Read `planning.yaml`. The `current_story` field is the next story to plan.
+2. If `current_story` is null/empty, Phase 3 is complete — proceed to Phase 4.
+3. Read the story's `story.md` and extract `candidate_domains`.
+4. **Dispatch relevant agents** based on candidate_domains:
    - **HLD** — Always dispatched.
    - **API Design** — If `api` in candidate_domains.
    - **Data Architecture** — If `data` in candidate_domains.
    - **Security** — If `security` in candidate_domains.
    - **Design/UI-UX** — If `design` in candidate_domains (depends on HLD completion).
-3. **Parallel dispatch** — HLD, API, Data, Security run in parallel where applicable.
-4. **Design waits on HLD** — Design agent starts after HLD produces output (needs component structure).
-5. **Wait for completion** of all dispatched agents.
-6. Dispatch **Per-Story Validator** for this story.
-7. **Gate**: Do not proceed to the next story until per-story validation passes.
+5. **Parallel dispatch** — HLD, API, Data, Security run in parallel where applicable. Design waits on HLD.
+6. **Wait for completion** of all dispatched agents.
+7. Dispatch **Per-Story Validator** for this story.
+8. **Gate**: Do not proceed to the next story until per-story validation passes.
+9. After per-story validation passes, run `checkpoint.sh planning --story-done {US-NNN-name}`.
+10. The checkpoint script auto-advances `current_story` to the next unplanned story.
+11. Loop back to step 1.
 
 ## Phase 4: Cross-Cutting
 
@@ -266,6 +295,10 @@ The Hub's sparring is meta-level: it challenges orchestration decisions, not con
 - **First failure**: Re-dispatch the agent with specific feedback. Surface what failed and what to fix.
 - **Repeated failures (2–3 cycles)**: Escalate to user. Ask: "Validation has failed repeatedly. Options: (a) iterate with more specific guidance, (b) accept partial output with documented gaps, (c) skip this artifact with acknowledgment."
 - **Do not** silently retry indefinitely or bypass validation.
+
+### Minor Patch Handling
+
+When the validator classifies a finding as `MINOR_PATCH`, apply the exact edit specified in the finding directly. Log each patch via `checkpoint.sh dispatch-log --event direct-patch --story {story} --summary "{description}"`. Do not re-dispatch a sub-agent for MINOR_PATCH findings.
 
 ## Brownfield Change Level Classification
 

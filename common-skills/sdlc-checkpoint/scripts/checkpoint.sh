@@ -14,6 +14,31 @@ set -euo pipefail
 #   checkpoint.sh dispatch-log [flags]
 #   checkpoint.sh git [flags]
 #   checkpoint.sh init
+#   checkpoint.sh sync-planning
+#
+# Story Queue Management:
+#   The 'sync-planning' subcommand is a standalone bootstrap tool that builds
+#   the story queue from existing plan artifacts. Use it to:
+#
+#   • Bootstrap existing projects onto the new explicit story tracking system
+#   • Repair checkpoint state after manual edits or crashes
+#   • Verify story queue integrity at any time
+#
+#   It scans plan/user-stories/*/story.md files, extracts execution_order,
+#   builds a sorted story_queue, detects completed stories (via hld.md presence),
+#   and prints a human-readable status summary.
+#
+#   Example:
+#     $ ./checkpoint.sh sync-planning
+#     Story queue built from disk (12 stories):
+#       1. US-001-scaffolding              [DONE]
+#       2. US-002-local-persistence        [DONE]  
+#       3. US-003-pwa-shell-baseline       [PENDING] <-- current
+#       ...
+#     Phase: 3 | Completed: 2/12 | Next: US-003-pwa-shell-baseline
+#
+#   Safe to run anytime — idempotent operation that only reads plan/ and
+#   writes .sdlc/planning.yaml. No agent involvement required.
 # =============================================================================
 
 SDLC_DIR=".sdlc"
@@ -143,6 +168,138 @@ EOF
 }
 
 # ---------------------------------------------------------------------------
+# Story queue helper — builds ordered queue from plan/user-stories/*/story.md
+# Used by --build-queue flag, sync-planning subcommand, and cmd_init.
+# ---------------------------------------------------------------------------
+
+build_story_queue() {
+  local file="$SDLC_DIR/planning.yaml"
+  local queue_raw=""
+
+  for story_file in plan/user-stories/*/story.md; do
+    [ -f "$story_file" ] || continue
+    local dir_name order
+    dir_name="$(basename "$(dirname "$story_file")")"
+    order="$(grep '^- execution_order:' "$story_file" 2>/dev/null | sed 's/.*: *//' | tr -d ' ')"
+    [ -z "$order" ] && order="999"
+    queue_raw="${queue_raw}${order} ${dir_name}"$'\n'
+  done
+
+  local sorted_names
+  sorted_names="$(printf '%s' "$queue_raw" | sort -n -k1 -s | awk 'NF{print $2}')"
+
+  local count=0
+  local queue_yaml=""
+  while IFS= read -r name; do
+    [ -z "$name" ] && continue
+    [ -n "$queue_yaml" ] && queue_yaml="${queue_yaml},"
+    queue_yaml="${queue_yaml}\"${name}\""
+    count=$((count + 1))
+  done <<< "$sorted_names"
+
+  # Write story_queue and total_stories into the existing YAML
+  # These are read back by cmd_planning on subsequent calls
+  local cur_story_queue="[${queue_yaml}]"
+  local cur_total_stories="$count"
+
+  # Read existing stories_completed or default to empty
+  local cur_stories_completed
+  cur_stories_completed="$(yaml_read_list "$file" "stories_completed")"
+
+  # Persist queue fields by re-reading and rewriting the full file
+  local cur_phase cur_story cur_done cur_pending cur_in_progress
+  local cur_completed_phases cur_last_dispatch cur_last_completed
+  cur_phase="$(yaml_read "$file" "phase")"
+  cur_story="$(yaml_read "$file" "current_story")"
+  cur_done="$(yaml_read_list "$file" "agents_done")"
+  cur_pending="$(yaml_read_list "$file" "agents_pending")"
+  cur_in_progress="$(yaml_read "$file" "agent_in_progress")"
+  cur_completed_phases="$(yaml_read_list "$file" "completed_phases")"
+  cur_last_dispatch="$(yaml_read "$file" "last_dispatch")"
+  cur_last_completed="$(yaml_read "$file" "last_completed")"
+
+  # Format existing lists back to YAML
+  local done_yaml="[]"
+  [ -n "$cur_done" ] && done_yaml="[$(echo "$cur_done" | tr ' ' '\n' | sed 's/.*/"&"/' | paste -sd, -)]"
+  local pending_yaml="[]"
+  [ -n "$cur_pending" ] && pending_yaml="[$(echo "$cur_pending" | tr ' ' '\n' | sed 's/.*/"&"/' | paste -sd, -)]"
+  local completed_phases_yaml="[]"
+  [ -n "$cur_completed_phases" ] && completed_phases_yaml="[$(echo "$cur_completed_phases" | tr ' ' '\n' | paste -sd, -)]"
+  local stories_completed_yaml="[]"
+  [ -n "$cur_stories_completed" ] && stories_completed_yaml="[$(echo "$cur_stories_completed" | tr ' ' '\n' | sed 's/.*/"&"/' | paste -sd, -)]"
+
+  # Derive current_story from queue if not set
+  if [ -z "$cur_story" ] || [ "$cur_story" = "null" ]; then
+    cur_story="$(next_story_from_queue "$sorted_names" "$cur_stories_completed")"
+  fi
+
+  local hint
+  hint="$(build_planning_hint "$cur_phase" "$cur_story" "$cur_done" "$cur_in_progress" "$cur_pending" "$cur_total_stories" "$cur_stories_completed")"
+
+  cat > "$file" <<EOF
+last_updated: "${TIMESTAMP}"
+phase: ${cur_phase:-null}
+completed_phases: ${completed_phases_yaml}
+total_stories: ${cur_total_stories:-null}
+current_story: ${cur_story:-null}
+story_queue: ${cur_story_queue}
+stories_completed: ${stories_completed_yaml}
+agents_done: ${done_yaml}
+agent_in_progress: ${cur_in_progress:-null}
+agents_pending: ${pending_yaml}
+last_dispatch: ${cur_last_dispatch:-null}
+last_completed: ${cur_last_completed:-null}
+resume_hint: "${hint}"
+EOF
+
+  append_history "planning" "build-queue:${count}-stories"
+}
+
+# Returns the next unplanned story from queue, or empty string if all done.
+next_story_from_queue() {
+  local sorted_names="$1"
+  local completed="$2"
+  while IFS= read -r name; do
+    [ -z "$name" ] && continue
+    if ! echo " $completed " | grep -q " $name "; then
+      echo "$name"
+      return
+    fi
+  done <<< "$sorted_names"
+  echo ""
+}
+
+# Generates a resume hint string for planning.yaml
+build_planning_hint() {
+  local phase="$1" story="$2" done="$3" in_progress="$4" pending="$5"
+  local total="$6" completed_list="$7"
+
+  local hint="Planning not started."
+  if [ -n "$phase" ] && [ "$phase" != "null" ] && [ -n "$story" ] && [ "$story" != "null" ]; then
+    local next_agent=""
+    if [ -n "$in_progress" ] && [ "$in_progress" != "null" ]; then
+      next_agent="$in_progress in progress."
+    elif [ -n "$pending" ]; then
+      next_agent="Next: dispatch $(echo "$pending" | awk '{print $1}') agent."
+    else
+      next_agent="All agents complete for this story. Run per-story validation."
+    fi
+    local completed_count=0
+    if [ -n "$completed_list" ]; then
+      completed_count="$(echo "$completed_list" | wc -w | tr -d ' ')"
+    fi
+    if [ -n "$total" ] && [ "$total" != "null" ]; then
+      hint="Phase ${phase}, story ${story} (${completed_count}/${total} done). Done: [${done}]. ${next_agent}"
+    else
+      hint="Phase ${phase}, story ${story}. Done: [${done}]. ${next_agent}"
+    fi
+  elif [ -n "$phase" ] && [ "$phase" != "null" ]; then
+    hint="Phase ${phase} active."
+  fi
+  echo "$hint"
+}
+
+# ---------------------------------------------------------------------------
 # PLANNING subcommand
 # ---------------------------------------------------------------------------
 
@@ -151,7 +308,7 @@ cmd_planning() {
   ensure_sdlc_dir
 
   local phase="" story="" agents_done="" agents_pending=""
-  local dispatch="" completed="" story_done=""
+  local dispatch="" completed="" story_done="" build_queue=""
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -162,9 +319,16 @@ cmd_planning() {
       --dispatch) dispatch="$2"; shift 2 ;;
       --completed) completed="$2"; shift 2 ;;
       --story-done) story_done="$2"; shift 2 ;;
+      --build-queue) build_queue="true"; shift ;;
       *) echo "Unknown planning flag: $1" >&2; exit 1 ;;
     esac
   done
+
+  # Handle --build-queue: scan disk and write story_queue, then return
+  if [ "$build_queue" = "true" ]; then
+    build_story_queue
+    return
+  fi
 
   # Read existing values
   local cur_phase cur_story cur_done cur_pending cur_in_progress
@@ -177,6 +341,9 @@ cmd_planning() {
   cur_completed_phases="$(yaml_read_list "$file" "completed_phases")"
   local cur_total_stories
   cur_total_stories="$(yaml_read "$file" "total_stories")"
+  local cur_story_queue cur_stories_completed
+  cur_story_queue="$(yaml_read "$file" "story_queue")"
+  cur_stories_completed="$(yaml_read_list "$file" "stories_completed")"
 
   # Apply patches
   if [ -n "$phase" ]; then
@@ -218,11 +385,26 @@ cmd_planning() {
     cur_pending="$(echo "$cur_pending" | tr ' ' '\n' | grep -v "^${completed}$" | tr '\n' ' ')"
   fi
 
-  # Handle story-done — clear story progress
+  # Handle story-done — add to stories_completed and auto-advance
   if [ -n "$story_done" ]; then
     cur_done=""
     cur_pending=""
     cur_in_progress=""
+    # Add to stories_completed if not already there
+    if ! echo " $cur_stories_completed " | grep -q " $story_done "; then
+      cur_stories_completed="$cur_stories_completed $story_done"
+    fi
+    cur_stories_completed="$(echo "$cur_stories_completed" | sed 's/^ *//;s/ *$//;s/  */ /g')"
+    # Auto-advance current_story from queue
+    local queue_names
+    queue_names="$(echo "$cur_story_queue" | sed 's/^\[//;s/\]$//;s/,/ /g' | tr -d '"' | tr -d "'")"
+    cur_story=""
+    for qname in $queue_names; do
+      if ! echo " $cur_stories_completed " | grep -q " $qname "; then
+        cur_story="$qname"
+        break
+      fi
+    done
   fi
 
   cur_done="$(echo "$cur_done" | sed 's/^ *//;s/ *$//;s/  */ /g')"
@@ -230,20 +412,8 @@ cmd_planning() {
   cur_completed_phases="$(echo "$cur_completed_phases" | sed 's/^ *//;s/ *$//;s/  */ /g')"
 
   # Generate resume hint
-  local hint="Planning not started."
-  if [ -n "$cur_phase" ] && [ -n "$cur_story" ]; then
-    local next_agent=""
-    if [ -n "$cur_in_progress" ]; then
-      next_agent="$cur_in_progress in progress."
-    elif [ -n "$cur_pending" ]; then
-      next_agent="Next: dispatch $(echo "$cur_pending" | awk '{print $1}') agent."
-    else
-      next_agent="All agents complete for this story. Run per-story validation."
-    fi
-    hint="Phase ${cur_phase}, story ${cur_story}. Done: [${cur_done}]. ${next_agent}"
-  elif [ -n "$cur_phase" ]; then
-    hint="Phase ${cur_phase} active."
-  fi
+  local hint
+  hint="$(build_planning_hint "$cur_phase" "$cur_story" "$cur_done" "$cur_in_progress" "$cur_pending" "$cur_total_stories" "$cur_stories_completed")"
 
   # Format lists
   local done_yaml="[]"
@@ -252,6 +422,11 @@ cmd_planning() {
   [ -n "$cur_pending" ] && pending_yaml="[$(echo "$cur_pending" | tr ' ' '\n' | sed 's/.*/"&"/' | paste -sd, -)]"
   local completed_phases_yaml="[]"
   [ -n "$cur_completed_phases" ] && completed_phases_yaml="[$(echo "$cur_completed_phases" | tr ' ' '\n' | paste -sd, -)]"
+  local stories_completed_yaml="[]"
+  [ -n "$cur_stories_completed" ] && stories_completed_yaml="[$(echo "$cur_stories_completed" | tr ' ' '\n' | sed 's/.*/"&"/' | paste -sd, -)]"
+
+  # Preserve story_queue if it exists; use raw value from file
+  local story_queue_yaml="${cur_story_queue:-[]}"
 
   cat > "$file" <<EOF
 last_updated: "${TIMESTAMP}"
@@ -259,6 +434,8 @@ phase: ${cur_phase:-null}
 completed_phases: ${completed_phases_yaml}
 total_stories: ${cur_total_stories:-null}
 current_story: ${cur_story:-null}
+story_queue: ${story_queue_yaml}
+stories_completed: ${stories_completed_yaml}
 agents_done: ${done_yaml}
 agent_in_progress: ${cur_in_progress:-null}
 agents_pending: ${pending_yaml}
@@ -624,6 +801,11 @@ cmd_init() {
 
     # Write planning checkpoint
     cmd_planning --phase "$planning_phase" ${current_story:+--story "$current_story"}
+
+    # Build story queue from disk if user-stories exist
+    if [ -d "plan/user-stories" ]; then
+      build_story_queue
+    fi
   fi
 
   # Detect execution state
@@ -676,6 +858,122 @@ cmd_init() {
   echo "Checkpoint initialized. State written to .sdlc/"
   echo "  coordinator.yaml: hub=${hub}"
   [ -n "$current_story" ] && echo "  current_story: ${current_story}"
+}
+
+# ---------------------------------------------------------------------------
+# SYNC-PLANNING subcommand — standalone bootstrap for story queue
+# ---------------------------------------------------------------------------
+
+cmd_sync_planning() {
+  local file="$SDLC_DIR/planning.yaml"
+  ensure_sdlc_dir
+
+  if [ ! -d "plan/user-stories" ]; then
+    echo "No plan/user-stories/ directory found. Nothing to sync." >&2
+    exit 1
+  fi
+
+  # Build the ordered story queue from disk
+  build_story_queue
+
+  # Scan for completed stories (hld.md present = completed)
+  local stories_completed=""
+  local queue_raw
+  queue_raw="$(yaml_read "$file" "story_queue")"
+  local queue_names
+  queue_names="$(echo "$queue_raw" | sed 's/^\[//;s/\]$//;s/,/ /g' | tr -d '"' | tr -d "'")"
+
+  for qname in $queue_names; do
+    [ -z "$qname" ] && continue
+    if [ -f "plan/user-stories/${qname}/hld.md" ]; then
+      stories_completed="${stories_completed} ${qname}"
+    fi
+  done
+  stories_completed="$(echo "$stories_completed" | sed 's/^ *//;s/ *$//;s/  */ /g')"
+
+  # Write stories_completed and derive current_story
+  local cur_story=""
+  for qname in $queue_names; do
+    [ -z "$qname" ] && continue
+    if ! echo " $stories_completed " | grep -q " $qname "; then
+      cur_story="$qname"
+      break
+    fi
+  done
+
+  # Update planning.yaml with completed stories and current_story
+  local stories_completed_yaml="[]"
+  [ -n "$stories_completed" ] && stories_completed_yaml="[$(echo "$stories_completed" | tr ' ' '\n' | sed 's/.*/"&"/' | paste -sd, -)]"
+
+  # Re-read full state to preserve other fields
+  local cur_phase cur_done cur_pending cur_in_progress
+  local cur_completed_phases cur_total_stories cur_last_dispatch cur_last_completed
+  cur_phase="$(yaml_read "$file" "phase")"
+  cur_done="$(yaml_read_list "$file" "agents_done")"
+  cur_pending="$(yaml_read_list "$file" "agents_pending")"
+  cur_in_progress="$(yaml_read "$file" "agent_in_progress")"
+  cur_completed_phases="$(yaml_read_list "$file" "completed_phases")"
+  cur_total_stories="$(yaml_read "$file" "total_stories")"
+  cur_last_dispatch="$(yaml_read "$file" "last_dispatch")"
+  cur_last_completed="$(yaml_read "$file" "last_completed")"
+
+  # Detect phase if not set
+  if [ -z "$cur_phase" ] || [ "$cur_phase" = "null" ]; then
+    cur_phase=3
+  fi
+
+  # Format lists
+  local done_yaml="[]"
+  [ -n "$cur_done" ] && done_yaml="[$(echo "$cur_done" | tr ' ' '\n' | sed 's/.*/"&"/' | paste -sd, -)]"
+  local pending_yaml="[]"
+  [ -n "$cur_pending" ] && pending_yaml="[$(echo "$cur_pending" | tr ' ' '\n' | sed 's/.*/"&"/' | paste -sd, -)]"
+  local completed_phases_yaml="[]"
+  [ -n "$cur_completed_phases" ] && completed_phases_yaml="[$(echo "$cur_completed_phases" | tr ' ' '\n' | paste -sd, -)]"
+
+  local hint
+  hint="$(build_planning_hint "$cur_phase" "$cur_story" "$cur_done" "$cur_in_progress" "$cur_pending" "$cur_total_stories" "$stories_completed")"
+
+  # Re-read story_queue (was just written by build_story_queue)
+  local story_queue_yaml
+  story_queue_yaml="$(yaml_read "$file" "story_queue")"
+
+  cat > "$file" <<EOF
+last_updated: "${TIMESTAMP}"
+phase: ${cur_phase:-null}
+completed_phases: ${completed_phases_yaml}
+total_stories: ${cur_total_stories:-null}
+current_story: ${cur_story:-null}
+story_queue: ${story_queue_yaml:-[]}
+stories_completed: ${stories_completed_yaml}
+agents_done: ${done_yaml}
+agent_in_progress: ${cur_in_progress:-null}
+agents_pending: ${pending_yaml}
+last_dispatch: ${cur_last_dispatch:-null}
+last_completed: ${cur_last_completed:-null}
+resume_hint: "${hint}"
+EOF
+
+  append_history "planning" "sync-planning"
+
+  # Print human-readable summary
+  local completed_count=0
+  [ -n "$stories_completed" ] && completed_count="$(echo "$stories_completed" | wc -w | tr -d ' ')"
+  local total_count="${cur_total_stories:-0}"
+
+  echo "Story queue built from disk (${total_count} stories):"
+  local idx=0
+  for qname in $queue_names; do
+    [ -z "$qname" ] && continue
+    idx=$((idx + 1))
+    local status_label="PENDING"
+    if echo " $stories_completed " | grep -q " $qname "; then
+      status_label="DONE"
+    fi
+    local marker=""
+    [ "$qname" = "$cur_story" ] && marker=" <-- current"
+    printf "  %2d. %-35s [%s]%s\n" "$idx" "$qname" "$status_label" "$marker"
+  done
+  echo "Phase: ${cur_phase:-?} | Completed: ${completed_count}/${total_count} | Next: ${cur_story:-none}"
 }
 
 # ---------------------------------------------------------------------------
@@ -967,12 +1265,13 @@ SUBCMD="$1"
 shift
 
 case "$SUBCMD" in
-  coordinator)  cmd_coordinator "$@" ;;
-  planning)     cmd_planning "$@" ;;
-  execution)    cmd_execution "$@" ;;
-  dispatch-log) cmd_dispatch_log "$@" ;;
-  git)          cmd_git "$@" ;;
-  init)         cmd_init "$@" ;;
-  continue)     cmd_continue "$@" ;;
-  *)            echo "Unknown subcommand: $SUBCMD" >&2; exit 1 ;;
+  coordinator)     cmd_coordinator "$@" ;;
+  planning)        cmd_planning "$@" ;;
+  execution)       cmd_execution "$@" ;;
+  dispatch-log)    cmd_dispatch_log "$@" ;;
+  git)             cmd_git "$@" ;;
+  init)            cmd_init "$@" ;;
+  continue)        cmd_continue "$@" ;;
+  sync-planning)   cmd_sync_planning "$@" ;;
+  *)               echo "Unknown subcommand: $SUBCMD" >&2; exit 1 ;;
 esac

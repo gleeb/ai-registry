@@ -99,12 +99,22 @@ Sequential within this phase:
 
 ### Phase 3: Per-Story Planning (loop)
 
-For each user story (in execution_order):
+#### Phase 3 Initialization (one-time, after Phase 2 gate passes)
 
-1. `checkpoint.sh planning --phase 3 --story {US-NNN-name} --agents-done "" --agents-pending "{domains from manifest}"`
-2. `checkpoint.sh coordinator --hub planning --story {US-NNN-name}`
-3. Read the story's `candidate_domains` from its dependency manifest.
-4. For each agent to dispatch based on candidate_domains:
+1. `checkpoint.sh planning --build-queue` — builds the ordered `story_queue` in `planning.yaml` from `execution_order` fields in each `story.md`.
+2. Read `planning.yaml` and confirm `story_queue` is populated and `total_stories` is set.
+
+#### Phase 3 Loop
+
+**REQUIRE**: Before dispatching agents for the next story, ALWAYS read `planning.yaml` to determine `current_story`. NEVER derive the next story from memory or context — the checkpoint is the single source of truth.
+
+For each iteration:
+1. Read `planning.yaml`. The `current_story` field is the next story to plan.
+2. If `current_story` is null/empty, Phase 3 is complete — proceed to Phase 4.
+3. `checkpoint.sh planning --phase 3 --story {current_story} --agents-done "" --agents-pending "{domains from manifest}"`
+4. `checkpoint.sh coordinator --hub planning --story {current_story}`
+5. Read the story's `candidate_domains` from its dependency manifest.
+6. For each agent to dispatch based on candidate_domains:
    - `checkpoint.sh planning --dispatch {agent-slug}` (write-ahead)
    - Dispatch the agent:
      - **HLD Agent** (always) using [`dispatch-templates/hld-dispatch.md`](references/dispatch-templates/hld-dispatch.md)
@@ -113,11 +123,14 @@ For each user story (in execution_order):
      - **Security Agent** in per-story mode (if `security` in domains) using [`dispatch-templates/security-dispatch.md`](references/dispatch-templates/security-dispatch.md)
      - **Design Agent** (if `design` in domains) using [`dispatch-templates/design-dispatch.md`](references/dispatch-templates/design-dispatch.md)
    - `checkpoint.sh planning --completed {domain}` (after each agent returns)
-5. On completion, dispatch **Plan Validator** in per-story mode (now includes Check 12: Story Testability Assessment — verifies HLD testability section with per-AC test types, negative testing, and E2E requirements for UI stories).
-6. `checkpoint.sh planning --story-done {US-NNN-name}`
-7. GATE: Per-story validation must pass (including testability) before moving to next story.
+7. On completion, dispatch **Plan Validator** in per-story mode (now includes Check 12: Story Testability Assessment — verifies HLD testability section with per-AC test types, negative testing, and E2E requirements for UI stories).
+8. GATE: Per-story validation must pass (including testability) before moving to next story.
+9. `checkpoint.sh planning --story-done {current_story}` — appends to `stories_completed` and auto-advances `current_story`.
+10. Loop back to step 1.
 
 Use [`dispatch-templates/per-story-planning-dispatch.md`](references/dispatch-templates/per-story-planning-dispatch.md) as the orchestration wrapper.
+
+**Note — Continuous Execution**: After a validation gate passes, proceed immediately to the next story or phase. Do not stop to present a summary and wait for user input unless validation failed, a user decision is needed, or all phases are complete.
 
 ### Phase 4: Cross-Cutting Concerns
 
