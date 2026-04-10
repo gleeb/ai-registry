@@ -33,7 +33,7 @@ Phase 5: Execution Readiness
         ↓
 
 Phase 6: Optional SaaS Sync
-  └── Sync skill (e.g., linear-sync)
+  └── Sync skill (if configured)
         ↓
 
 Phase 7: Handoff to Coordinator

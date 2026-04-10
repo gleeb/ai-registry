@@ -14,7 +14,7 @@ Orchestrators coordinate work but never write application code or plan content d
 |---|---|
 | **Role** | State-aware phase router — determines planning vs execution and dispatches the appropriate hub |
 | **Triggered by** | User request to work on a project, `/sdlc-continue`, or explicit `plan`/`implement` commands |
-| **Inputs** | Project state (from Linear MCP or `.sdlc/coordinator.yaml` checkpoint) |
+| **Inputs** | Project state (from `.sdlc/coordinator.yaml` checkpoint) |
 | **Outputs** | Routing decision + delegation context to Planning or Execution orchestrator |
 | **Boundaries** | Never dispatches directly to implementer, reviewer, or QA — the Execution orchestrator manages those |
 | **Read-only** | No |

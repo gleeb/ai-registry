@@ -102,8 +102,7 @@ The final validation pass checks the entire plan end-to-end:
 
 ## Phase 6: Optional SaaS Sync
 
-If a SaaS sync skill is loaded (e.g., `linear-sync`), plan artifacts are synced to the external system:
-- Linear: Initiative = PRD, Project = User Story, Issue = HLD
+If a SaaS sync skill is loaded, plan artifacts are synced to the external system:
 - The sync skill handles translation only — it never contains planning methodology
 
 This phase is optional and skipped if no sync skill is available.

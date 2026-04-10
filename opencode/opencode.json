@@ -8,13 +8,6 @@
       "type": "local",
       "command": ["npx", "-y", "@upstash/context7-mcp@latest"]
     },
-    "linear": {
-      "type": "local",
-      "command": ["npx", "-y", "@ibraheem4/linear-mcp@latest"],
-      "environment": {
-        "LINEAR_API_KEY": "{env:LINEAR_API_KEY}"
-      }
-    },
     "playwright": {
       "type": "local",
       "command": [

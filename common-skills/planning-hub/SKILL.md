@@ -14,7 +14,7 @@ description: Orchestration hub for project planning. Use when starting a new pro
 
 ## When NOT to use
 - DENY use for implementation work — hand off to `sdlc-coordinator` for execution.
-- DENY use for SaaS-specific operations — delegate to the appropriate sync skill (e.g., `linear-sync`).
+- DENY use for SaaS-specific operations — delegate to the appropriate sync skill (if configured).
 - DENY direct plan content authoring — dispatch to the appropriate planning sub-agent.
 
 ## Core Principle

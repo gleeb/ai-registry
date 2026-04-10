@@ -138,7 +138,7 @@ For each story in `execution_order`:
 ## Phase 6: Optional SaaS Sync
 
 - **Conditional**: Only if user opts in.
-- Dispatch sync skill (e.g., linear-sync) to sync plan to external tooling.
+- Dispatch sync skill to sync plan to external tooling (if configured).
 
 ## Phase 7: Handoff
 
