@@ -101,6 +101,53 @@ Run through every item before marking the scaffold complete. This is the contrac
 - [ ] At least one smoke test exists and passes (`pnpm test` exits 0)
 - [ ] Coverage thresholds NOT enforced during scaffold (add thresholds only after feature implementation begins)
 
+### Verification Scripts
+
+- [ ] `scripts/verify.sh` created (see template below) — silent on success, prints only the failing gate
+- [ ] `package.json` `scripts` includes `"verify:full"` and `"verify:quick"`
+
+```bash
+# package.json scripts additions
+"verify:full": "bash scripts/verify.sh full",
+"verify:quick": "bash scripts/verify.sh quick"
+```
+
+```bash
+#!/usr/bin/env bash
+# scripts/verify.sh — silent verification; prints only the failing gate
+set -euo pipefail
+
+TIER="${1:-full}"
+
+run_gate() {
+  local name="$1"; shift
+  local output
+  if output=$("$@" 2>&1); then
+    return 0
+  else
+    echo "=== ${name} FAILED ==="
+    echo "$output"
+    exit 1
+  fi
+}
+
+run_gate "LINT"       pnpm lint
+run_gate "TYPECHECK"  pnpm typecheck
+
+if [ "$TIER" = "full" ]; then
+  run_gate "TEST"  pnpm exec vitest run --coverage
+  run_gate "BUILD" pnpm build
+else
+  run_gate "TEST"  pnpm test
+fi
+
+echo "=== ALL GATES PASSED ==="
+```
+
+Make it executable: `chmod +x scripts/verify.sh`
+
+Coverage thresholds (if configured in `vitest.config.ts` under `coverage.thresholds`) are automatically enforced by `vitest run --coverage` — no custom threshold parsing needed in the script.
+
 ### Linting & Formatting
 
 - [ ] Biome or ESLint + TypeScript configured — see [web-tooling.md](web-tooling.md)
@@ -110,12 +157,11 @@ Run through every item before marking the scaffold complete. This is the contrac
 ### Verification Gate (all must pass before scaffold is done)
 
 ```bash
-pnpm install          # No errors
-pnpm dev              # Dev server starts, no console errors
-pnpm build            # Exits 0, outputs to dist/
-pnpm lint             # Exits 0
-pnpm typecheck        # Exits 0 (tsc --noEmit)
-pnpm test             # Exits 0, ≥1 test passes
+pnpm install          # No errors (always run first — deps required for verify script)
+pnpm dev              # Dev server starts, no console errors (manual check — not in verify script)
+npm run verify:full   # Silent: lint + typecheck + test (with coverage) + build
+                      # Exits 0 and prints "=== ALL GATES PASSED ===" on success
+                      # Prints the failing gate's output and exits non-zero on failure
 ```
 
 ### Documentation Structure

@@ -80,6 +80,7 @@ For all project types:
 3. Create one smoke test that proves the runner works (basic import assertion or render test).
 4. Configure coverage **scoped to source files only** — see the stack's Scaffolding Verification Checklist for correct include/exclude patterns.
 5. Run the test suite and confirm it passes before proceeding.
+6. **Generate `scripts/verify.sh`** and add `verify:full` / `verify:quick` npm scripts (JS/TS) or Makefile targets (Python). The script is **silent on success** — it captures output per gate and only prints on failure, returning a single `=== ALL GATES PASSED ===` line. See the stack's reference file for the exact template. This script is the single verification command used by all agents throughout the project lifecycle.
 
 ### 6. Scaffold Project Documentation
 
@@ -104,28 +105,25 @@ Fill in as much as you can from what was decided during scaffolding — don't le
 After scaffolding, run the full **Scaffolding Verification Checklist** from the stack's reference file. This is mandatory — do not mark the scaffold complete until every item passes.
 
 ```bash
-# JS/TS projects — run in this order
-pnpm install          # No errors
-pnpm build            # Exits 0
-pnpm lint             # Exits 0
-pnpm typecheck        # Exits 0
-pnpm test             # Exits 0, ≥1 test passes
+# JS/TS projects — use the unified verify script (silent on success)
+pnpm install               # No errors (run first — script depends on installed deps)
+npm run verify:full        # Runs lint + typecheck + test (with coverage) + build, silent on success
+                           # If it prints output, a gate failed — fix it and re-run
 
 # Python projects
-uv sync               # Resolves all deps
-uv run ruff check .   # Exits 0
-uv run mypy src/      # Exits 0
-uv run pytest         # Exits 0, ≥1 test passes
+uv sync                    # Resolves all deps (run first)
+bash scripts/verify.sh full  # Runs ruff + mypy + pytest (with coverage), silent on success
 
 # Monorepo
-turbo build           # All packages build
-turbo lint            # Exits 0
-turbo test            # Exits 0
+pnpm install               # No errors from root
+npm run verify:full        # Runs turbo lint + typecheck + test + build, silent on success
 
 # All project types — documentation structure
 test -f docs/index.md            # Root index exists
 test -f docs/staging/README.md   # Staging workflow exists
 ```
+
+Also confirm `pnpm dev` (or `pnpm start`) starts without errors — the verify script does not run the dev server.
 
 If any step fails, fix it before proceeding to feature work. A scaffold that doesn't pass its verification gate is not done.
 

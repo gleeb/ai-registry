@@ -72,7 +72,7 @@ Follow the `test-driven-development` skill (`skills/test-driven-development/`). 
 
 1. Load the `verification-before-completion` skill.
 2. Verify test files exist for every new/modified source module. Write missing ones.
-3. Run full quality gate suite: lint, typecheck, test suite with coverage, build. Record all outputs.
+3. Run the unified quality gate: `npm run verify:full` (JS/TS projects) or `bash scripts/verify.sh full` (Python). The script is silent on success — if it prints `=== ALL GATES PASSED ===`, all gates passed. If it prints a gate failure, read the output, fix the issue, and re-run. **Do not run lint, typecheck, test, or build as separate commands** — the script covers all of them.
 4. For each AC, run the verification command and record evidence.
 5. **Browser smoke check (conditional):** If dispatch includes `BROWSER VERIFICATION`, load PinchTab skill and verify affected routes. Fix issues. If PinchTab unreachable, skip.
 6. If any gate fails: fix and re-verify (max 2 cycles). If still failing, HALT.
@@ -97,7 +97,7 @@ TERMINAL PHASE — compose return message and STOP.
 | **No simplification without approval** | "Simplified version" is not acceptable. Need simplification → HALT first. |
 | **No deferring in-scope work** | Everything in dispatch scope completes in this task. Only out-of-scope discoveries may be deferred. |
 | **No vague staging doc claims** | "Staging doc updated" without listing specific sections and changes is a violation. |
-| **Run actual verification** | "Tests pass" without command output is not verification. Run it, capture it. |
+| **Run actual verification** | "Tests pass" without running `npm run verify:full` is not verification. Run it — if it prints `ALL GATES PASSED`, that is your evidence. If it fails, fix and re-run. |
 | **No narration comments** | Do NOT write comments that describe what the code does (`// Create the user`, `// Return result`, `// Initialize state`, `// Handle error`). Only write comments that explain non-obvious *why* — trade-offs, workarounds, platform constraints, or regulatory requirements the code cannot convey. JSDoc/TSDoc for public API contracts is permitted. |
 
 ## Best Practices
@@ -141,8 +141,8 @@ Following the STATUS line, include:
 
 - **context7 Lookups** (mandatory if `EXTERNAL LIBRARIES` were listed): queries executed, libraries searched, key findings, documentation URLs.
 - Code-change summary: files created/modified with brief description.
-- Quality gate evidence: lint, typecheck, test suite, build outputs with exit codes.
-- Coverage report: lines %, branches %, functions % for new/modified files.
+- Quality gate evidence: `verify:full: ALL GATES PASSED (exit 0)` on success, or the failing gate's output on partial/blocked.
+- Coverage report: lines %, branches %, functions % for new/modified files (from the coverage output if gates fail, or confirm thresholds met if they passed silently).
 - Per-criterion verification evidence (command, output, PASS/FAIL).
 - Staging doc updates: each section touched and what changed.
 - **CHANGES APPLIED** (mandatory — the hub uses this to update the task context document):

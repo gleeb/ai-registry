@@ -107,15 +107,29 @@ Run through every item before marking the scaffold complete.
 - [ ] Coverage excludes: `.next/**`, `node_modules/**`, `next.config.*`, `**/*.d.ts`
 - [ ] At least one smoke test passes (`pnpm test` exits 0)
 
+### Verification Scripts
+
+- [ ] `scripts/verify.sh` created — silent on success, prints only the failing gate
+- [ ] `package.json` `scripts` includes `"verify:full"` and `"verify:quick"`
+
+The script is the same as [react-vite.md](react-vite.md) with one Next.js difference: `pnpm exec vitest run --coverage` runs Vitest (not `next test`). Build uses `pnpm build` which runs `next build` and catches both TypeScript and lint errors.
+
+```bash
+# package.json scripts additions
+"verify:full": "bash scripts/verify.sh full",
+"verify:quick": "bash scripts/verify.sh quick"
+```
+
+Use the `scripts/verify.sh` template from [react-vite.md](react-vite.md) — it is identical for Next.js projects.
+
 ### Verification Gate (all must pass before scaffold is done)
 
 ```bash
-pnpm install          # No errors
-pnpm dev              # Dev server starts, no console errors
-pnpm build            # Exits 0 (catches TypeScript errors + lint errors)
-pnpm lint             # Exits 0
-pnpm typecheck        # Exits 0 (tsc --noEmit)
-pnpm test             # Exits 0, ≥1 test passes
+pnpm install          # No errors (always run first)
+pnpm dev              # Dev server starts, no console errors (manual check — not in verify script)
+npm run verify:full   # Silent: lint + typecheck + test (with coverage) + next build
+                      # Exits 0 and prints "=== ALL GATES PASSED ===" on success
+                      # Prints the failing gate's output and exits non-zero on failure
 ```
 
 ### Documentation Structure

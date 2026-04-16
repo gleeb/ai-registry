@@ -141,12 +141,20 @@ This checklist extends the base [react-vite.md](react-vite.md) checklist. Both m
 - [ ] `dev-dist` excluded from Biome/ESLint linting
 - [ ] `dev-dist/` added to `.gitignore`
 
+### Verification Scripts
+
+The PWA project extends [react-vite.md](react-vite.md) — use the same `scripts/verify.sh` template and `verify:full` / `verify:quick` npm scripts. No PWA-specific changes needed; the script runs lint, typecheck, vitest (with coverage, enforcing `dev-dist` exclusions), and build.
+
+- [ ] `scripts/verify.sh` created (copy from react-vite.md template)
+- [ ] `package.json` has `"verify:full"` and `"verify:quick"` scripts
+
 ### Verification Gate
 
 ```bash
-pnpm build            # Exits 0, generates dist/ with sw.js and manifest.webmanifest
-pnpm preview          # App loads, no console errors, PWA installable prompt appears (Chrome DevTools → Application → Manifest)
-pnpm test             # Exits 0 (all tests pass without dev-dist contaminating coverage)
+pnpm install          # No errors
+npm run verify:full   # Silent: lint + typecheck + test (with coverage, dev-dist excluded) + build
+                      # Exits 0 and prints "=== ALL GATES PASSED ===" on success
+pnpm preview          # Manual check: app loads, PWA installable prompt appears (Chrome DevTools → Application → Manifest)
 ```
 
 Check in Chrome DevTools → Application → Service Workers: service worker registered and active.

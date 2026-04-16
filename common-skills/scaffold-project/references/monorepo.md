@@ -217,15 +217,58 @@ Run through every item before marking the scaffold complete.
 - [ ] `TURBO_TEAM` documented in `.env.example` (Vercel team slug)
 - [ ] CI config includes `TURBO_TOKEN` and `TURBO_TEAM` setup instructions
 
+### Verification Scripts
+
+- [ ] `scripts/verify.sh` created at monorepo root (see template below) — silent on success, prints only the failing gate
+- [ ] Root `package.json` `scripts` includes `"verify:full"` and `"verify:quick"`
+
+```bash
+# Root package.json scripts additions
+"verify:full": "bash scripts/verify.sh full",
+"verify:quick": "bash scripts/verify.sh quick"
+```
+
+```bash
+#!/usr/bin/env bash
+# scripts/verify.sh — silent verification for JS/TS monorepo (Turborepo + pnpm)
+set -euo pipefail
+
+TIER="${1:-full}"
+
+run_gate() {
+  local name="$1"; shift
+  local output
+  if output=$("$@" 2>&1); then
+    return 0
+  else
+    echo "=== ${name} FAILED ==="
+    echo "$output"
+    exit 1
+  fi
+}
+
+run_gate "LINT"       pnpm turbo lint
+run_gate "TYPECHECK"  pnpm turbo typecheck
+run_gate "TEST"       pnpm turbo test
+
+if [ "$TIER" = "full" ]; then
+  run_gate "BUILD" pnpm turbo build
+fi
+
+echo "=== ALL GATES PASSED ==="
+```
+
+Make it executable: `chmod +x scripts/verify.sh`
+
+Note: Turbo suppresses individual task output on cache hit. The gate-level capture still works — if any task fails, Turbo exits non-zero and the failure output is printed.
+
 ### Verification Gate (all must pass before scaffold is done)
 
 ```bash
-pnpm install                    # No errors from root
-turbo build                     # All packages build in correct dependency order
-turbo lint                      # Exits 0 across all packages
-turbo typecheck                 # Exits 0 across all packages
-turbo test                      # Exits 0 across all packages
-turbo build --filter=<app>      # Single-app build with deps works
+pnpm install          # No errors from root (run first)
+npm run verify:full   # Silent: turbo lint + typecheck + test + build across all packages
+                      # Exits 0 and prints "=== ALL GATES PASSED ===" on success
+                      # Prints the failing task output and exits non-zero on failure
 ```
 
 ### Documentation Structure

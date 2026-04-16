@@ -41,8 +41,7 @@ REVIEW SCOPE:
 3. Architecture: Integration, separation of concerns.
 4. Security (if SECURITY REVIEW is true): OWASP, secrets, input validation, auth.
 
-Note: Source files are provided in the context document. Run verification commands
-(lint, typecheck, tests) on disk for ground-truth automated check results.
+Note: Source files are provided in the context document. Run `npm run verify:quick` (JS/TS) or `bash scripts/verify.sh quick` (Python) on disk for ground-truth automated check results. The script is silent on success — `=== ALL GATES PASSED ===` is sufficient evidence.
 
 DOCUMENTATION CHECK (scoped to this task only):
 - Verify the staging document exists and is current.

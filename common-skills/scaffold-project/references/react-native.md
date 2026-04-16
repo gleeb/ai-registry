@@ -198,15 +198,59 @@ Run through every item before marking the scaffold complete.
 - [ ] `@testing-library/react-native` installed
 - [ ] At least one smoke test passes (`pnpm test` or `npx jest` exits 0)
 
+### Verification Scripts
+
+- [ ] `scripts/verify.sh` created (see template below) — silent on success, prints only the failing gate
+- [ ] `package.json` `scripts` includes `"verify:full"` and `"verify:quick"`
+
+```bash
+# package.json scripts additions
+"verify:full": "bash scripts/verify.sh full",
+"verify:quick": "bash scripts/verify.sh quick"
+```
+
+```bash
+#!/usr/bin/env bash
+# scripts/verify.sh — silent verification for React Native (Expo + Jest)
+set -euo pipefail
+
+TIER="${1:-full}"
+
+run_gate() {
+  local name="$1"; shift
+  local output
+  if output=$("$@" 2>&1); then
+    return 0
+  else
+    echo "=== ${name} FAILED ==="
+    echo "$output"
+    exit 1
+  fi
+}
+
+run_gate "LINT"       pnpm lint
+run_gate "TYPECHECK"  pnpm typecheck
+
+if [ "$TIER" = "full" ]; then
+  run_gate "TEST" npx jest --coverage
+else
+  run_gate "TEST" npx jest
+fi
+
+# Note: no build step — Expo builds via EAS, not a local npm script
+echo "=== ALL GATES PASSED ==="
+```
+
+Make it executable: `chmod +x scripts/verify.sh`
+
 ### Verification Gate (all must pass before scaffold is done)
 
 ```bash
-npx expo install              # Resolves compatible package versions, no errors
-npx expo start                # Metro bundler starts, QR code appears
-# Run on iOS simulator or Android emulator (NOT just Expo Go)
-npx jest                      # Exits 0, ≥1 test passes
-pnpm lint                     # Exits 0
-pnpm typecheck                # Exits 0 (tsc --noEmit)
+npx expo install              # Resolves compatible package versions, no errors (run first)
+npm run verify:full           # Silent: lint + typecheck + jest (with coverage)
+                              # Exits 0 and prints "=== ALL GATES PASSED ===" on success
+npx expo start                # Manual check: Metro bundler starts, QR code appears
+# Run on iOS simulator or Android emulator (NOT just Expo Go) — manual device check
 ```
 
 ### Documentation Structure

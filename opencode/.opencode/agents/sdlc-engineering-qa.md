@@ -44,18 +44,14 @@ Reference `webapp-testing` and `playwright-best-practices` skills for E2E test e
 
 - Cross-reference implementer's files against test files on disk. Every new/modified source module must have a test file.
 - Verify tests contain meaningful assertions. Flag: missing tests, empty tests, tests mocking the unit under test, deleted tests, happy-path-only tests for validation/error ACs.
-- Run independent coverage check against dispatch thresholds (defaults: 80% lines, 70% branches). Compare against implementer's claimed numbers — flag discrepancies.
+- Run `npm run verify:full` (which includes coverage) and check coverage numbers against dispatch thresholds (defaults: 80% lines, 70% branches). Compare against implementer's claimed numbers — flag discrepancies. If vitest coverage thresholds are configured in `vitest.config.ts`, a passing `verify:full` already confirms thresholds were met.
 - Test adequacy failure or coverage below threshold = **FAIL verdict**.
 
 ### Phase 3: Fresh Execution
 
-Run the full quality gate suite and capture all outputs:
-- **Lint:** command, output, exit code.
-- **Type check:** command, output, exit code.
-- **Test suite with coverage:** command, pass/fail counts, exit code, coverage % for new/modified files.
-- **Build:** command, exit code.
+Run the unified quality gate: `npm run verify:full` (JS/TS) or `bash scripts/verify.sh full` (Python). The script is silent on success — `=== ALL GATES PASSED ===` is sufficient evidence for the gate suite. If it fails, the output names the failing gate; include that output in your findings. Do not run lint, typecheck, test, or build as separate commands.
 
-Run any criterion-specific verification commands beyond quality gates.
+Run any criterion-specific verification commands beyond the quality gate.
 
 **Beyond-suite verification (required):** Identify and test at least one edge case NOT covered by existing tests. Record rationale and result. If none found, explain why the suite is comprehensive.
 
@@ -94,7 +90,7 @@ Return your final summary to the Engineering Hub with:
 
 - Verification Status: PASS or FAIL.
 - Test Adequacy: present / missing / inadequate with file references.
-- Quality Gate Evidence: lint, typecheck, test suite, build — command, output excerpt, exit code each.
+- Quality Gate Evidence: `verify:full` result — `ALL GATES PASSED (exit 0)` or failing gate output with exit code.
 - Coverage Report: lines %, branches %, functions % for new/modified files. Files below threshold listed individually.
 - Browser Verification Evidence (if applicable): PinchTab health, per-route results, console errors.
 - Per-criterion breakdown: criterion text, command, output excerpt, exit code, PASS/FAIL.

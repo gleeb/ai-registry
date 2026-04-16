@@ -185,15 +185,64 @@ Run through every item before marking the scaffold complete.
 - [ ] `pytest-asyncio` installed and `asyncio_mode = "auto"` in `[tool.pytest.ini_options]`
 - [ ] `ORJSONResponse` used as default response class (not default JSONResponse)
 
+### Verification Scripts
+
+- [ ] `scripts/verify.sh` created (see template below) — silent on success, prints only the failing gate
+- [ ] `Makefile` at project root with `verify-full` and `verify-quick` targets (Python has no `package.json`)
+
+```makefile
+# Makefile
+.PHONY: verify-full verify-quick
+
+verify-full:
+	bash scripts/verify.sh full
+
+verify-quick:
+	bash scripts/verify.sh quick
+```
+
+```bash
+#!/usr/bin/env bash
+# scripts/verify.sh — silent verification for Python (uv + ruff + mypy + pytest)
+set -euo pipefail
+
+TIER="${1:-full}"
+
+run_gate() {
+  local name="$1"; shift
+  local output
+  if output=$("$@" 2>&1); then
+    return 0
+  else
+    echo "=== ${name} FAILED ==="
+    echo "$output"
+    exit 1
+  fi
+}
+
+run_gate "LINT"       uv run ruff check .
+run_gate "TYPECHECK"  uv run mypy src/
+
+if [ "$TIER" = "full" ]; then
+  run_gate "TEST" uv run pytest --cov=src --cov-report=term-missing
+else
+  run_gate "TEST" uv run pytest
+fi
+
+echo "=== ALL GATES PASSED ==="
+```
+
+Make it executable: `chmod +x scripts/verify.sh`
+
+Coverage thresholds (if configured in `pyproject.toml` under `[tool.coverage.report] fail_under`) are automatically enforced by `pytest-cov` — no custom threshold parsing needed in the script.
+
 ### Verification Gate (all must pass before scaffold is done)
 
 ```bash
-uv sync                                          # Resolves and installs all deps
-uv run python -c "import <project_name>; print('ok')"  # Package imports cleanly
-uv run ruff check .                              # Exits 0
-uv run mypy src/                                 # Exits 0
-uv run pytest                                    # Exits 0, ≥1 test passes
-uv run pytest --cov=src --cov-report=term-missing  # Coverage report generated
+uv sync                                                      # Resolves and installs all deps (run first)
+uv run python -c "import <project_name>; print('ok')"        # Package imports cleanly (manual check)
+bash scripts/verify.sh full                                  # Silent: ruff + mypy + pytest (with coverage)
+                                                             # Exits 0 and prints "=== ALL GATES PASSED ===" on success
 ```
 
 ### Documentation Structure

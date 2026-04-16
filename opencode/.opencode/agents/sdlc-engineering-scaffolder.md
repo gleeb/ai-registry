@@ -114,9 +114,10 @@ STAGING DOCUMENT: docs/staging/scaffold-task-0.md
 Update this document with progress, decisions, and issues during scaffolding.
 
 SELF-VERIFICATION:
-After scaffolding, run the full verification gate:
-[Paste the stack-appropriate verification commands from the checklist]
-All gates must exit 0 before returning STATUS: COMPLETE.
+After scaffolding, create `scripts/verify.sh` (from the stack reference template) and add `verify:full` / `verify:quick` npm scripts (or Makefile targets for Python). Then run:
+  npm run verify:full       # JS/TS projects
+  bash scripts/verify.sh full  # Python projects
+The script is silent on success — `=== ALL GATES PASSED ===` confirms all gates passed. If it fails, fix the failing gate and re-run. All gates must pass before returning STATUS: COMPLETE.
 
 DOCUMENTATION REQUIREMENT:
 Create the docs/ structure per skills/scaffold-project/references/project-docs.md.
@@ -184,8 +185,8 @@ Wait for the reviewer's completion contract.
   2. Apply the specific fixes the reviewer identified.
   3. Run the verification gate yourself:
      ```bash
-     pnpm test && pnpm build && pnpm lint && pnpm typecheck  # JS/TS
-     uv run pytest && uv run ruff check . && uv run mypy src/  # Python
+     npm run verify:full       # JS/TS (uses scripts/verify.sh full — silent on success)
+     bash scripts/verify.sh full  # Python
      ```
   4. Once all gates pass, mark as `scaffolder-self-implemented` in the staging doc.
   5. Proceed to Phase S5.
@@ -227,7 +228,7 @@ When composing the implementer dispatch:
 2. **No plan artifacts**: Do not reference HLD, API spec, security spec, or story ACs. The checklist IS the specification.
 3. **Checklist as ACs**: Format every checklist item as an acceptance criterion: "AC: `package.json` has scripts: dev, build, preview, lint, typecheck, test".
 4. **Gotchas as pre-prevention**: Include all Known Gotchas from the stack's reference in the dispatch as "KNOWN GOTCHAS TO PREVENT" — the implementer applies them proactively, not reactively.
-5. **Verification gate explicit**: Tell the implementer exactly which commands to run and that exit code 0 on all is required before returning COMPLETE.
+5. **Verification gate explicit**: Tell the implementer to create `scripts/verify.sh` (from the stack reference template), add `verify:full` / `verify:quick` npm scripts, and run `npm run verify:full` (or `bash scripts/verify.sh full` for Python). The script must exit 0 and print `=== ALL GATES PASSED ===` before returning COMPLETE.
 6. **Staging doc path always included**: Every dispatch must include the path `docs/staging/scaffold-task-0.md`.
 
 ---
@@ -284,11 +285,8 @@ CHECKLIST COMPLIANCE:
 [Summary of checklist items: N passed, M failed (if PARTIAL)]
 
 VERIFICATION GATE EVIDENCE:
-- pnpm install: exit 0
-- pnpm build: exit 0
-- pnpm lint: exit 0
-- pnpm typecheck: exit 0
-- pnpm test: exit 0, N tests passed
+- npm run verify:full: ALL GATES PASSED (exit 0)
+  [OR if failed: paste the failing gate name and its output]
 
 DOCUMENTATION STRUCTURE:
 - docs/index.md: created

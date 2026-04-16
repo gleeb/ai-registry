@@ -16,7 +16,7 @@ Runs fully autonomously — never pause for user input. Always produce a full st
 ## Core Responsibility
 
 - Verify every item in the dispatched per-stack scaffolding checklist against actual files on disk.
-- Run the verification gate suite independently (lint, typecheck, test, build).
+- Run the verification gate suite independently via `npm run verify:full` (JS/TS) or `bash scripts/verify.sh full` (Python).
 - Return a binary compliance matrix: each checklist item is PASS or FAIL with evidence.
 - Do NOT apply code style review, architectural review, or adversarial analysis.
 - Do NOT require HLD, API specs, security specs, or story artifacts — scaffolds have none.
@@ -67,35 +67,27 @@ Do NOT assume PASS without running a command. If you cannot write a bash command
 
 ### Phase 2: Verification Gate Suite
 
-Run the full quality gate suite independently. Do NOT trust the implementer's reported results — run fresh:
+Run the full quality gate suite independently. Do NOT trust the implementer's reported results — run fresh. Use the project's unified verify script:
 
 ```bash
-# JS/TS projects
-pnpm install          # Record exit code
-pnpm build            # Record exit code and any errors
-pnpm lint             # Record exit code and error count
-pnpm typecheck        # Record exit code and error count (or tsc --noEmit)
-pnpm test             # Record exit code, pass/fail counts, and coverage report
+# JS/TS projects (also covers monorepo)
+pnpm install          # Always run first — verify script requires installed deps
+npm run verify:full   # Silent: lint + typecheck + test (with coverage) + build
+                      # Exits 0 and prints "=== ALL GATES PASSED ===" on success
+                      # Prints failing gate output and exits non-zero on failure
 ```
 
 ```bash
 # Python projects
-uv sync               # Record exit code
-uv run ruff check .   # Record exit code and error count
-uv run mypy src/      # Record exit code and error count
-uv run pytest --cov=src --cov-report=term-missing  # Record exit code and coverage
+uv sync               # Always run first
+bash scripts/verify.sh full  # Silent: ruff + mypy + pytest (with coverage)
 ```
 
-```bash
-# Monorepo
-turbo build           # Record exit code
-turbo lint            # Record exit code
-turbo test            # Record exit code
-```
+First, verify that `scripts/verify.sh` exists and is executable, and that `package.json` has `verify:full` and `verify:quick` scripts (JS/TS) or `Makefile` has `verify-full` and `verify-quick` targets (Python). Missing verify scripts = **checklist FAIL** for the Verification Scripts checklist item.
 
-For each command, capture and record:
+For the verification gate result, record:
 - The exact command run
-- The full output (or first 50 lines if very long)
+- The full output (or first 50 lines if `verify:full` fails)
 - The exit code
 - PASS (exit 0) or FAIL (non-zero)
 
@@ -153,13 +145,10 @@ Items unable to verify:
 
 | Gate | Command | Exit Code | Verdict |
 |------|---------|-----------|---------|
-| Install | pnpm install | 0 | PASS |
-| Build | pnpm build | 0 | PASS |
-| Lint | pnpm lint | 0 | PASS |
-| Typecheck | pnpm typecheck | 0 | PASS |
-| Test | pnpm test | 0 | PASS |
+| Install | pnpm install / uv sync | 0 | PASS |
+| verify:full | npm run verify:full / bash scripts/verify.sh full | 0 | PASS |
 
-[Include first error lines for any FAIL gates]
+Output: `=== ALL GATES PASSED ===` (or paste the failing gate's output if non-zero)
 
 ### Documentation Structure
 
@@ -192,7 +181,7 @@ Items unable to verify:
 Return your final summary to the Scaffolding Hub (sdlc-engineering-scaffolder) with:
 
 - **Checklist compliance matrix**: every item with command, output excerpt, and PASS/FAIL.
-- **Verification gate results**: each gate with command, exit code, and PASS/FAIL.
+- **Verification gate results**: `verify:full` command, exit code, and output (`ALL GATES PASSED` or failing gate output).
 - **Documentation structure check**: each required file with PASS/FAIL.
 - **Items unable to verify**: list with reasons (does not block Approved if no FAIL items).
 - **Overall: Approved or Changes Required**.

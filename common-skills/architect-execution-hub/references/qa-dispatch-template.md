@@ -30,13 +30,15 @@ SUGGESTED VERIFICATION COMMANDS:
 COVERAGE EXPECTATIONS:
 - Lines threshold: [from testing strategy, e.g., 80%]
 - Branches threshold: [from testing strategy, e.g., 70%]
-- Coverage command: [e.g., npx jest --coverage --coverageReporters=json-summary]
-- Report location: coverage/coverage-summary.json
 - Implementer claimed coverage: [lines %, branches %, functions % from implementer report]
+- Coverage is enforced by `npm run verify:full` via vitest's `coverage.thresholds` config — a passing `verify:full` confirms thresholds were met.
 [Omit section only if no testing strategy exists AND project has no test tooling.]
 
+QUALITY GATE:
+Run `npm run verify:full` (JS/TS) or `bash scripts/verify.sh full` (Python) for the full quality gate. The script is silent on success — `=== ALL GATES PASSED ===` is sufficient evidence. If it fails, the output names the failing gate; include that output in your findings.
+
 IRON LAW: No completion claims without fresh verification evidence.
-Run every command fresh. Do not trust prior results or implementer claims.
+Run `verify:full` fresh. Do not trust prior results or implementer claims.
 
 DOCUMENTATION VERIFICATION:
 - Verify that file references in the staging doc's "Implementation File References"
@@ -48,9 +50,8 @@ COMPLETION CONTRACT:
 Return your final summary to the parent agent with:
 1. Verification Status: PASS / FAIL.
 2. Per-criterion results: criterion → command → output → PASS/FAIL.
-3. Evidence: full command outputs and exit codes.
-4. Coverage Report: lines %, branches %, functions % for new/modified files.
-   Files below threshold listed individually. Overall project coverage.
+3. Evidence: `verify:full` result — `ALL GATES PASSED (exit 0)` or failing gate output with exit code.
+4. Coverage Report: lines %, branches %, functions % for new/modified files (from verify:full output if failed, or confirm thresholds met if passed silently).
    Comparison against implementer's claimed coverage (flag discrepancies).
 5. Documentation verification: file references valid / mismatches found.
 6. Browser verification evidence (if BROWSER VERIFICATION section was included).
