@@ -185,6 +185,99 @@ my-monorepo/
 
 ---
 
+## JavaScript/TypeScript Monorepo Scaffolding Verification Checklist
+
+Run through every item before marking the scaffold complete.
+
+### Root Configuration
+
+- [ ] `pnpm-workspace.yaml` declares `apps/*` and `packages/*`
+- [ ] `turbo.json` with `tasks` covering `build`, `dev`, `lint`, `test`, `typecheck`
+- [ ] Every task in `turbo.json` has `outputs` configured — even if `[]` for tasks with no file output
+- [ ] `next.js` tasks in `turbo.json` include `"!.next/cache/**"` in outputs to prevent artifact bloat
+- [ ] Root `package.json` has `devDependencies` ONLY (turbo, biome/ESLint, lint-staged, etc.) — no production deps
+- [ ] `tsconfig.json` at root extending `packages/config-ts/tsconfig.base.json`
+- [ ] Consistent package scope prefix chosen and used: `@repo/` or `@<org>/`
+
+### Per-App Verification (repeat for each app in `apps/`)
+
+- [ ] Own `package.json` with `build`, `dev`, `lint`, `test`, `typecheck` scripts
+- [ ] Internal packages referenced via `"@repo/package-name": "workspace:*"` (NOT version numbers or paths)
+- [ ] Own `tsconfig.json` extending root base config
+
+### Shared Packages
+
+- [ ] `packages/config-ts/` with `tsconfig.base.json`
+- [ ] `packages/config-biome/` (or `packages/config-eslint/`) with shared linting config
+- [ ] Separate `packages/types/` or `packages/shared/` for cross-package type sharing (prevents circular deps)
+
+### Remote Cache Documentation
+
+- [ ] `TURBO_TOKEN` documented in `.env.example` (note: must be Turborepo-specific token, NOT Vercel PAT)
+- [ ] `TURBO_TEAM` documented in `.env.example` (Vercel team slug)
+- [ ] CI config includes `TURBO_TOKEN` and `TURBO_TEAM` setup instructions
+
+### Verification Gate (all must pass before scaffold is done)
+
+```bash
+pnpm install                    # No errors from root
+turbo build                     # All packages build in correct dependency order
+turbo lint                      # Exits 0 across all packages
+turbo typecheck                 # Exits 0 across all packages
+turbo test                      # Exits 0 across all packages
+turbo build --filter=<app>      # Single-app build with deps works
+```
+
+### Documentation Structure
+
+- [ ] `docs/index.md` with monorepo structure overview and app/package descriptions
+- [ ] Per-app domain docs (`docs/web/`, `docs/api/`, `docs/mobile/`, etc.)
+- [ ] `docs/staging/README.md`
+- [ ] `docs/specs/.gitkeep` and `docs/archive/.gitkeep`
+
+---
+
+## JavaScript/TypeScript Monorepo Known Gotchas
+
+
+### Missing `outputs` in turbo.json — #1 cause of cache never hitting
+
+Every task in `turbo.json` MUST declare `outputs`. Without it, Turborepo cannot cache the task results and every run is a cache MISS regardless of whether inputs changed. For build tasks, declare the output directory. For lint/test tasks with no file outputs, use `"outputs": []`.
+
+```json
+{
+  "tasks": {
+    "build": { "dependsOn": ["^build"], "outputs": [".next/**", "!.next/cache/**", "dist/**"] },
+    "lint": { "outputs": [] },
+    "test": { "outputs": [] },
+    "typecheck": { "outputs": [] }
+  }
+}
+```
+
+
+### TURBO_TOKEN is NOT a Vercel Personal Access Token
+
+`TURBO_TOKEN` for remote caching must be generated via `turbo login` (Turborepo-specific). Using a Vercel Personal Access Token causes silent cache MISS on every CI run — no error message, just endless misses. Also required: `TURBO_TEAM` set to your Vercel team slug. Missing `TURBO_TEAM` causes silent failure even with a valid token.
+
+### Circular package dependencies break build order
+
+If `packages/ui` imports from `packages/shared` AND `packages/shared` imports from `packages/ui`, Turborepo's dependency graph resolution fails. Solution: create a dedicated `packages/types` for cross-package type sharing. Both `ui` and `shared` import from `types`. Types package has zero internal dependencies. Never use bidirectional imports between packages.
+
+### `workspace:*` protocol is mandatory for internal packages
+
+Internal packages MUST be referenced as `"@repo/package-name": "workspace:*"` in `package.json`. Using a version number (e.g., `"@repo/ui": "^1.0.0"`) causes pnpm to look in the npm registry and fail. The `workspace:` protocol tells pnpm to link the local package directory.
+
+### Root package.json pollution hides missing dependency declarations
+
+Installing production dependencies at the root (`pnpm add X` from root) instead of in the specific app (`pnpm add X --filter=web`) makes them available to all packages via hoisting. This masks missing `package.json` declarations — the app works in monorepo but fails when the package is installed standalone or in a different environment. Always use `--filter=<package>` for app-specific dependencies. Root should contain only tooling (turbo, biome, lint-staged, husky).
+
+### pnpm strict hoisting catches phantom dependencies
+
+pnpm's default strict mode prevents importing packages not declared in your own `package.json`. If a package was previously working due to hoisting (importing a dependency of a sibling package), strict mode will break it. This is correct behavior — add the missing dependency to that package's own `package.json`. Do not disable strict mode to silence the error.
+
+---
+
 ## Hybrid Monorepo (JS + Python)
 
 For projects with both a JS frontend and Python backend:

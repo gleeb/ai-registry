@@ -151,3 +151,119 @@ Each member has its own `pyproject.toml` and can depend on siblings via:
 [tool.uv.sources]
 shared-lib = { workspace = true }
 ```
+
+---
+
+## Scaffolding Verification Checklist
+
+Run through every item before marking the scaffold complete.
+
+### Project Structure
+
+- [ ] `pyproject.toml` with `[project]`, `requires-python = ">=3.12"`, `[dependency-groups]` dev section
+- [ ] `.python-version` pinned to `3.12` or `3.13`
+- [ ] `src/<project_name>/` package layout (NOT flat `<project_name>/` at root)
+- [ ] `src/<project_name>/__init__.py` exists
+- [ ] `tests/__init__.py` and `tests/conftest.py` exist
+- [ ] `tests/test_setup.py` with at least one passing smoke test
+- [ ] `uv.lock` committed to version control
+
+### Tool Configuration (all in `pyproject.toml`)
+
+- [ ] Ruff lint rules: `select = ["E", "F", "I", "UP", "B", "SIM"]` minimum
+- [ ] Ruff: `line-length = 100`, `target-version = "py312"`
+- [ ] mypy: `[tool.mypy]` section with `strict = true`, `python_version = "3.12"`
+- [ ] mypy overrides for untyped third-party libs: `[[tool.mypy.overrides]] module = "untyped_lib.*" ignore_missing_imports = true`
+- [ ] pytest: `[tool.pytest.ini_options]` with `testpaths = ["tests"]`
+- [ ] Coverage config: `[tool.coverage.report]` with `omit = ["*/tests/*", "*/conftest.py", "*/__init__.py"]`
+
+### For FastAPI Projects (additional)
+
+- [ ] `uvloop` and `httptools` installed (`uv add uvloop httptools`)
+- [ ] `pydantic-settings` installed for typed environment configuration
+- [ ] `httpx` installed (not `requests`) — async-capable, used as test client for FastAPI
+- [ ] `pytest-asyncio` installed and `asyncio_mode = "auto"` in `[tool.pytest.ini_options]`
+- [ ] `ORJSONResponse` used as default response class (not default JSONResponse)
+
+### Verification Gate (all must pass before scaffold is done)
+
+```bash
+uv sync                                          # Resolves and installs all deps
+uv run python -c "import <project_name>; print('ok')"  # Package imports cleanly
+uv run ruff check .                              # Exits 0
+uv run mypy src/                                 # Exits 0
+uv run pytest                                    # Exits 0, ≥1 test passes
+uv run pytest --cov=src --cov-report=term-missing  # Coverage report generated
+```
+
+### Documentation Structure
+
+- [ ] `docs/backend/index.md`, `docs/backend/technology.md`, `docs/backend/project-structure.md`
+- [ ] `docs/backend/api.md` (if FastAPI — stub is fine at scaffold time)
+- [ ] `docs/staging/README.md`
+- [ ] `docs/specs/.gitkeep` and `docs/archive/.gitkeep`
+
+---
+
+## Known Gotchas
+
+
+### Flat layout vs src layout — use src layout
+
+`uv init` without flags creates a flat layout (`<project_name>/` at root). The `src/` layout (`src/<project_name>/`) is strongly recommended: it prevents the project root from being accidentally on `sys.path` and makes the package behave identically when installed vs when run from the source directory. Use `uv init --lib` for src layout, or manually create `src/<project_name>/` and update `pyproject.toml` with `[tool.setuptools.packages.find] where = ["src"]`.
+
+### mypy strict mode breaks on untyped third-party libraries
+
+`strict = true` enables `no_implicit_reexport`, `disallow_untyped_defs`, and strict attribute checking. Third-party libraries without bundled type stubs will cause mypy errors (`Cannot find implementation or library stub`). Fix per-library with overrides:
+
+```toml
+[[tool.mypy.overrides]]
+module = "untyped_lib.*"
+ignore_missing_imports = true
+```
+
+Add overrides for all untyped dependencies at scaffold time rather than discovering them during feature work.
+
+### Blocking the async event loop in FastAPI
+
+FastAPI routes declared as `async def` must not call synchronous blocking I/O — file reads, database calls via synchronous ORMs (SQLAlchemy sync), or `requests.get()`. A blocking call inside an async route blocks ALL requests to the entire Uvicorn worker process (not just that request). Use async-native libraries (`httpx`, `asyncpg`, `motor`) or wrap blocking calls in `asyncio.to_thread()`.
+
+### uvloop + httptools — performance-critical, install at scaffold time
+
+`uvloop` replaces Python's default asyncio event loop with a C-based implementation (2-4x throughput improvement at high concurrency). `httptools` provides 40% faster HTTP parsing. Uvicorn auto-detects both if installed. These are production performance dependencies — adding them later requires deployment changes. Install at scaffold time:
+
+```bash
+uv add uvloop httptools
+```
+
+
+### Coverage must be scoped to src/, not the whole project
+
+Without explicit coverage scoping, `pytest-cov` includes test files, conftest, and `__init__.py` files in coverage reports. These files are trivially at ~100% coverage and inflate the overall percentage misleadingly. Always run with `--cov=src` and configure `omit` in `pyproject.toml`:
+
+```toml
+[tool.coverage.report]
+omit = ["*/tests/*", "*/conftest.py", "*/__init__.py"]
+```
+
+
+### uv.lock must be committed
+
+`uv.lock` is the lockfile for reproducible installs. If not committed, CI and production environments may install different package versions than development, causing environment-specific failures that are hard to reproduce. Commit `uv.lock` on the first `uv add` or `uv sync`.
+
+### pydantic-settings for typed environment config
+
+Raw `os.environ.get()` calls throughout the codebase are untyped, untestable, and easy to misspell. `pydantic-settings` provides a typed `BaseSettings` class that reads env vars, validates types, and raises clear errors on missing required config:
+
+```python
+from pydantic_settings import BaseSettings
+
+class Settings(BaseSettings):
+    database_url: str
+    debug: bool = False
+    api_key: str
+
+settings = Settings()  # Raises on missing required vars at startup
+```
+
+Configure at scaffold time.

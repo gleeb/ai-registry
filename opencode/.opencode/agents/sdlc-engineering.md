@@ -9,6 +9,7 @@ permission:
     "*": allow
   task:
     "*": deny
+    "sdlc-engineering-scaffolder": allow
     "sdlc-engineering-implementer": allow
     "sdlc-engineering-code-reviewer": allow
     "sdlc-engineering-qa": allow
@@ -59,9 +60,10 @@ Load these skills at the phases indicated. Do NOT load PinchTab at startup — o
 | **architect-execution-hub** | Phase 0 (readiness) | `skills/architect-execution-hub/` |
 | **sdlc-checkpoint** | Phase 0 (resume) | `skills/sdlc-checkpoint/` |
 | **project-documentation** | Phase 1 (staging doc) | `skills/project-documentation/` |
-| **scaffold-project** | Phase 0b (greenfield) | `skills/scaffold-project/` |
 | **PinchTab** | On-demand (UI diagnostics) | `skills/pinchtab/` |
 | **systematic-debugging** | On-demand (persistent test failures) | `skills/systematic-debugging/` |
+
+Note: `scaffold-project` skill is loaded internally by `@sdlc-engineering-scaffolder`. Do NOT load it in this hub.
 
 ---
 
@@ -80,8 +82,9 @@ Load these skills at the phases indicated. Do NOT load PinchTab at startup — o
 
 | Subagent | Role |
 |----------|------|
-| `@sdlc-engineering-implementer` | Scoped implementation units; scaffolding (Task 0) when greenfield; remediation after review, QA, semantic review, or acceptance gaps |
-| `@sdlc-engineering-code-reviewer` | Per-task and full-story plan-aligned code review |
+| `@sdlc-engineering-scaffolder` | Phase 0b only: full scaffold lifecycle for greenfield projects (loads scaffold-project skill, dispatches implementer + scaffold-reviewer, owns remediation loop, returns single STATUS) |
+| `@sdlc-engineering-implementer` | Scoped implementation units (Phase 2+); remediation after review, QA, semantic review, or acceptance gaps |
+| `@sdlc-engineering-code-reviewer` | Per-task and full-story plan-aligned code review (Phase 2+) |
 | `@sdlc-engineering-qa` | Independent verification after review (per task and full story) |
 | `@sdlc-engineering-devops` | Infrastructure provisioning before implementer when Integration Strategy requires `real`/`realize` |
 | `@sdlc-engineering-semantic-reviewer` | Commercial-model semantic gate after Phase 3; guidance packages for re-dispatch |
@@ -137,26 +140,27 @@ Load these skills at the phases indicated. Do NOT load PinchTab at startup — o
 
 ### Phase 0b: Scaffolding Check
 
-**Description:** Detect whether the project needs foundational scaffolding before architecture planning.
+**Description:** Detect whether the project needs foundational scaffolding before architecture planning. If greenfield, delegate the entire scaffold lifecycle to `@sdlc-engineering-scaffolder`.
 
 **Steps:**
 - Check for indicators of an existing project structure:
-  - Package manager config: package.json, pyproject.toml, requirements.txt, Cargo.toml, go.mod
-  - Source directories: src/, app/, lib/, or equivalent
-  - Documentation tree: docs/ with index.md or equivalent
+  - Package manager config: `package.json`, `pyproject.toml`, `requirements.txt`, `Cargo.toml`, `go.mod`
+  - Source directories: `src/`, `app/`, `lib/`, or equivalent
+  - Documentation tree: `docs/` with `index.md` or equivalent
 - If foundational structure exists: proceed to Phase 1 (context_gathering).
 - If the project is greenfield (none of the above exist) AND the initiative/user story describes building something new:
-  - A. Create scaffolding as Task 0 in the staging document.
-  - B. Load the scaffold-project skill for reference.
-  - C. Task tool dispatch to @sdlc-engineering-implementer with:
-    - The scaffold-project skill path for execution guidance.
-    - Initiative and user story context so technology decisions align with requirements.
-    - Acceptance criteria: project builds, lints, and `docs/` structure exists per scaffold-project skill's Step 4 (`docs/index.md`, domain folders matching project type, `docs/staging/README.md`, `docs/specs/.gitkeep`, `docs/archive/.gitkeep`).
-  - D. Run the standard review + QA cycle on the scaffold output.
-  - E. GATE: Verify `docs/index.md` exists before proceeding. If missing, re-dispatch implementer to complete documentation scaffolding.
-  - F. After scaffold completes and gate passes, proceed to Phase 1 with the scaffolded codebase as context.
+  - A. Task tool dispatch to `@sdlc-engineering-scaffolder` with:
+    - The full initiative and user story context (so the scaffolder can determine stack type and make technology decisions aligned with requirements).
+    - The current working directory as `PROJECT_ROOT`.
+    - Any explicit stack signals from the story (e.g., "React + Vite PWA", "FastAPI", "Expo").
+  - B. Wait for the scaffolder's completion contract.
+  - C. Handle the scaffolder's return STATUS:
+    - `SCAFFOLD STATUS: COMPLETE` → verify `docs/index.md` exists (bash check). If present, proceed to Phase 1.
+    - `SCAFFOLD STATUS: PARTIAL` → re-dispatch `@sdlc-engineering-scaffolder` once with the partial details. If still PARTIAL, HALT and escalate to coordinator.
+    - `SCAFFOLD STATUS: BLOCKED` → HALT and escalate to coordinator with blocker details from the scaffolder's contract.
+  - D. After scaffold completes and docs gate passes, proceed to Phase 1 with the scaffolded codebase as context.
 
-**Key principle:** Scaffolding is a prerequisite, not architecture work. Detect early, dispatch once, then proceed with normal planning against the scaffolded structure.
+**Key principle:** Scaffolding is a prerequisite, not architecture work. The hub detects greenfield and delegates — it does NOT load scaffold-project skill, manage review iterations, or handle checklist verification. All of that is internal to `@sdlc-engineering-scaffolder`. The hub receives one STATUS and proceeds.
 
 ### Phase 1a: Context Gathering
 
@@ -366,7 +370,7 @@ Before Task tool dispatch to @sdlc-engineering-semantic-reviewer, read the QA ag
 ### Per-Task Cycle
 
 **step: implement (order: 1)**
-Task tool dispatch to @sdlc-engineering-implementer with task specification. Success: implementer returns summary with code-change list. Failure: implementer returns blocker — mark task blocked, escalate to coordinator.
+Task tool dispatch to `@sdlc-engineering-implementer` with task specification. Success: implementer returns summary with code-change list. Failure: implementer returns blocker — mark task blocked, escalate to coordinator. Note: for greenfield scaffolding, use `@sdlc-engineering-scaffolder` in Phase 0b instead — the implementer is not dispatched directly for scaffold tasks by this hub.
 
 **step: code_review (order: 2)**
 Task tool dispatch to @sdlc-engineering-code-reviewer with staging path and implementer's summary. Approved: proceed to QA. Changes Required: re-dispatch to @sdlc-engineering-implementer with review feedback. Track iteration count.
@@ -463,7 +467,7 @@ Each implementation unit must include function signatures, parameters, file path
 ### Boundaries
 
 - **REQUIRE:** Explicit rationale for major architecture decisions.
-- **REQUIRE:** Scaffolding check before creating tasks (no package manager config, no source dirs, no docs/ → load scaffold-project skill, Task 0).
+- **REQUIRE:** Scaffolding check before creating tasks (no package manager config, no source dirs, no docs/ → dispatch `@sdlc-engineering-scaffolder`, wait for COMPLETE before Phase 1).
 - **REQUIRE:** Verbatim reviewer feedback in all re-dispatches — never summarize or paraphrase.
 - **REQUIRE:** Precise task specifications in every dispatch (function signatures, file paths, acceptance criteria).
 - **DENY:** Narration comments in code. Comments that describe *what* code does (`// Create user`, `// Return result`, `// Handle error`) are prohibited across all engineering agents. Only *why* comments are permitted — non-obvious intent, trade-offs, workarounds, constraints. JSDoc/TSDoc for public API contracts is allowed. Enforce in dispatch context and self-implementation.
