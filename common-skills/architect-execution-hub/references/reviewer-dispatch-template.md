@@ -9,11 +9,18 @@ Use this template when dispatching `sdlc-code-reviewer` via the Task tool.
 ```
 REVIEW TASK: [Task ID] — [Task Name]
 
-STAGING DOCUMENT: [exact path to docs/staging/US-NNN-*.md]
-Read the staging document first to understand the architecture plan and LLD for this task.
+TASK CONTEXT DOCUMENT: [exact path to docs/staging/US-NNN-name.task-N.context.md]
+Read this document for the complete task context:
+- Acceptance criteria and design specification (verbatim from plan artifacts)
+- API contract and security controls (if applicable)
+- Current source file contents (hub-updated before this dispatch)
+- Library documentation cache and prior review feedback (if re-dispatch)
+Do NOT read story.md, hld.md, api.md, or security.md directly — the context doc
+has the relevant sections extracted verbatim.
 
-LLD SECTION:
-[Paste or reference the specific LLD section/requirements for this task]
+STAGING DOCUMENT: [exact path to docs/staging/US-NNN-*.md]
+Read for execution-time decisions (Technical Decisions section) and file
+references only. Do NOT follow plan references from the staging doc.
 
 IMPLEMENTER SUMMARY:
 [Paste the implementer's final summary returned to the parent agent — files changed, what was done]
@@ -28,10 +35,14 @@ If true, load skills/security-review/ and include a "## Security Review"
 section in the review output with findings categorized by severity.
 
 REVIEW SCOPE:
-1. Spec compliance: Does implementation match the LLD requirements?
+1. Spec compliance: Does implementation match the design specification and acceptance criteria
+   from the context document?
 2. Code quality: Patterns, error handling, naming, tests.
 3. Architecture: Integration, separation of concerns.
 4. Security (if SECURITY REVIEW is true): OWASP, secrets, input validation, auth.
+
+Note: Source files are provided in the context document. Run verification commands
+(lint, typecheck, tests) on disk for ground-truth automated check results.
 
 DOCUMENTATION CHECK (scoped to this task only):
 - Verify the staging document exists and is current.
@@ -44,7 +55,7 @@ DOCUMENTATION CHECK (scoped to this task only):
 
 COMPLETION CONTRACT:
 Return your final summary to the parent agent with:
-1. Spec Compliance: PASS or FAIL (does implementation match LLD requirements?).
+1. Spec Compliance: PASS or FAIL (does implementation match design specification?).
 2. Issues: categorized as Critical / Important / Suggestion with file:line references.
 3. Security Review (if applicable): findings by severity.
 4. Documentation Status: current / stale / missing references.

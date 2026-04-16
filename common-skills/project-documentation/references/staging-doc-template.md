@@ -1,6 +1,12 @@
 # Staging Document Template
 
-Use this template when creating an execution journal for a user story implementation. The staging document references plan artifacts by section and line range — it does NOT copy plan content. Plan artifacts (story.md, hld.md, api.md, data.md, security.md) are the source of truth; the staging document tracks execution state, task decomposition, and runtime decisions.
+Use this template when creating an execution journal for a user story implementation. The staging document is an **execution journal** — it tracks state, task decomposition, and runtime decisions. It does NOT copy plan content; that is the job of per-task context documents (see `references/task-context-template.md`).
+
+**Role boundary:**
+- **Staging document** (`docs/staging/US-NNN-name.md`): execution journal — plan artifact paths as master index, task status, technical decisions, issues, file references.
+- **Task context documents** (`docs/staging/US-NNN-name.task-N.context.md`): verbatim plan excerpts + current source files for one task — what subagents read before implementation/review.
+
+Plan artifacts (story.md, hld.md, api.md, data.md, security.md) remain the authoritative source of truth. Context documents are a verbatim extraction cache; the staging document is the execution index.
 
 ## Template
 
@@ -15,6 +21,7 @@ Use this template when creating an execution journal for a user story implementa
 - **Security**: `plan/user-stories/US-NNN-name/security.md` (if applicable)
 - **Design**: `plan/user-stories/US-NNN-name/design/` (if applicable)
 - **Contracts**: `plan/contracts/CON-NNN-name.md` (consumed/provided, if applicable)
+- **Testing Strategy**: `plan/cross-cutting/testing-strategy.md` (if applicable)
 
 ## Tech Stack & Loaded Skills
 - [tech] — skill: `skills/[skill-name]/`
@@ -30,21 +37,28 @@ Use this template when creating an execution journal for a user story implementa
 - **Rationale**: [why]
 
 ## Task Decomposition
-[Maps plan DUs/IUs to executable tasks with plan-artifact references]
+[Maps plan DUs/IUs to executable tasks. Each task has an associated context document.]
 
 ### Task 1: [Name]
-- **Plan refs:**
+- **Context doc:** `docs/staging/US-NNN-name.task-1.context.md` (hub-managed — read this before implementation)
+- **Plan refs** (for hub extraction into context doc):
   - hld.md [DU/IU reference] (lines N-M): [what to read for spec]
   - api.md [section] (lines N-M): [what to read for contract]
   - security.md [section] (lines N-M): [what to read for controls]
+  - design/[file] (lines N-M or full file): [what design artifact is relevant]
 - **Files:** CREATE/MODIFY path/to/file.ext
+- **External libraries:** [list, for hub to populate EXTERNAL LIBRARIES in dispatch]
 - **Status:** pending | Review: 0 | QA: 0
+- **Context doc size:** [N lines — logged by hub for threshold monitoring]
 
 ### Task 2: [Name]
-- **Plan refs:**
+- **Context doc:** `docs/staging/US-NNN-name.task-2.context.md`
+- **Plan refs** (for hub extraction into context doc):
   - hld.md [DU/IU reference] (lines N-M): [what to read for spec]
 - **Files:** CREATE/MODIFY path/to/file.ext
+- **External libraries:** [list]
 - **Status:** pending | Review: 0 | QA: 0
+- **Context doc size:** [N lines]
 
 ## Execution Log
 
@@ -69,17 +83,21 @@ Use this template when creating an execution journal for a user story implementa
 When the architect creates this document:
 
 1. Copy the template above into `docs/staging/US-NNN-story-name.md`.
-2. Fill in **Plan Artifact Paths** from the story's plan folder. For key sections (acceptance criteria, design units, API contracts), record the line ranges so subagents can read specific sections without scanning entire files.
+2. Fill in **Plan Artifact Paths** from the story's plan folder. For key sections (acceptance criteria, design units, API contracts), record the line ranges. These line ranges are used by the hub to extract verbatim content into context documents — they are the hub's extraction guide, not reading instructions for subagents.
 3. Fill in **Tech Stack** from the story manifest's `tech_stack` field, mapping each to its skill path.
 4. Copy **Review Milestones** from `story.md` into the staging doc, adding a Status column (pending / triggered / user-approved). If the story has no milestones, write "None — fully autonomous execution."
 5. Determine and record **Browser Verification Classification**.
-6. Build the **Task Decomposition** by breaking HLD design units / implementation units into execution tasks. For each task, record which DU/IU/API/security sections to reference (with line ranges). Do NOT re-write signatures, boundaries, or acceptance signals into the staging doc — the task's plan refs point to where that detail lives.
-7. Leave the **Execution Log** sections empty — they are filled during the dev loop.
+6. Build the **Task Decomposition** by breaking HLD design units / implementation units into execution tasks. For each task, record:
+   - The context doc path (`docs/staging/US-NNN-name.task-N.context.md`) — the hub creates this file.
+   - Which DU/IU/API/security/design sections to extract (with line ranges) — these guide hub extraction.
+   - Files to create or modify.
+   - External libraries required.
+7. After completing the staging doc, create per-task context documents for each task using `references/task-context-template.md`. Apply the **task-size gate** (see that template's Hub Instructions).
+8. Leave the **Execution Log** sections empty — they are filled during the dev loop.
+9. Record the context doc line count in each task's `Context doc size` field after creation.
 
 ## What the staging doc does NOT do
 
-- Do NOT copy acceptance criteria from story.md (reference it by path and line range).
-- Do NOT re-write HLD design units, implementation unit signatures, or boundaries.
-- Do NOT re-state API validation rules, error shapes, or contract details.
-- Do NOT re-state security constraints or data architecture details.
-- All of the above live in the plan artifacts and are referenced by path + line range.
+- Does NOT contain plan content (acceptance criteria, HLD design units, API rules, security constraints) — that lives in context documents.
+- Does NOT instruct subagents to follow plan references — subagents read context documents instead.
+- Does NOT replace or duplicate the context documents — they are separate hub-managed artifacts.

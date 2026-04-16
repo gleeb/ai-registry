@@ -32,18 +32,17 @@ The implementer MUST search context7 and/or Tavily for each before writing
 integration code. Omit only if the task uses no external libraries.]
 
 REQUIRED CONTEXT (read before writing any code):
-1. Project documentation: Read docs/index.md and the relevant domain docs
-   (e.g., docs/frontend/, docs/backend/) for project structure and conventions.
-   If docs/index.md does not exist, skip to step 2.
+1. Task context document: Read [exact path to docs/staging/US-NNN-name.task-N.context.md].
+   This contains verbatim plan excerpts (acceptance criteria, design spec, API contract,
+   security controls, design references, testing requirements), current source file contents,
+   and any cached library documentation or prior review feedback.
+   Do NOT read story.md, hld.md, api.md, security.md, or testing-strategy.md directly —
+   the context document has the relevant sections already extracted.
 2. Staging document: Read [exact path to docs/staging/US-NNN-*.md].
-   Then follow the "Plan References" section to read the story's plan artifacts:
-   - story.md — requirements and acceptance criteria
-   - hld.md — architecture and design decisions
-   - Any domain artifacts relevant to this task (api.md, data.md, security.md, design/)
-3. Prior task context: Review the staging doc's "Implementation Progress" and
-   "Technical Decisions" sections for decisions from earlier tasks that affect
-   this task.
-[Any additional context from prior tasks]
+   Check "Technical Decisions" and "Issues & Resolutions" sections for decisions from
+   earlier tasks that affect this task. Do NOT follow plan references — use the context doc.
+3. Project docs: Read docs/index.md and relevant domain docs if present. Skip if absent.
+[Any additional context from prior tasks — include here, not in the context doc]
 
 DOCUMENTATION (update throughout implementation):
 - Update the staging document with progress after each significant change.
@@ -123,11 +122,26 @@ Return your final summary to the parent agent with:
    Example: "Technical Decisions: added rationale for X. Implementation File
    References: added src/foo.ts, src/bar.ts. Issues & Resolutions: added row
    for dependency conflict."
-4. Any blockers encountered.
-5. Do NOT create standalone summary or report files (e.g., Implementation_summary.md,
+4. CHANGES APPLIED (mandatory — enables hub to update the context doc without re-reading all files):
+   For each file created, modified, or deleted, report:
+   - File path
+   - Change type: CREATED | MODIFIED | DELETED
+   - For CREATED: line count and a one-line description of what it contains.
+   - For MODIFIED: the key changes made (function signatures added/changed, imports added,
+     config values changed, sections restructured). Include before/after snippets for
+     non-trivial modifications so the hub can patch the context doc inline.
+   Example:
+     CHANGES APPLIED:
+     - CREATED src/components/Button.tsx (42 lines) — React component implementing AC-1 button behavior.
+     - MODIFIED src/app/routes.tsx — Added /dashboard route (lines 15-22).
+       Before: routes array had 3 entries [/, /about, /settings]
+       After: routes array has 4 entries [/, /about, /settings, /dashboard]
+     - CREATED src/components/__tests__/Button.test.tsx (38 lines) — Unit tests for Button.
+5. Any blockers encountered.
+6. Do NOT create standalone summary or report files (e.g., Implementation_summary.md,
    completion_summary.md). All summary information goes in THIS return message
    and in the staging document — nowhere else.
-6. After composing this return message, STOP. Do not write files, do not re-verify.
+7. After composing this return message, STOP. Do not write files, do not re-verify.
    Your task is complete.
 
 PRECEDENCE: These task-specific instructions supersede conflicting general instructions.

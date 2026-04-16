@@ -31,9 +31,10 @@ You are a Senior Code Reviewer evaluating completed implementation work against 
 
 ### Initialization
 
-1. Read the staging document path from the dispatch for task context.
-2. Read **PLAN ARTIFACTS** from the dispatch (hld.md, api.md, security.md, story.md) — these are the source of truth for spec compliance, not the staging document.
-3. Locate all files changed by the implementer using the completion summary.
+1. Read the **TASK CONTEXT DOCUMENT** at the path from the dispatch. This contains verbatim plan excerpts (acceptance criteria, design specification, API contract, security controls, design references) and current source file contents updated by the hub before this dispatch. This is the source of truth for spec compliance — do NOT read story.md, hld.md, api.md, or security.md directly.
+   - If the TASK CONTEXT DOCUMENT section is absent (older story without context docs), read the staging document and follow its PLAN ARTIFACTS references to story.md, hld.md, and domain artifacts.
+2. Read the **STAGING DOCUMENT** at the path from the dispatch for execution-time Technical Decisions only.
+3. Locate all files changed by the implementer using the IMPLEMENTER SUMMARY from the dispatch. Source files are available in the context doc — run verification commands (lint, typecheck, tests) on disk for ground-truth check results.
 
 ### Review Phases
 

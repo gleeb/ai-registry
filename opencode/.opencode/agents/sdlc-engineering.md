@@ -173,15 +173,24 @@ Note: `scaffold-project` skill is loaded internally by `@sdlc-engineering-scaffo
 
 ### Phase 1b: Staging Documentation
 
-**Description:** Create the execution journal (staging document) with plan-artifact references.
+**Description:** Create the execution journal (staging document) and per-task context documents.
 
 **Steps:**
 - Create a staging file using the template from .opencode/skills/project-documentation/references/staging-doc-template.md.
-- Read each plan artifact file and record its path with line ranges for key sections (acceptance criteria location in story.md, design unit boundaries in hld.md, API contract sections in api.md, security controls in security.md). The hub records WHERE the key content is, not WHAT it says.
+- Read each plan artifact file once: story.md, hld.md, api.md (if present), security.md (if present), testing-strategy.md (if present), design/ directory (if present). Record each artifact's path with line ranges for key sections in the staging document.
 - Fill Tech Stack section from the story manifest.
 - Copy Review Milestones from story.md.
 - Determine and record Browser Verification Classification.
-- The staging document does NOT copy acceptance criteria, HLD content, API rules, or security constraints — it references them by path and line range. Plan artifacts are the source of truth.
+- The staging document is an execution journal — it does NOT copy plan content. Plan content goes into per-task context documents (see next step).
+
+**Context document creation (after staging doc is complete):**
+- For each task in the Task Decomposition, create `docs/staging/US-NNN-name.task-N.context.md` using the template at .opencode/skills/project-documentation/references/task-context-template.md.
+- Extract the relevant sections verbatim (not summarized) from each plan artifact into the context document. Use the plan refs with line ranges recorded in the staging doc task entry to identify which sections to extract.
+- Include provenance comments (`> Source: path lines X–Y`) in each section so the original can be located if needed.
+- **Task-size gate:** After extracting plan content for each task, estimate the projected total context doc size (plan sections + source files from the task's Files list + design references + testing requirements):
+  - Soft limit (~600 lines): Log a warning in the staging doc's Technical Decisions. Evaluate whether splitting the task along DU/IU boundaries is warranted.
+  - Hard limit (~800 lines): Split the task before proceeding. Break at the nearest DU/IU boundary, update the staging doc task list, and create separate context docs for each sub-task.
+- Leave Source Files, Library Documentation Cache, and Prior Review Feedback sections empty at creation — the hub populates these before each Phase 2 dispatch.
 
 ### Phase 1c: Actionable Plan
 
@@ -214,11 +223,22 @@ Note: `scaffold-project` skill is loaded internally by `@sdlc-engineering-scaffo
     3. Log response with verdict (SUCCESS or FAILURE).
     4. On success: read the infrastructure manifest and fold connection details into the implementer dispatch's INTEGRATION CONTEXT section.
     5. On failure: record blocker in staging doc. Re-dispatch once with resolution guidance if available. If still failing, HALT and escalate.
-  - A2. Set task and log dispatch in one compound call:
+  - A2. **Prepare task context document:** Before dispatch, update `docs/staging/US-NNN-name.task-N.context.md`:
+    1. Read each file listed in the task's `Files` section from disk (current state).
+    2. Write verbatim contents (files <150 lines) or relevant sections with surrounding context (files ≥150 lines) into the context doc's Source Files section.
+    3. Update the `Last updated` timestamp in the context doc.
+    4. Log the context doc line count: include `context_doc_lines: N` in the upcoming checkpoint dispatch-log call.
+  - A3. Set task and log dispatch in one compound call:
     `checkpoint.sh execution --task "{id}:{name}" --step implement --dispatch-event dispatch --dispatch-agent sdlc-engineering-implementer --dispatch-id "exec-{story}-t{id}-impl-i1"`
-  - B. Task tool dispatch to @sdlc-engineering-implementer using the implementer dispatch template. Include TECH SKILLS, DOCUMENTATION, SELF-VERIFICATION, PLAN ARTIFACTS, and INTEGRATION CONTEXT sections. If DevOps was dispatched in step A, include infrastructure manifest details in INTEGRATION CONTEXT. **Browser verification per-task skip rule:** If browser verification is classified as **per-task** AND the task touches only domain/data/guard files with zero browser-observable acceptance signals, omit the BROWSER VERIFICATION block entirely from the dispatch — no N/A documentation required. If classified as **mandatory**, always include the BROWSER VERIFICATION block. If classified as **per-task** and the task touches UI-visible code or files that affect web rendering, include it.
+  - B. Task tool dispatch to @sdlc-engineering-implementer using the implementer dispatch template. Include the TASK CONTEXT DOCUMENT path, TECH SKILLS, INTEGRATION CONTEXT sections. If DevOps was dispatched in step A, include infrastructure manifest details in INTEGRATION CONTEXT. **Browser verification per-task skip rule:** If browser verification is classified as **per-task** AND the task touches only domain/data/guard files with zero browser-observable acceptance signals, omit the BROWSER VERIFICATION block entirely from the dispatch — no N/A documentation required. If classified as **mandatory**, always include the BROWSER VERIFICATION block. If classified as **per-task** and the task touches UI-visible code or files that affect web rendering, include it.
   - C. Log implementer response (compound — also advances step to code_review):
     `checkpoint.sh execution --step code_review --dispatch-event response --dispatch-agent sdlc-engineering-implementer --dispatch-id "exec-{story}-t{id}-impl-i1" --dispatch-verdict "success"`
+  - C1a. **Context document update (after implementer returns):** Parse the implementer's `CHANGES APPLIED` section and update the context doc:
+    1. For each `CREATED` file <150 lines: read from disk, add to Source Files section.
+    2. For each `MODIFIED` file: if the before/after snippet is unambiguous, patch Source Files inline. If ambiguous or no snippet provided, re-read the file from disk.
+    3. For each `DELETED` file: remove from Source Files section.
+    4. Copy key library findings from the implementer's `context7 Lookups` section into the context doc's Library Documentation Cache section (for P4 caching).
+    5. Update the `Last updated` timestamp.
   - C1b. **Implementation Completeness Gate:** Read the implementer's return message. Check the STATUS field:
     1. `STATUS: BLOCKED` — Skip review entirely. Record the blocker in the staging doc. Re-dispatch with blocker resolution context, or escalate if unresolvable.
     2. `STATUS: PARTIAL` — Skip review. Re-dispatch implementer with focused instructions for the missing ACs listed in the PARTIAL status. This counts as an iteration.
@@ -228,26 +248,26 @@ Note: `scaffold-project` skill is loaded internally by `@sdlc-engineering-scaffo
   - C2b. **Coverage Gate:** After test existence is confirmed, run `npx jest --coverage --coverageReporters=json-summary` (or project equivalent). Parse `coverage/coverage-summary.json` and compare new/modified file coverage against thresholds from `plan/cross-cutting/testing-strategy.md` (defaults: 80% lines, 70% branches). On failure, re-dispatch implementer with the coverage report and specific uncovered lines (counts as an iteration). Include coverage summary in reviewer dispatch context.
   - D. On implementer success (with tests confirmed), log reviewer dispatch (compound):
     `checkpoint.sh execution --dispatch-event dispatch --dispatch-agent sdlc-engineering-code-reviewer --dispatch-id "exec-{story}-t{id}-review-i1"`
-    Then Task tool dispatch to @sdlc-engineering-code-reviewer using the reviewer dispatch template. Include SECURITY REVIEW flag and DOCUMENTATION CHECK.
+    Then Task tool dispatch to @sdlc-engineering-code-reviewer using the reviewer dispatch template. Include the TASK CONTEXT DOCUMENT path, SECURITY REVIEW flag, and DOCUMENTATION CHECK.
   - D2. Log reviewer response (compound — also advances step to qa_verification):
     `checkpoint.sh execution --step qa_verification --dispatch-event response --dispatch-agent sdlc-engineering-code-reviewer --dispatch-id "exec-{story}-t{id}-review-i1" --dispatch-verdict "{Approved|Changes Required}"`
   - E. Handle review verdict using the **Adaptive Recovery Protocol**:
     - **Approved:** Proceed to QA (step F).
-    - **Changes Required (iterations 1-3):** Re-dispatch to @sdlc-engineering-implementer with the reviewer's COMPLETE feedback verbatim (all Critical, Important, and Suggestion items with original file:line references). Do not summarize or omit any findings.
+    - **Changes Required (iterations 1-3):** Update the context doc's Prior Review Feedback section with the reviewer's COMPLETE issues section verbatim (all Critical, Important, and Suggestion items with original file:line references). Re-dispatch to @sdlc-engineering-implementer referencing the context doc. Do not summarize or omit any findings.
     - **Documentation search escalation (iteration 1+):** When re-dispatching the implementer after ANY review rejection that involves library/framework API misuse, stubs where real integration is expected, or platform capability gaps, add a `DOCUMENTATION SEARCH` directive to the re-dispatch specifying the library name, the topic to search, and the reason. This triggers from the FIRST rejection — no free pass. The implementer must search context7 and/or Tavily before re-attempting.
     - **Changes Required (after 3 rejections for the SAME defect):** Trigger **Diagnostic Analysis**:
-      1. Read the actual implementation files (not just the implementer's summary).
+      1. Read the actual implementation files from disk (the context doc Source Files section may be stale at this point — read from disk for diagnostic accuracy).
       2. Compare the implementer's claims against real file contents.
       3. If the stuck defect involves external library/framework API usage or platform capabilities, search context7 for the relevant library documentation before proceeding.
       4. Classify the failure pattern:
          - **Stuck pattern** (same core defect persisted across 3 iterations): Architect self-implements the fix directly. Edit the source files, mark as `architect-implemented` in staging doc and dispatch log, then continue to review/QA.
          - **Progress pattern** (different issues each time): One more guided dispatch to implementer with exact code snippets showing what to change. If that also fails, self-implement.
-      5. After self-implementation, the pipeline continues normally (review, QA). No escalation or blocking required.
+      5. After self-implementation, update the context doc Source Files section to reflect the architect's changes, then continue pipeline normally (review, QA).
     - **Hard ceiling at iteration 5:** Architect self-implements regardless. No more implementer dispatches for this task.
-    - **Tier 4 — Oracle escalation (after architect self-implementation also fails):** If the architect's self-implemented code is also rejected by review or QA (total pipeline exhaustion), dispatch `@sdlc-engineering-oracle` with the complete failure chain: all implementer attempts, all reviewer feedback, architect self-implementation code and its rejection reasons, plan artifacts (story.md, hld.md, relevant domain artifacts), and staging doc with full history. If Oracle returns a FIX: mark as `oracle-implemented` in staging doc and dispatch log, continue pipeline normally (review + QA on Oracle's code). If Oracle returns an ESCALATION REPORT: return the report to the coordinator, which presents structured options to the user.
+    - **Tier 4 — Oracle escalation (after architect self-implementation also fails):** If the architect's self-implemented code is also rejected by review or QA (total pipeline exhaustion), dispatch `@sdlc-engineering-oracle` with the complete failure chain: all implementer attempts, all reviewer feedback, architect self-implementation code and its rejection reasons, the task context document path, and staging doc with full history. If Oracle returns a FIX: mark as `oracle-implemented` in staging doc and dispatch log, continue pipeline normally (review + QA on Oracle's code). If Oracle returns an ESCALATION REPORT: return the report to the coordinator, which presents structured options to the user.
   - F. On review pass, log QA dispatch (compound):
     `checkpoint.sh execution --dispatch-event dispatch --dispatch-agent sdlc-engineering-qa --dispatch-id "exec-{story}-t{id}-qa-i1"`
-    Then Task tool dispatch to @sdlc-engineering-qa using the QA dispatch template. Include DOCUMENTATION VERIFICATION.
+    Then Task tool dispatch to @sdlc-engineering-qa using the QA dispatch template. Include the TASK CONTEXT DOCUMENT path (for plan context only) and DOCUMENTATION VERIFICATION. QA reads source files from disk — do not instruct QA to rely on context doc source files.
   - G. Handle QA: PASS then mark task done + log QA response + commit in one compound call (step H). FAIL then Task tool dispatch to @sdlc-engineering-implementer with QA details (max 2 retries).
   - H. Mark task done, log QA response, and commit (compound):
     `checkpoint.sh execution --task-done "{id}" --dispatch-event response --dispatch-agent sdlc-engineering-qa --dispatch-id "exec-{story}-t{id}-qa-i1" --dispatch-verdict "PASS" --commit`

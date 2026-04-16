@@ -9,8 +9,13 @@ Use this template when dispatching `sdlc-qa` via the Task tool.
 ```
 VERIFY TASK: [Task ID] — [Task Name]
 
+TASK CONTEXT DOCUMENT: [exact path to docs/staging/US-NNN-name.task-N.context.md]
+Read the Acceptance Criteria, Testing Requirements, and Design References sections of
+this document for plan context. Do NOT use the Source Files section — QA always reads
+source files fresh from disk for independent verification.
+
 STAGING DOCUMENT: [exact path to docs/staging/US-NNN-*.md]
-Read the staging document for acceptance criteria and expected behavior.
+Read for execution-time decisions and file reference verification only.
 
 ACCEPTANCE CRITERIA:
 1. [Testable condition 1]
