@@ -46,6 +46,7 @@ Follow the **code-review** skill (`skills/code-review/`) for the review framewor
 - Coverage below dispatch thresholds = **Critical**.
 - No negative/error-path tests for validation/error ACs = **Important**.
 - Happy-path-only test suite across all ACs = **Important**.
+- When reviewing test assertions, apply `skills/test-driven-development/testing-anti-patterns.md` Anti-Pattern 0: flag tests that assert file contents, exported constants, or config keys as **Important** unless they match the listed exceptions (schemas/specs as product, security content, codegen output).
 
 **Run automated checks:** Run `npm run verify:quick` (JS/TS) or `bash scripts/verify.sh quick` (Python). This is silent on success — `=== ALL GATES PASSED ===` is sufficient evidence. If it fails, include the gate output as a Critical finding. Do not run lint, typecheck, or test as separate commands.
 

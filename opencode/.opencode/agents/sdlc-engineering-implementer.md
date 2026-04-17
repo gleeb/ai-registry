@@ -81,6 +81,14 @@ Do NOT search context7/Tavily for: code style issues, missing test coverage, arc
 
 Follow the `test-driven-development` skill (`skills/test-driven-development/`). Cover each AC with meaningful tests including negative/boundary paths. Meet coverage thresholds from dispatch. Reference `nodejs-backend-patterns` skill for API/integration test patterns when applicable.
 
+**Test failure escalation protocol — inline stop rule:**
+
+When a test approach fails twice for the same assertion:
+1. STOP iterating on the approach.
+2. Read `skills/test-driven-development/testing-anti-patterns.md` Anti-Pattern 0 — is this asserting observable behavior or a source artifact (file contents, exported constant, config key)? If it is a source artifact and the behavior is already covered elsewhere, drop the test entirely.
+3. If the test IS behavioral and IS required by an AC: document the blocker in Issues & Resolutions, read `skills/test-driven-development/test-patterns.md` for a working pattern for this scenario (CSS files, server rendering, browser globals, Vite config), then try a fundamentally different approach — not a variation of the same approach.
+4. Maximum 3 fundamentally different approaches per assertion. If still failing after 3, HALT and escalate to the hub with the blocker detail.
+
 ### Continuous Documentation
 
 1. Update staging doc with progress after significant changes.

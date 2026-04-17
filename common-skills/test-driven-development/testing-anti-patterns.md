@@ -1,21 +1,86 @@
 # Testing Anti-Patterns
 
-**Load this reference when:** writing or changing tests, adding mocks, or tempted to add test-only methods to production code.
+**Load this reference when:** writing or changing tests, choosing what to assert on, adding mocks, or tempted to add test-only methods to production code.
 
 ## Overview
 
-Tests must verify real behavior, not mock behavior. Mocks are a means to isolate, not the thing being tested.
+Tests must verify real behavior, not mock behavior, and not source artifacts. Mocks are a means to isolate, not the thing being tested.
 
-**Core principle:** Test what the code does, not what the mocks do.
+**Core principle:** Test what the code does, not what the code is, and not what the mocks do.
 
 **Following strict TDD prevents these anti-patterns.**
 
 ## The Iron Laws
 
 ```
-1. NEVER test mock behavior
-2. NEVER add test-only methods to production classes
-3. NEVER mock without understanding dependencies
+1. NEVER test source artifacts instead of behavior
+2. NEVER test mock behavior
+3. NEVER add test-only methods to production classes
+4. NEVER mock without understanding dependencies
+```
+
+## Anti-Pattern 0: Testing Source Artifacts Instead of Behavior
+
+**The violation:**
+```typescript
+// ❌ BAD: asserting file contents
+import { readFileSync } from 'node:fs';
+const css = readFileSync('src/styles/globals.css', 'utf8');
+expect(css).toContain(':root {');
+expect(css).toContain('.app-shell {');
+
+// ❌ BAD: asserting an exported constant
+import { APP_VERSION } from '../constants';
+expect(APP_VERSION).toBe('1.0.0');
+
+// ❌ BAD: asserting a config key exists
+import viteConfig from '../vite.config';
+expect(JSON.stringify(viteConfig)).toContain('"pwa"');
+```
+
+**Why this is wrong:**
+- You are testing that you wrote what you just wrote. It adds zero safety net.
+- Static file content, exported constants, and config keys are easy to assert but impossible to break accidentally — and if they change intentionally, the test is now an obstacle.
+- Created the multi-iteration yak-shave seen in the CSS import transcript: the agent committed to making a non-behavioral test pass across 4 different approaches.
+- The rendered page or the module that consumes the constant already validates the meaningful behavior.
+
+**your human partner's correction:** "Are we testing that a file contains specific text, or that the code produces correct output?"
+
+**Good tests assert:**
+- Rendered output contains expected elements (component test)
+- Function returns expected values for given inputs (unit test)
+- API responds with correct status and body (integration test)
+- Browser shows expected content and interactions (E2E test)
+
+**Suspect tests assert:**
+- A CSS file contains specific selectors → test the rendered page instead
+- A config file contains specific keys → test that the config produces correct behavior
+- An exported constant equals a specific string → test the code that uses the constant
+- A file exists at a specific path → the build/import will fail if it doesn't
+
+**Exceptions — testing file contents IS appropriate when:**
+- The file IS the product (JSON schemas, OpenAPI specs, migration files, codegen output)
+- The content has direct security implications (CSP headers, CORS policy, secret-pattern absence)
+- A codegen tool produces the file and correctness of the generated text is the acceptance criterion
+
+### Gate Function
+
+```
+BEFORE asserting on file contents, exported constants, or config keys:
+  Ask: "Is this asserting observable runtime behavior, or is it asserting source artifacts?"
+
+  IF source artifact:
+    Ask: "Does this file/constant/key fall under the listed exceptions
+          (product output, security content, generated code)?"
+
+    IF NOT exception:
+      STOP — delete the assertion.
+      Write a behavior test instead: test the rendered output, return value, or
+      API response that depends on the thing you were about to assert on.
+
+    IF exception:
+      Proceed, but read @test-patterns.md for the correct pattern
+      (e.g., readFileSync via import.meta.url — NOT Vite ?raw/?inline).
 ```
 
 ## Anti-Pattern 1: Testing Mock Behavior
@@ -274,6 +339,7 @@ TDD cycle:
 
 | Anti-Pattern | Fix |
 |--------------|-----|
+| Assert on file contents / constants / config keys | Test runtime behavior instead; see exceptions + @test-patterns.md |
 | Assert on mock elements | Test real component or unmock it |
 | Test-only methods in production | Move to test utilities |
 | Mock without understanding | Understand dependencies first, mock minimally |

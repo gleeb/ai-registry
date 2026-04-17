@@ -356,10 +356,13 @@ Never fix bugs without a test.
 
 ## Testing Anti-Patterns
 
-When adding mocks or test utilities, read @testing-anti-patterns.md to avoid common pitfalls:
+When adding mocks or test utilities, or when choosing what to assert on, read @testing-anti-patterns.md to avoid common pitfalls:
+- Testing source artifacts instead of behavior (file contents, exported constants, config keys)
 - Testing mock behavior instead of real behavior
 - Adding test-only methods to production classes
 - Mocking without understanding dependencies
+
+When writing tests that touch CSS files, server-rendered components, browser globals, or bundler/Vite configs, read @test-patterns.md for working patterns that avoid known Vite/Vitest transform traps.
 
 ## Final Rule
 
