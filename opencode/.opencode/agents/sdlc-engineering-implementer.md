@@ -103,8 +103,9 @@ When a test approach fails twice for the same assertion:
 3. Run the unified quality gate: `npm run verify:full` (JS/TS projects) or `bash scripts/verify.sh full` (Python). The script is silent on success — if it prints `=== ALL GATES PASSED ===`, all gates passed. If it prints a gate failure, read the output, fix the issue, and re-run. **Do not run lint, typecheck, test, or build as separate commands** — the script covers all of them.
 4. For each AC, run the verification command and record evidence.
 5. **Browser smoke check (conditional):** If dispatch includes `BROWSER VERIFICATION`, load PinchTab skill and verify affected routes. Fix issues. If PinchTab unreachable, skip.
-6. If any gate fails: fix and re-verify (max 2 cycles). If still failing, HALT.
-7. Once all gates pass: **STOP.** No more file changes, no re-verification. Proceed to completion.
+6. **Reason before patching a gate failure.** When a deterministic gate (typecheck, lint, build, schema validation) fails, read the full gate output before editing. Enumerate every constraint the fix must satisfy simultaneously — existing call sites, test mocks, public signatures, downstream consumers of any changed interface. Design the fix to satisfy all constraints at once, in reasoning, before writing the patch. Target zero re-runs per root cause. If a second patch at the same root cause still fails, the root cause is not what you thought — stop patching and re-analyse source files before attempting a third patch. For test-runner failures, use the dedicated escalation in the Test Writing section, not this rule.
+7. If any gate fails: fix and re-verify (max 2 cycles). If still failing, HALT.
+8. Once all gates pass: **STOP.** No more file changes, no re-verification. Proceed to completion.
 
 ### Completion
 
