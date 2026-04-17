@@ -8,6 +8,7 @@ Use this template for every `story.md` file in `plan/user-stories/US-NNN-name/`.
 # US-NNN: {Story Name}
 
 ## Dependencies
+- story_type: {scaffolding | feature | integration | infrastructure — omit for feature stories}
 - prd_sections: [{list of PRD section numbers}]
 - architecture_components: [{list of component names}]
 - provides_contracts: [{list of contract names, or empty}]
@@ -84,7 +85,7 @@ autonomously with no user interaction. If no milestones are needed, write
 
 ## Template Rules
 
-1. **Dependencies section** is the machine-readable manifest. Format MUST match [`DEPENDENCY-MANIFEST.md`](DEPENDENCY-MANIFEST.md) exactly.
+1. **Dependencies section** is the machine-readable manifest. Format MUST match [`DEPENDENCY-MANIFEST.md`](DEPENDENCY-MANIFEST.md) exactly. For US-001-scaffolding, `story_type: scaffolding` MUST be the first line of the manifest. For all other stories, omit `story_type` (it defaults to `feature`).
 2. **Integration Strategy** MUST list every external dependency the story touches with its realization level. Every `mock` dependency MUST name the story that will realize it. Every `realize` dependency MUST name the prior story it replaces. Stories with no external dependencies MUST state "No external dependencies."
 3. **Scope** MUST quote PRD text verbatim with section numbers. No paraphrasing.
 4. **Acceptance criteria** MUST be testable (an assertion can be written for each one).

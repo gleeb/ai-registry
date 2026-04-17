@@ -81,6 +81,17 @@ List of Phase 3 planning domains needed for this story. The Hub uses this to kno
 - `api` is needed when the story exposes or consumes API endpoints
 - `data` is needed when the story creates or modifies data entities
 
+### story_type (optional)
+
+Classifies the story's execution model. The Engineering Hub uses this to route the story to the correct executor.
+
+- Format: One of `scaffolding | feature | integration | infrastructure` (default: `feature` when absent)
+- `scaffolding` — MUST be set on US-001-scaffolding. Signals the Engineering Hub to fast-path the entire story to `@sdlc-engineering-scaffolder` with no task decomposition. The scaffolder owns the full story lifecycle including self-validation against story.md ACs and Files Affected.
+- `feature` — standard story executed via Phase 1/2/3 in the Engineering Hub.
+- `integration` — story that primarily wires together existing components; treated as `feature` by the hub.
+- `infrastructure` — devops/config-only story with no implementation tasks; treated as `feature` by the hub.
+- Absence of this field defaults to `feature`.
+
 ### tech_stack (required)
 
 List of technologies and frameworks used by this story. The Implementation Hub uses this to load the appropriate technology skills during execution.
@@ -118,6 +129,22 @@ List of external dependencies and their realization level for this story. Enable
 - integration_dependencies: [postgresql:mock, auth0:interface-only]
 ```
 
+Scaffolding story example:
+
+```markdown
+## Dependencies
+- story_type: scaffolding
+- prd_sections: [5, 7, 8, 9]
+- architecture_components: [App Shell & Navigation, Service Worker Layer]
+- provides_contracts: []
+- consumes_contracts: []
+- depends_on_stories: []
+- execution_order: 1
+- candidate_domains: [hld]
+- tech_stack: [typescript, react, vite, vite-plugin-pwa]
+- integration_dependencies: []
+```
+
 ## Validation Rules
 
 The Plan Validator checks:
@@ -136,3 +163,4 @@ The Plan Validator checks:
 12. Every `realize` dependency has a prior `mock` or `interface-only` entry in an earlier story.
 13. The realizing story's `execution_order` is higher than the mocking story's `execution_order`.
 14. Every `real` or `realize` dependency has corresponding infrastructure in `plan/cross-cutting/devops.md`.
+15. If `story_type: scaffolding` is present, the story is US-001-scaffolding and has `execution_order: 1`. No other story may declare `story_type: scaffolding`.

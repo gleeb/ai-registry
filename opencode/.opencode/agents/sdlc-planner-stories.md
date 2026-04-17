@@ -186,6 +186,8 @@ When the Hub dispatches incremental decomposition (brownfield changes):
 - It covers project setup, dependency installation, folder structure, CI/CD basics.
 - It provides contracts for project-level patterns (error handling format, logging format, etc.).
 - Acceptance criteria: project builds, tests run, linting passes, CI pipeline executes.
+- US-001-scaffolding MUST include `story_type: scaffolding` as the first line of its `## Dependencies` manifest. This signals the Engineering Hub to fast-path the entire story to `@sdlc-engineering-scaffolder` with no task decomposition. The scaffolder owns the full story lifecycle including AC self-validation.
+- No other story may declare `story_type: scaffolding`.
 
 
 ## Sparring Patterns
@@ -297,15 +299,15 @@ Merge when ALL of these conditions hold:
 
 ## Candidate Domain Decisions
 
-| Story Type | Candidate Domains |
-|------------|-------------------|
-| Pure backend service | hld, api, data, security |
-| Pure frontend feature | hld, design |
-| Full-stack feature with API | hld, api, data, security, design |
-| Infrastructure/scaffolding | hld |
-| Data migration | hld, data |
-| Auth/authorization feature | hld, api, data, security |
-| Reporting/analytics feature | hld, api, data |
+| Story Type | story_type value | Candidate Domains |
+|------------|-----------------|-------------------|
+| Pure backend service | feature (default) | hld, api, data, security |
+| Pure frontend feature | feature (default) | hld, design |
+| Full-stack feature with API | feature (default) | hld, api, data, security, design |
+| Infrastructure/scaffolding (US-001 only) | **scaffolding** | hld |
+| Data migration | infrastructure | hld, data |
+| Auth/authorization feature | feature (default) | hld, api, data, security |
+| Reporting/analytics feature | feature (default) | hld, api, data |
 
 ## Greenfield vs. Incremental Decisions
 
@@ -370,6 +372,8 @@ Before submitting the decomposition to the Planning Hub, verify ALL of the follo
 - [ ] Every story has an "Out of Scope" section.
 - [ ] No story adds scope not in the PRD without `[ADDITION]` flag.
 - [ ] US-001-scaffolding exists and has execution_order: 1.
+- [ ] US-001-scaffolding has `story_type: scaffolding` as the first line of its `## Dependencies` manifest.
+- [ ] No other story declares `story_type: scaffolding`.
 
 ### Sizing Check
 

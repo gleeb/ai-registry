@@ -27,7 +27,9 @@ Core responsibility:
 
 **Autonomy principle:** Runs fully autonomously. Never pause for user input. All decisions come from the initiative/story context, the scaffold-project skill, and codebase inspection.
 
-**Explicit boundary:** Do not dispatch story-level integration review (Phase 3), acceptance validation (Phase 4), documentation integration (Phase 5), or user acceptance (Phase 6). These belong to the engineering hub after scaffold completes. Scaffold work ends when the scaffold-reviewer returns Approved.
+**Explicit boundary — standard mode (non-scaffolding story):** Do not dispatch story-level integration review (Phase 3), acceptance validation (Phase 4), documentation integration (Phase 5), or user acceptance (Phase 6). These belong to the engineering hub after scaffold completes. Scaffold work ends when the scaffold-reviewer returns Approved.
+
+**Explicit boundary — scaffolding story mode (`STORY_TYPE: scaffolding` in dispatch):** The scaffolder IS the story executor. Story-level integration review, acceptance-validator dispatch, and documentation-writer dispatch do NOT run — the scaffolder's self-validation (Phase S5b) + scaffold-reviewer approval ARE the story acceptance gate. The engineering hub returns STORY STATUS: COMPLETE to the coordinator when the scaffolder returns SCAFFOLD STATUS: COMPLETE. No Phase 3 or beyond runs for this story.
 
 ---
 
@@ -55,7 +57,13 @@ Load the scaffold-project skill at initialization. Read `skills/scaffold-project
 ### Phase S0: Initialization
 
 1. Load `skills/scaffold-project/SKILL.md`.
-2. **Determine stack type** from the dispatch context (initiative description, user story, or explicit stack signal):
+2. **Check dispatch for STORY_TYPE signal:**
+   - If the dispatch includes `STORY_TYPE: scaffolding`: set **scaffolding-story mode**. Read `plan/user-stories/<story-id>/story.md` and extract:
+     - The complete `## Files Affected` table (file path + action columns).
+     - The complete `## Acceptance Criteria` list (each numbered AC).
+     - Store these in memory — they are used in Phase S5b self-validation, not in the implementer dispatch.
+   - If STORY_TYPE is absent: standard mode (no story.md reading).
+3. **Determine stack type** from the dispatch context (initiative description, user story, or explicit stack signal):
 
    | Signal | Stack | Reference(s) to load |
    |--------|-------|----------------------|
@@ -66,15 +74,15 @@ Load the scaffold-project skill at initialization. Read `skills/scaffold-project
    | API, CLI, Python | python-uv | `references/python-uv.md` |
    | Multiple apps | monorepo | `references/monorepo.md` + relevant app references |
 
-3. Read the per-stack reference file(s). Extract:
+4. Read the per-stack reference file(s). Extract:
    - The scaffold command(s)
    - The post-scaffold checklist items
    - The **Scaffolding Verification Checklist** (every checkbox item)
    - The **Known Gotchas** section (communicate these to the implementer as prevention guidance)
 
-4. Inspect the current directory for any existing project files (`package.json`, `pyproject.toml`, `src/`, `app/`). If a partial scaffold exists, note which checklist items are already satisfied.
+5. Inspect the current directory for any existing project files (`package.json`, `pyproject.toml`, `src/`, `app/`). If a partial scaffold exists, note which checklist items are already satisfied.
 
-5. Create a minimal scaffold staging document at `docs/staging/scaffold-task-0.md` with:
+6. Create a minimal scaffold staging document at `docs/staging/scaffold-task-0.md` with:
    - Stack type determined
    - Reference files loaded
    - Checklist items (as a task checklist)
@@ -202,6 +210,46 @@ test -f docs/staging/README.md && echo "OK" || echo "MISSING"
 
 If `docs/index.md` is missing, create it using the template from `skills/scaffold-project/references/project-docs.md`. Do not dispatch — self-implement this file.
 
+### Phase S5b: Story-Level Self-Validation (scaffolding-story mode only)
+
+**Run this phase only when dispatched with `STORY_TYPE: scaffolding`.** Skip entirely in standard mode.
+
+This phase validates that the scaffold satisfies the story's `story.md` contracts before the hub can declare the story complete.
+
+**Step 1 — Files Affected check:**
+For each file in the `## Files Affected` table extracted during Phase S0:
+```bash
+test -f <file-path> && test -s <file-path> && echo "PRESENT" || echo "MISSING: <file-path>"
+```
+Any MISSING result → set validation status to FAIL. Record the missing file.
+
+**Step 2 — Verification gate confirmation:**
+Confirm `npm run verify:full` (or `bash scripts/verify.sh full`) produced `=== ALL GATES PASSED ===` during Phase S4 (or confirm it still passes now if any self-implementation occurred after the last full run):
+```bash
+npm run verify:full     # JS/TS
+bash scripts/verify.sh full  # Python
+```
+Any gate failure → set validation status to FAIL. Record the failing gate output.
+
+**Step 3 — Scaffold-reviewer confirmation:**
+Confirm the scaffold-reviewer returned Approved in Phase S4. If the reviewer returned Changes Required and the remediation path ended in self-implementation without a final reviewer pass, run the verification gate only (reviewer re-dispatch is not required after self-implementation — verification gate passing is sufficient).
+
+**Step 4 — Acceptance Criteria mapping:**
+For each AC extracted from `story.md` during Phase S0, map it to evidence:
+
+| AC | Evidence type | Evidence |
+|----|---------------|---------|
+| AC-N: install/dev/build | `verify:full` exit 0 | `=== ALL GATES PASSED ===` |
+| AC-N: PWA installability | files exist (`vite.config.ts`, `public/icons/icon-*.png`, manifest config) | bash file checks |
+| AC-N: fallback messaging | source file exists and is non-empty (`src/app/app.tsx`) | bash file check |
+
+Map each AC to the closest available evidence. If an AC cannot be evidenced by file existence or `verify:full` alone (e.g., browser-observable behavior), note it as "requires browser validation — out of scope for scaffold self-validation" and treat as PASS for the self-validation gate (browser validation is a manual step, not a scaffolder responsibility).
+
+**Step 5 — Determine self-validation outcome:**
+- All Files Affected present AND `verify:full` exits 0 AND all ACs either evidenced or noted as browser-validation-only → **SELF-VALIDATION: PASS**
+- Any file missing OR any verification gate failing → **SELF-VALIDATION: FAIL**
+  - Return `SCAFFOLD STATUS: PARTIAL` with specific gaps listed. Do NOT return COMPLETE.
+
 ### Phase S6: Return to Engineering Hub
 
 Mark the staging document as completed. Return a structured completion contract to the engineering hub.
@@ -296,7 +344,15 @@ DOCUMENTATION STRUCTURE:
 IMPLEMENTATION METHOD: [implementer | scaffolder-self-implemented]
 REVIEW ITERATIONS: [1 | 2]
 
+STORY AC VALIDATION: [Include this block only when STORY_TYPE: scaffolding was in the dispatch]
+- Files Affected: [N present, 0 missing | N present, M missing: list missing files]
+- Verification gate: [PASS (=== ALL GATES PASSED ===) | FAIL: paste gate output]
+- AC-1: [PASS — evidence: verify:full exit 0 | FAIL — reason | browser-validation-only]
+- AC-2: [PASS — evidence: [file list] | FAIL — reason | browser-validation-only]
+- AC-3: [PASS — evidence: [file list] | FAIL — reason | browser-validation-only]
+- Self-validation result: PASS | FAIL
+
 [If PARTIAL or BLOCKED: describe what remains and why]
 ```
 
-The engineering hub uses COMPLETE to proceed to Phase 1 (context gathering). PARTIAL or BLOCKED triggers escalation.
+The engineering hub uses COMPLETE + SELF-VALIDATION: PASS (for scaffolding-story mode) to return STORY STATUS: COMPLETE to the coordinator. PARTIAL or BLOCKED triggers escalation. For non-scaffolding-story mode, COMPLETE causes the hub to proceed to Phase 1 (context gathering).

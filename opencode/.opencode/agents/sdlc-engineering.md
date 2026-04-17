@@ -140,9 +140,32 @@ Note: `scaffold-project` skill is loaded internally by `@sdlc-engineering-scaffo
 
 ### Phase 0b: Scaffolding Check
 
-**Description:** Detect whether the project needs foundational scaffolding before architecture planning. If greenfield, delegate the entire scaffold lifecycle to `@sdlc-engineering-scaffolder`.
+**Description:** Route scaffolding stories directly to `@sdlc-engineering-scaffolder` and detect greenfield projects for non-scaffolding stories.
 
-**Steps:**
+**Step 0b-0: Read story_type (always first)**
+- Read `plan/user-stories/<story-id>/story.md` and check the `## Dependencies` manifest for `story_type`.
+- **If `story_type: scaffolding`:** This is a scaffolding story. The scaffolder owns the entire story lifecycle. Follow the **Scaffolding Story Fast-Path** below.
+- **If `story_type` is absent or any other value:** Follow the **Greenfield Detection Fallback** below.
+
+**Scaffolding Story Fast-Path (story_type: scaffolding only):**
+
+The scaffolder is the story executor — not a pre-step. Do NOT enter Phase 1, 1a, 1b, 1c, 2, or 3.
+
+- A. Task tool dispatch to `@sdlc-engineering-scaffolder` with:
+  - The full `story.md` and `hld.md` content (verbatim, so the scaffolder can read ACs + Files Affected for self-validation).
+  - The current working directory as `PROJECT_ROOT`.
+  - The story ID and `STORY_TYPE: scaffolding` signal so the scaffolder activates self-validation mode.
+  - Any explicit stack signals from the story (e.g., "React + Vite PWA", "FastAPI", "Expo").
+- B. Wait for the scaffolder's completion contract.
+- C. Handle the scaffolder's return STATUS:
+  - `SCAFFOLD STATUS: COMPLETE` → verify `docs/index.md` exists (bash check). If present:
+    1. Log story as complete: `checkpoint.sh execution --phase complete --story <story-id>`.
+    2. Return to coordinator with `STORY STATUS: COMPLETE` for this story. The coordinator routes to the next story. Do NOT proceed to Phase 1.
+  - `SCAFFOLD STATUS: PARTIAL` → re-dispatch `@sdlc-engineering-scaffolder` once with the partial details and the STORY CONTEXT. If still PARTIAL, HALT and escalate to coordinator.
+  - `SCAFFOLD STATUS: BLOCKED` → HALT and escalate to coordinator with blocker details from the scaffolder's contract.
+
+**Greenfield Detection Fallback (story_type absent or non-scaffolding):**
+
 - Check for indicators of an existing project structure:
   - Package manager config: `package.json`, `pyproject.toml`, `requirements.txt`, `Cargo.toml`, `go.mod`
   - Source directories: `src/`, `app/`, `lib/`, or equivalent
@@ -155,12 +178,12 @@ Note: `scaffold-project` skill is loaded internally by `@sdlc-engineering-scaffo
     - Any explicit stack signals from the story (e.g., "React + Vite PWA", "FastAPI", "Expo").
   - B. Wait for the scaffolder's completion contract.
   - C. Handle the scaffolder's return STATUS:
-    - `SCAFFOLD STATUS: COMPLETE` → verify `docs/index.md` exists (bash check). If present, proceed to Phase 1.
+    - `SCAFFOLD STATUS: COMPLETE` → verify `docs/index.md` exists (bash check). If present, proceed to Phase 1 with the scaffolded codebase as context.
     - `SCAFFOLD STATUS: PARTIAL` → re-dispatch `@sdlc-engineering-scaffolder` once with the partial details. If still PARTIAL, HALT and escalate to coordinator.
     - `SCAFFOLD STATUS: BLOCKED` → HALT and escalate to coordinator with blocker details from the scaffolder's contract.
   - D. After scaffold completes and docs gate passes, proceed to Phase 1 with the scaffolded codebase as context.
 
-**Key principle:** Scaffolding is a prerequisite, not architecture work. The hub detects greenfield and delegates — it does NOT load scaffold-project skill, manage review iterations, or handle checklist verification. All of that is internal to `@sdlc-engineering-scaffolder`. The hub receives one STATUS and proceeds.
+**Key principle:** For `story_type: scaffolding`, the scaffolder IS the story executor — it owns implementation, review, and AC self-validation for the entire story. The hub receives one STATUS and returns to the coordinator, bypassing all Phase 1/2/3 ceremony. For non-scaffolding stories, scaffolding is a prerequisite pre-step after which Phase 1 runs normally.
 
 ### Phase 1a: Context Gathering
 

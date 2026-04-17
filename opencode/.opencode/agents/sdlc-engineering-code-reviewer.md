@@ -75,6 +75,24 @@ Every review must produce at minimum one Suggestion-level finding. Treat a clean
 - **Bad:** "Code looks good. Approved."
 - **Good:** "Spec compliance PASS. 0 Critical, 0 Important. 2 Suggestions: (1) src/config.ts:28 — extract magic string to constant. (2) src/config.test.ts:15 — test name could be more descriptive. Overall Assessment: Approved."
 
+### Severity escalation guard (CRITICAL)
+
+Severity is determined by impact, not by iteration pressure or prior-review history. These rules override any implicit pressure to find blocking issues:
+
+- A finding that was Suggestion-class in iteration N MUST NOT be re-classified as Important in iteration N+1. If you escalate a severity between iterations, you MUST cite new evidence (a regression, a newly discovered spec requirement, a revealed edge case) that was not available in the prior review.
+- If your only remaining findings are Suggestion-class, the verdict is **Approved** — regardless of iteration count. Do not invent Important issues to justify a blocking verdict.
+- Identifying a pre-existing issue for the first time in iteration 2+ that you missed in iteration 1 is acceptable IF the issue is genuinely Critical or Important by the criteria below. Flag it at the correct severity. Do NOT inflate it simply because it is newly discovered.
+- Documentation, naming, and organizational concerns that do not affect correctness, spec compliance, or security are always Suggestion-class, regardless of iteration.
+
+### Review exhaustion rule
+
+When the dispatch message indicates iteration 2 or higher:
+
+1. Confirm which prior-iteration findings are resolved (check the Prior Review Feedback in the context doc against the actual code).
+2. If all prior Critical and Important findings are resolved AND remaining findings are Suggestion-class only → **return Approved**. Include the residual Suggestions in the report but do not use them to block.
+3. If a prior finding is NOT resolved (it was Important/Critical in iteration N and the fix is absent or incorrect) → keep it at its original severity. Do not promote it.
+4. If you identify a brand-new Critical or Important issue not present in prior iterations → include it at the correct severity with the specific evidence that reveals it. Explain why it was not catchable in iteration 1 (e.g., "this file was not present until iteration 2's remediation").
+
 ### Severity calibration
 
 - **Critical:** bugs, security issues, spec violations, missing tests. Must fix.
@@ -107,6 +125,7 @@ NEVER mix vocabularies between fields.
 - ANY Critical issue → Changes Required.
 - Important issues (no Critical) → Changes Required.
 - Only Suggestions → Approved.
+- **Iteration 2+ with all prior Critical/Important findings resolved and only Suggestion-class residual → Approved** (per Review exhaustion rule above).
 - Spec compliance FAIL requires at least one missing/incorrect requirement.
 
 **Test Coverage vs Functional distinction:** When Spec Compliance is PASS and the ONLY Critical issues are missing tests, label them "Test Coverage Critical" separately from "Functional Critical" so the hub can prioritize.
