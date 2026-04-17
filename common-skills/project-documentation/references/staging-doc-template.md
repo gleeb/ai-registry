@@ -13,6 +13,8 @@ Plan artifacts (story.md, hld.md, api.md, data.md, security.md) remain the autho
 ```markdown
 # US-NNN -- Story Title
 
+**Skill gotchas (post-run review):** `docs/staging/US-NNN-name.skill-gotchas.md`
+
 ## Plan Artifact Paths
 - **Story**: `plan/user-stories/US-NNN-name/story.md` (acceptance criteria at lines X-Y)
 - **HLD**: `plan/user-stories/US-NNN-name/hld.md`
@@ -60,6 +62,19 @@ Plan artifacts (story.md, hld.md, api.md, data.md, security.md) remain the autho
 - **Status:** pending | Review: 0 | QA: 0
 - **Context doc size:** [N lines]
 
+## Library Documentation Cache
+
+> Hub-managed. Populated from implementer completion summaries during Phase 2.
+> Implementers read per-task Library Documentation Cache from task context docs (not here).
+> This section is the hub's cross-task reference — for detecting weak cache entries and
+> improving re-dispatch quality.
+
+### Task 1 libraries
+(filled during execution — copied from task-1.context.md Library Documentation Cache after first implementer dispatch)
+
+### Task 2 libraries
+(filled during execution)
+
 ## Execution Log
 
 ### Technical Decisions (execution-time)
@@ -69,6 +84,14 @@ Plan artifacts (story.md, hld.md, api.md, data.md, security.md) remain the autho
 ### Issues and Resolutions
 | Issue | Root Cause | Resolution | Lesson |
 |-------|------------|------------|--------|
+
+### Product/Business Gotchas
+> Domain rules or business constraints discovered during implementation that were not in the plan.
+> Consumed by the documentation-writer at end-of-story consolidation — integrated into permanent project docs.
+> Technical gotchas (library/framework quirks) go to the sibling skill-gotchas.md file instead.
+
+| domain_area | rule | resolution | suggested_doc_target |
+|-------------|------|------------|----------------------|
 
 ### Implementation File References
 **Created:** (filled during execution)
@@ -93,8 +116,9 @@ When the architect creates this document:
    - Files to create or modify.
    - External libraries required.
 7. After completing the staging doc, create per-task context documents for each task using `references/task-context-template.md`. Apply the **task-size gate** (see that template's Hub Instructions).
-8. Leave the **Execution Log** sections empty — they are filled during the dev loop.
-9. Record the context doc line count in each task's `Context doc size` field after creation.
+8. Create the skill gotchas sibling file `docs/staging/US-NNN-name.skill-gotchas.md` using `references/skill-gotchas-template.md`. Add a link to it at the top of the staging doc (already included in the template header).
+9. Leave the **Execution Log** sections empty — they are filled during the dev loop.
+10. Record the context doc line count in each task's `Context doc size` field after creation.
 
 ## What the staging doc does NOT do
 

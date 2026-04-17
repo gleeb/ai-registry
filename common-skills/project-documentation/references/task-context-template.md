@@ -123,11 +123,20 @@ For each, include a brief description of what it shows and what decisions it inf
 
 ## Library Documentation Cache
 
-> Populated by the hub after the first implementer dispatch completes (bridges to P4).
-> Empty on the initial dispatch. Hub copies key findings from the implementer's context7 Lookups.
+> Populated by the hub after the first implementer dispatch completes.
+> Empty on the initial dispatch. Hub merges entries from the implementer's Library Documentation Cache Usage section.
+> Implementer: check this section BEFORE querying context7 or Tavily (see Documentation Search protocol).
+> Re-query of a cached library requires a recorded justification in the completion summary.
 
-[On re-dispatch: verbatim key excerpts from context7/Tavily results for libraries used in
-this task. Implementer reads this section and skips re-querying for documented libraries.]
+<!-- Entry format: one block per library -->
+<!--
+### [library-name] (vX.Y — installed from package.json)
+- Query: "[the question asked of context7/Tavily]"
+- Key findings:
+  - [distilled finding 1]
+  - [distilled finding 2]
+- Source: [doc section or file path] (via [context7 library ID or Tavily URL])
+-->
 
 ---
 
@@ -179,7 +188,10 @@ During **Phase 1b**, after creating the staging document:
 - For each `CREATED` file <150 lines: read from disk, add to Source Files.
 - For each `MODIFIED` file: if the before/after snippet is unambiguous, patch the Source Files section inline. If ambiguous, re-read the file from disk.
 - For each `DELETED` file: remove from Source Files.
-- Copy key library findings from the implementer's `context7 Lookups` section into the Library Documentation Cache.
+- **Library Documentation Cache update:** Read the implementer's `## Library Documentation Cache Usage` section:
+  - `queried (first time)` entries: confirm the cache entry was written by the implementer to this section. If missing, write it from the implementer's summary.
+  - `re-queried (justification: <reason>)` entries: merge the updated/expanded entry. Note the re-query reason so future dispatches know what prompted cache expansion.
+  - `cached (skipped re-query)` entries: no action needed.
 - Update `Last updated` timestamp.
 
 **After reviewer returns (before re-dispatch, if Changes Required):**

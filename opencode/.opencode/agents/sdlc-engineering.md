@@ -192,6 +192,11 @@ Note: `scaffold-project` skill is loaded internally by `@sdlc-engineering-scaffo
   - Hard limit (~800 lines): Split the task before proceeding. Break at the nearest DU/IU boundary, update the staging doc task list, and create separate context docs for each sub-task.
 - Leave Source Files, Library Documentation Cache, and Prior Review Feedback sections empty at creation — the hub populates these before each Phase 2 dispatch.
 
+**Skill gotchas sibling file creation (alongside the staging doc):**
+- After creating the main staging doc, create an empty `docs/staging/US-NNN-name.skill-gotchas.md` using the template at `.opencode/skills/project-documentation/references/skill-gotchas-template.md`.
+- Add a link to this sibling file at the top of the main staging doc: `**Skill gotchas (post-run review):** docs/staging/US-NNN-name.skill-gotchas.md`.
+- Include the sibling file path in every implementer and reviewer dispatch as `SKILL GOTCHAS FILE: docs/staging/US-NNN-name.skill-gotchas.md`. Subagents append technical gotchas to this file; the hub does not read or process it during the run.
+
 ### Phase 1c: Actionable Plan
 
 **Description:** Decompose plan design units into executable tasks with plan-artifact references.
@@ -237,7 +242,10 @@ Note: `scaffold-project` skill is loaded internally by `@sdlc-engineering-scaffo
     1. For each `CREATED` file <150 lines: read from disk, add to Source Files section.
     2. For each `MODIFIED` file: if the before/after snippet is unambiguous, patch Source Files inline. If ambiguous or no snippet provided, re-read the file from disk.
     3. For each `DELETED` file: remove from Source Files section.
-    4. Copy key library findings from the implementer's `context7 Lookups` section into the context doc's Library Documentation Cache section (for P4 caching).
+    4. **Library Documentation Cache update:** Read the implementer's `## Library Documentation Cache Usage` section:
+       - For every library with status `queried (first time) — cache updated`: the context doc's Library Documentation Cache is already updated (the implementer wrote to the context doc). Confirm the entry is present.
+       - For every library with status `re-queried (justification: <reason>) — cache updated`: merge the updated entry into the context doc's Library Documentation Cache. If the entry was previously thin (causing the re-query), note "cache expanded after re-query" in the Technical Decisions section so future dispatches benefit from the improved entry.
+       - For every library with status `cached (skipped re-query)`: no action needed.
     5. Update the `Last updated` timestamp.
   - C1b. **Implementation Completeness Gate:** Read the implementer's return message. Check the STATUS field:
     1. `STATUS: BLOCKED` — Skip review entirely. Record the blocker in the staging doc. Re-dispatch with blocker resolution context, or escalate if unresolvable.
@@ -253,7 +261,7 @@ Note: `scaffold-project` skill is loaded internally by `@sdlc-engineering-scaffo
   - E. Handle review verdict using the **Adaptive Recovery Protocol**:
     - **Approved:** Proceed to QA (step F).
     - **Changes Required (iterations 1-3):** Update the context doc's Prior Review Feedback section with the reviewer's COMPLETE issues section verbatim (all Critical, Important, and Suggestion items with original file:line references). Re-dispatch to @sdlc-engineering-implementer referencing the context doc. Do not summarize or omit any findings.
-    - **Documentation search escalation (iteration 1+):** When re-dispatching the implementer after ANY review rejection that involves library/framework API misuse, stubs where real integration is expected, or platform capability gaps, add a `DOCUMENTATION SEARCH` directive to the re-dispatch specifying the library name, the topic to search, and the reason. This triggers from the FIRST rejection — no free pass. The implementer must search context7 and/or Tavily before re-attempting.
+    - **Documentation search escalation (iteration 1+):** When re-dispatching the implementer after ANY review rejection that involves library/framework API misuse, stubs where real integration is expected, or platform capability gaps, add a `DOCUMENTATION SEARCH` directive to the re-dispatch specifying: the library name, the topic to search, the reason, and whether a cache entry already exists and why it was insufficient (copy directly from the reviewer's recommendation). This triggers from the FIRST rejection — no free pass. The implementer must search context7 and/or Tavily before re-attempting, and must record the justification and update the cache entry.
     - **Changes Required (after 3 rejections for the SAME defect):** Trigger **Diagnostic Analysis**:
       1. Read the actual implementation files from disk (the context doc Source Files section may be stale at this point — read from disk for diagnostic accuracy).
       2. Compare the implementer's claims against real file contents.
