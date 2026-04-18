@@ -127,6 +127,16 @@ After scaffolding, create `scripts/verify.sh` (from the stack reference template
   bash scripts/verify.sh full  # Python projects
 The script is silent on success — `=== ALL GATES PASSED ===` confirms all gates passed. If it fails, fix the failing gate and re-run. All gates must pass before returning STATUS: COMPLETE.
 
+COVERAGE REPORTER REQUIREMENT (JS/TS only):
+The scaffolded `vitest.config.ts` (or equivalent) MUST declare `coverage.reporter: ['text', 'json-summary', 'html']`.
+The `json-summary` reporter writes `coverage/coverage-summary.json` — a compact per-file aggregate that implementers use to extract coverage numbers without reading large raw artifacts. Without it, implementers resort to reading `coverage-final.json` (50–100 KB) or `index.html` directly, wasting context.
+The `scripts/verify.sh` test gate MUST, after running the test suite with coverage, print per-file coverage lines in this format:
+  COVERAGE: <relative-path> L=N% B=N% F=N%
+Implementation: after `pnpm exec vitest run --coverage`, add:
+  if [ -f coverage/coverage-summary.json ]; then
+    node -e "const s=require('./coverage/coverage-summary.json'); for(const[k,v] of Object.entries(s)) { if(k==='total') continue; const p=k.replace(process.cwd()+'/',''); console.log('COVERAGE: '+p+' L='+v.lines.pct+'% B='+v.branches.pct+'% F='+v.functions.pct+'%'); }"
+  fi
+
 DOCUMENTATION REQUIREMENT:
 Create the docs/ structure per skills/scaffold-project/references/project-docs.md.
 Minimum required: docs/index.md, docs/[domain]/index.md, docs/staging/README.md, docs/specs/.gitkeep, docs/archive/.gitkeep.

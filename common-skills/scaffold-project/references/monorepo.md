@@ -262,6 +262,8 @@ Make it executable: `chmod +x scripts/verify.sh`
 
 Note: Turbo suppresses individual task output on cache hit. The gate-level capture still works — if any task fails, Turbo exits non-zero and the failure output is printed.
 
+Note: Per-workspace `verify.sh` emits `COVERAGE:` lines using the appropriate per-stack snippet (see `react-vite.md`, `nextjs.md`, or `react-native.md`); the monorepo root verify forwards each workspace's output unchanged.
+
 ### Verification Gate (all must pass before scaffold is done)
 
 ```bash

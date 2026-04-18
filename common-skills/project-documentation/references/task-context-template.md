@@ -109,34 +109,23 @@ For each, include a brief description of what it shows and what decisions it inf
 ## Source Files
 
 > Hub-updated before each dispatch. Represents current on-disk state at time of last hub update.
-> Files <150 lines are included verbatim. Files ≥150 lines include only the relevant sections.
-> Reviewers: use this for plan context; also run verification commands on disk for ground truth.
-> QA agents: ignore this section — always read source files fresh from disk.
+> **Implementers:** This section is a **file inventory only** — path, line count, one-line purpose, and exported public symbols. Read source files from disk when you need their actual content. Do NOT rely on this section for code to patch.
+> **Reviewers/QA:** For reviewing roles only, the dispatch message body carries the embedded code excerpts. The inventory in this section is the persistent record; excerpts are included inline in the dispatch.
 
 ### [path/to/file.ext] — [CREATED | EXISTING | will be created by this task]
 
-```lang
-[file contents verbatim, or relevant sections with surrounding context]
-```
+- **Lines:** N
+- **Purpose:** [one-line description]
+- **Exports:** `[ExportedSymbol1]`, `[ExportedSymbol2]`, ...
 
 ---
 
 ## Library Documentation Cache
 
-> Populated by the hub after the first implementer dispatch completes.
-> Empty on the initial dispatch. Hub merges entries from the implementer's Library Documentation Cache Usage section.
-> Implementer: check this section BEFORE querying context7 or Tavily (see Documentation Search protocol).
-> Re-query of a cached library requires a recorded justification in the completion summary.
-
-<!-- Entry format: one block per library -->
-<!--
-### [library-name] (vX.Y — installed from package.json)
-- Query: "[the question asked of context7/Tavily]"
-- Key findings:
-  - [distilled finding 1]
-  - [distilled finding 2]
-- Source: [doc section or file path] (via [context7 library ID or Tavily URL])
--->
+> Story-level cache file: `docs/staging/<story-id>.lib-cache.md`
+> Implementer: check that file BEFORE querying context7 or Tavily (see Documentation Search protocol).
+> This section is intentionally blank in the context doc — all cache content lives in the story-level file.
+> Re-query of a cached library requires a recorded justification and a `re_query_log` entry in the cache file.
 
 ---
 
@@ -170,9 +159,9 @@ During **Phase 1b**, after creating the staging document:
    - **Hard limit (~800 lines total):** The task MUST be split before proceeding. Break at the nearest DU/IU boundary, update the staging doc task list, and create separate context docs for each sub-task.
    - Log the context doc line count in each `checkpoint.sh dispatch-log` call using the `context_doc_lines` field for empirical threshold tuning.
 
-4. Leave **Source Files** empty at Phase 1b — the hub populates it before each Phase 2 implementer dispatch.
+4. Leave **Source Files** empty at Phase 1b — the hub populates it (as a file inventory) before each Phase 2 implementer dispatch.
 
-5. Leave **Library Documentation Cache** empty at Phase 1b — populated from implementer completion summary.
+5. **Library Documentation Cache** — do NOT populate this section in the context doc. Create `docs/staging/<story-id>.lib-cache.md` during Phase 1b (see story-level cache instructions below). All cache content lives there; this section simply points at the file.
 
 6. Leave **Prior Review Feedback** absent at Phase 1b — added before re-dispatches only.
 
@@ -180,19 +169,59 @@ During **Phase 1b**, after creating the staging document:
 
 **Before implementer dispatch (first attempt):**
 - Read each file listed in the task's `Files` section from disk.
-- Write verbatim contents (files <150 lines) or relevant sections (files ≥150 lines) into the Source Files section.
+- Write a **file inventory** entry into the Source Files section for each file: path, line count, one-line purpose, exported public symbols. Do NOT embed code bodies.
 - Update the `Last updated` timestamp.
 
 **After implementer returns (before reviewer dispatch):**
 - Parse the implementer's `CHANGES APPLIED` section.
-- For each `CREATED` file <150 lines: read from disk, add to Source Files.
-- For each `MODIFIED` file: if the before/after snippet is unambiguous, patch the Source Files section inline. If ambiguous, re-read the file from disk.
+- For each `CREATED` file: update the Source Files inventory entry (add if new).
+- For each `MODIFIED` file: update the inventory entry (line count, exports) if they changed.
 - For each `DELETED` file: remove from Source Files.
 - **Library Documentation Cache update:** Read the implementer's `## Library Documentation Cache Usage` section:
-  - `queried (first time)` entries: confirm the cache entry was written by the implementer to this section. If missing, write it from the implementer's summary.
-  - `re-queried (justification: <reason>)` entries: merge the updated/expanded entry. Note the re-query reason so future dispatches know what prompted cache expansion.
-  - `cached (skipped re-query)` entries: no action needed.
+  - `queried (first time) — cache written at docs/staging/<story>.lib-cache.md#<lib>`: open the story-level cache file and confirm the entry is present with required verbose fields (apis_used, code_snippets). If missing, write it from the implementer's summary.
+  - `re-queried (justification: <reason>) — re_query_log entry added`: confirm the `re_query_log` entry was appended in the story-level cache file.
+  - `cached (skipped re-query, cache path: <file>#<lib>)`: no action needed.
+- **Before reviewer/QA dispatch:** read each file from disk and include verbatim code excerpts in the **dispatch message body** (not in the context doc). Reviewers work from these inline excerpts.
 - Update `Last updated` timestamp.
+
+---
+
+## Hub Instructions: Story-Level Library Cache
+
+**Create during Phase 1b** (alongside the staging doc): `docs/staging/<story-id>.lib-cache.md`
+
+Use this header:
+```markdown
+# Library Documentation Cache — <story-id>
+
+> Story-level, append-only. One section per external library. All tasks in this story share this cache.
+> Hub creates at Phase 1b (empty). Implementer appends after first query. Hub confirms entries after each dispatch.
+> Budget: 3 queries per library per story. Each re-query must add a re_query_log entry.
+
+<!-- Entry template:
+## <library> @ <pinned version>
+- source_urls: [context7-url, tavily-url, ...]
+- first_queried_in: Task-N / iteration-M
+- apis_used:
+  - FunctionName(param: Type): ReturnType
+- error_types:
+  - ErrorClassName — when it occurs
+- code_snippets:
+  ```<lang>
+  // minimal working example from docs
+  ```
+- gotchas: version-specific behavior that surprised us
+- re_query_log:
+  - <ISO timestamp> — justification: <what specific detail was missing> — added: <what new info was appended>
+-->
+```
+
+**After each implementer dispatch**, open the cache file and verify that:
+1. Every library in `EXTERNAL LIBRARIES` has an entry.
+2. Every entry contains `apis_used` and `code_snippets` (non-empty).
+3. The `re_query_log` has an entry for each re-query.
+
+Track the per-library query count (count `re_query_log` entries + 1 for the first query). Include `LIBRARY BUDGET: <lib> N/3 used` in the next implementer dispatch for any library that has been queried 2 or more times.
 
 **After reviewer returns (before re-dispatch, if Changes Required):**
 - Append the reviewer's COMPLETE issues section verbatim to the Prior Review Feedback section.

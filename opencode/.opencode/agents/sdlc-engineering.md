@@ -220,6 +220,11 @@ The scaffolder is the story executor — not a pre-step. Do NOT enter Phase 1, 1
 - Add a link to this sibling file at the top of the main staging doc: `**Skill gotchas (post-run review):** docs/staging/US-NNN-name.skill-gotchas.md`.
 - Include the sibling file path in every implementer and reviewer dispatch as `SKILL GOTCHAS FILE: docs/staging/US-NNN-name.skill-gotchas.md`. Subagents append technical gotchas to this file; the hub does not read or process it during the run.
 
+**Library cache file creation (alongside the staging doc):**
+- Create `docs/staging/US-NNN-name.lib-cache.md` with the header from the task-context-template.md Hub Instructions. This is the story-level library documentation cache shared across all tasks and iterations for this story.
+- Include the path in every implementer dispatch as `LIBRARY CACHE: docs/staging/US-NNN-name.lib-cache.md`.
+- After each implementer dispatch returns, open the cache file and verify: (a) every library in `EXTERNAL LIBRARIES` has an entry, (b) each entry has non-empty `apis_used` and `code_snippets` fields. If an entry is missing or has empty required fields, write it from the implementer's completion summary. Track the per-library query count (first query = 1, plus the count of `re_query_log` entries). Emit `LIBRARY BUDGET: <lib> N/3 used` in the next implementer dispatch for any library at 2/3 or above.
+
 ### Phase 1c: Actionable Plan
 
 **Description:** Decompose plan design units into executable tasks with plan-artifact references.
@@ -253,7 +258,7 @@ The scaffolder is the story executor — not a pre-step. Do NOT enter Phase 1, 1
     5. On failure: record blocker in staging doc. Re-dispatch once with resolution guidance if available. If still failing, HALT and escalate.
   - A2. **Prepare task context document:** Before dispatch, update `docs/staging/US-NNN-name.task-N.context.md`:
     1. Read each file listed in the task's `Files` section from disk (current state).
-    2. Write verbatim contents (files <150 lines) or relevant sections with surrounding context (files ≥150 lines) into the context doc's Source Files section.
+    2. Write a **file inventory entry** for each file into the Source Files section: path, line count, one-line purpose, exported public symbols. Do NOT embed code bodies in the context doc — the implementer always reads source files from disk before editing.
     3. Update the `Last updated` timestamp in the context doc.
     4. Log the context doc line count: include `context_doc_lines: N` in the upcoming checkpoint dispatch-log call.
   - A3. Set task and log dispatch in one compound call:
@@ -262,14 +267,15 @@ The scaffolder is the story executor — not a pre-step. Do NOT enter Phase 1, 1
   - C. Log implementer response (compound — also advances step to code_review):
     `checkpoint.sh execution --step code_review --dispatch-event response --dispatch-agent sdlc-engineering-implementer --dispatch-id "exec-{story}-t{id}-impl-i1" --dispatch-verdict "success"`
   - C1a. **Context document update (after implementer returns):** Parse the implementer's `CHANGES APPLIED` section and update the context doc:
-    1. For each `CREATED` file <150 lines: read from disk, add to Source Files section.
-    2. For each `MODIFIED` file: if the before/after snippet is unambiguous, patch Source Files inline. If ambiguous or no snippet provided, re-read the file from disk.
-    3. For each `DELETED` file: remove from Source Files section.
-    4. **Library Documentation Cache update:** Read the implementer's `## Library Documentation Cache Usage` section:
-       - For every library with status `queried (first time) — cache updated`: the context doc's Library Documentation Cache is already updated (the implementer wrote to the context doc). Confirm the entry is present.
-       - For every library with status `re-queried (justification: <reason>) — cache updated`: merge the updated entry into the context doc's Library Documentation Cache. If the entry was previously thin (causing the re-query), note "cache expanded after re-query" in the Technical Decisions section so future dispatches benefit from the improved entry.
-       - For every library with status `cached (skipped re-query)`: no action needed.
-    5. Update the `Last updated` timestamp.
+    1. For each `CREATED` or `MODIFIED` file: update the Source Files inventory entry (path, line count, purpose, exports). Do NOT embed code bodies.
+    2. For each `DELETED` file: remove from Source Files section.
+    3. **Library Documentation Cache update** (story-level file `docs/staging/<story-id>.lib-cache.md`): Read the implementer's `## Library Documentation Cache Usage` section:
+       - For every library with status `queried (first time) — cache written at <file>#<lib>`: open the story-level cache file and confirm the verbose entry is present (non-empty `apis_used` and `code_snippets`). If the entry is missing or thin, write it from the implementer's summary.
+       - For every library with status `re-queried (justification: ...) — re_query_log entry added`: confirm the `re_query_log` entry was appended and the updated fields are present.
+       - For every library with status `cached (skipped re-query, cache path: ...)`: no action needed.
+       - Update the per-library query count tally. If any library is now at 2/3 or above, include `LIBRARY BUDGET: <lib> N/3 used` in the next implementer dispatch.
+    4. Update the `Last updated` timestamp.
+    5. **Before dispatching to reviewer or QA:** Read each modified/created file from disk and include verbatim code excerpts in the **dispatch message body** (not in the context doc). The reviewer's embedded source comes from these inline excerpts; the context doc Source Files section is inventory only.
   - C1b. **Implementation Completeness Gate:** Read the implementer's return message. Check the STATUS field:
     1. `STATUS: BLOCKED` — Skip review entirely. Record the blocker in the staging doc. Re-dispatch with blocker resolution context, or escalate if unresolvable.
     2. `STATUS: PARTIAL` — Skip review. Re-dispatch implementer with focused instructions for the missing ACs listed in the PARTIAL status. This counts as an iteration.

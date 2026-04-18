@@ -34,15 +34,23 @@ integration code. Omit only if the task uses no external libraries.]
 REQUIRED CONTEXT (read before writing any code):
 1. Task context document: Read [exact path to docs/staging/US-NNN-name.task-N.context.md].
    This contains verbatim plan excerpts (acceptance criteria, design spec, API contract,
-   security controls, design references, testing requirements), current source file contents,
-   and any cached library documentation or prior review feedback.
-   Do NOT read story.md, hld.md, api.md, security.md, or testing-strategy.md directly —
-   the context document has the relevant sections already extracted.
+   security controls, design references, testing requirements), a file inventory (paths,
+   line counts, exports), and prior review feedback. The Source Files section is a file
+   inventory only — read source files from disk when you need their content for editing.
+   Do NOT read story.md, hld.md, api.md, security.md, or testing-strategy.md directly.
 2. Staging document: Read [exact path to docs/staging/US-NNN-*.md].
    Check "Technical Decisions" and "Issues & Resolutions" sections for decisions from
    earlier tasks that affect this task. Do NOT follow plan references — use the context doc.
 3. Project docs: Read docs/index.md and relevant domain docs if present. Skip if absent.
 [Any additional context from prior tasks — include here, not in the context doc]
+
+LIBRARY CACHE: docs/staging/[story-id].lib-cache.md
+[Always include. This is the story-level library documentation cache. Check this file
+BEFORE querying context7 or Tavily for any library. An entry with non-empty apis_used
+and code_snippets is sufficient — do not re-query. Write new entries here after querying.]
+
+[If any library is at 2/3 or above of the 3-query budget, include:]
+LIBRARY BUDGET: [library-name] [N]/3 used — re-query only if strictly required.
 
 DOCUMENTATION (update throughout implementation):
 - Update the staging document with progress after each significant change.

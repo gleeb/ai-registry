@@ -224,7 +224,10 @@ run_gate "LINT"       uv run ruff check .
 run_gate "TYPECHECK"  uv run mypy src/
 
 if [ "$TIER" = "full" ]; then
-  run_gate "TEST" uv run pytest --cov=src --cov-report=term-missing
+  run_gate "TEST" uv run pytest --cov=src --cov-report=term-missing --cov-report=json:coverage.json
+  if [ -f coverage.json ]; then
+    uv run python -c "import json; d=json.load(open('coverage.json')); [print(f'COVERAGE: {p} L={v[\"summary\"][\"percent_covered\"]:.1f}% B=na F=na') for p,v in d['files'].items()]"
+  fi
 else
   run_gate "TEST" uv run pytest
 fi

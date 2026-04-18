@@ -232,7 +232,10 @@ run_gate "LINT"       pnpm lint
 run_gate "TYPECHECK"  pnpm typecheck
 
 if [ "$TIER" = "full" ]; then
-  run_gate "TEST" npx jest --coverage
+  run_gate "TEST" npx jest --coverage --coverageReporters=text --coverageReporters=html --coverageReporters=json-summary
+  if [ -f coverage/coverage-summary.json ]; then
+    node -e "const s=require('./coverage/coverage-summary.json'); for(const[k,v] of Object.entries(s)){ if(k==='total')continue; const p=k.replace(process.cwd()+'/',''); console.log('COVERAGE: '+p+' L='+v.lines.pct+'% B='+v.branches.pct+'% F='+v.functions.pct+'%'); }"
+  fi
 else
   run_gate "TEST" npx jest
 fi

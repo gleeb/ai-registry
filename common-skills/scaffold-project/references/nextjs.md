@@ -120,7 +120,11 @@ The script is the same as [react-vite.md](react-vite.md) with one Next.js differ
 "verify:quick": "bash scripts/verify.sh quick"
 ```
 
-Use the `scripts/verify.sh` template from [react-vite.md](react-vite.md) — it is identical for Next.js projects.
+Use the `scripts/verify.sh` template from [react-vite.md](react-vite.md) — it is identical for Next.js projects, including:
+- `coverage.reporter` must include `"json-summary"` in `vitest.config.ts` (same requirement as react-vite).
+- The `COVERAGE:` stdout emission block (node snippet parsing `coverage/coverage-summary.json`) is already part of that template and applies unchanged here.
+
+Coverage excludes for Next.js should also include `.next/**` and `next.config.*`.
 
 ### Verification Gate (all must pass before scaffold is done)
 

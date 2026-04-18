@@ -51,6 +51,11 @@ Reference `webapp-testing` and `playwright-best-practices` skills for E2E test e
 
 Run the unified quality gate: `npm run verify:full` (JS/TS) or `bash scripts/verify.sh full` (Python). The script is silent on success — `=== ALL GATES PASSED ===` is sufficient evidence for the gate suite. If it fails, the output names the failing gate; include that output in your findings. Do not run lint, typecheck, test, or build as separate commands.
 
+**Coverage evidence — structured output only:** Do NOT read `coverage/index.html`, `coverage/coverage-final.json`, `coverage/clover.xml`, or any raw coverage artifact with the `read` tool. These files are large and LLM-hostile. Coverage numbers come from:
+1. The `COVERAGE: <path> L=N% B=N% F=N%` lines printed to `verify:full` stdout, OR
+2. `coverage/coverage-summary.json` via `jq` or a one-line bash/node script, OR
+3. The `scripts/coverage-for.sh` helper if present.
+
 Run any criterion-specific verification commands beyond the quality gate.
 
 **Beyond-suite verification (required):** Identify and test at least one edge case NOT covered by existing tests. Record rationale and result. If none found, explain why the suite is comprehensive.

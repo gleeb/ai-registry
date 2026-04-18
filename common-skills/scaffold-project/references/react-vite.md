@@ -96,6 +96,7 @@ Run through every item before marking the scaffold complete. This is the contrac
   - `coverage.provider: "v8"`
   - `coverage.include: ["src/**/*.{ts,tsx}"]`
   - `coverage.exclude: ["src/**/*.{test,spec}.{ts,tsx}", "src/**/*.d.ts", "src/test-setup.ts", "dist/**", "node_modules/**"]`
+  - `coverage.reporter: ["text", "json-summary", "html"]` — `json-summary` produces `coverage/coverage-summary.json`, required for `COVERAGE:` stdout lines in `verify.sh`
 - [ ] `src/test-setup.ts` importing `@testing-library/jest-dom`
 - [ ] `@testing-library/react`, `@testing-library/user-event`, `@testing-library/jest-dom` installed as dev deps
 - [ ] At least one smoke test exists and passes (`pnpm test` exits 0)
@@ -137,6 +138,9 @@ run_gate "TYPECHECK"  pnpm typecheck
 if [ "$TIER" = "full" ]; then
   run_gate "TEST"  pnpm exec vitest run --coverage
   run_gate "BUILD" pnpm build
+  if [ -f coverage/coverage-summary.json ]; then
+    node -e "const s=require('./coverage/coverage-summary.json'); for(const[k,v] of Object.entries(s)){ if(k==='total')continue; const p=k.replace(process.cwd()+'/',''); console.log('COVERAGE: '+p+' L='+v.lines.pct+'% B='+v.branches.pct+'% F='+v.functions.pct+'%'); }"
+  fi
 else
   run_gate "TEST"  pnpm test
 fi
