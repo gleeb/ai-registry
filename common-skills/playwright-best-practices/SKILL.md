@@ -163,6 +163,7 @@ Consult these references based on what you're doing:
 | **Isolating test data between workers** | [fixtures-hooks.md](core/fixtures-hooks.md), [performance.md](infrastructure-ci-cd/performance.md)                       |
 | **Test coverage**                       | [test-coverage.md](infrastructure-ci-cd/test-coverage.md)                                                                |
 | **Test reporting/artifacts**            | [reporting.md](infrastructure-ci-cd/reporting.md)                                                                        |
+| **Artifact hygiene (no loose root files)** | [artifact-hygiene.md](core/artifact-hygiene.md)                                                                      |
 
 ### Advanced Patterns
 

@@ -408,6 +408,53 @@ test("collect metrics", async ({ page }) => {
 });
 ```
 
+### Warm-Cache Reload Timing (navigation timing, not `performance.mark`)
+
+**When to use:** Measuring how fast a PWA (or any shell with precached assets) re-opens on a reload — e.g. the US-003-style "app launch after first load" performance AC.
+
+**The trap:** `performance.mark()` values do not survive a page reload. If you mark `'shellMounted'` before reload and then try to read it after reload, you get nothing — the performance buffer is tied to the lifecycle of the page that created the mark. Your test silently measures nothing and passes when the real metric is broken.
+
+```typescript
+test("warm-cache reload is fast", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(() => navigator.serviceWorker.ready);
+
+  // First load primes the caches. Measurement starts after reload.
+  await page.reload();
+
+  // ❌ BAD — custom marks set before reload do not survive the reload
+  // const duration = await page.evaluate(() => {
+  //   performance.mark('shellMounted');
+  //   return performance.measure('warm', 'navigationStart', 'shellMounted').duration;
+  // });
+
+  // ✅ GOOD — read navigation timing from the post-reload performance buffer.
+  // `domInteractive` is available on PerformanceNavigationTiming and correlates
+  // well with user-perceived "app is usable".
+  const domInteractive = await page.evaluate(() => {
+    const [nav] = performance.getEntriesByType(
+      "navigation",
+    ) as PerformanceNavigationTiming[];
+    return nav?.domInteractive ?? NaN;
+  });
+
+  expect(domInteractive).toBeLessThan(500);
+
+  // Belt-and-suspenders: also assert the visible-shell check from the user's side.
+  await expect(page.getByRole("heading", { name: /welcome/i })).toBeVisible({
+    timeout: 1500,
+  });
+});
+```
+
+**Why `domInteractive` specifically:**
+
+- It's part of the standard `PerformanceNavigationTiming` entry and is populated for every navigation, including reloads.
+- Unlike `loadEventEnd`, it does not wait for images, fonts, or deferred async scripts — it measures "the DOM is ready and the app can respond to input", which is the user-perceived metric.
+- It works identically in headless Chromium, headed, and real production. `performance.mark` is fine for bespoke instrumentation *within* a page, but useless across a reload boundary.
+
+**Keep the visible-shell assertion too:** `toBeVisible` with a tight timeout catches regressions where the number looks good but the user-facing content is delayed by a separate pathway (e.g. blocking render after `domInteractive`).
+
 ### Lighthouse Integration
 
 ```typescript

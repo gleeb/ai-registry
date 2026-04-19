@@ -313,6 +313,151 @@ TDD cycle:
 4. THEN claim complete
 ```
 
+## Anti-Pattern 6: Relying on jsdom for CSS/Computed-Style Contracts
+
+**The violation:**
+```typescript
+// ❌ BAD: asserting on computed style under jsdom
+import { render } from '@testing-library/react';
+import { AppShell } from '../AppShell';
+
+it('uses the correct theme tokens', () => {
+  const { container } = render(<AppShell />);
+  const styles = window.getComputedStyle(container.firstElementChild!);
+  expect(styles.getPropertyValue('--color-bg')).toBe('#0f172a'); // unreliable
+  expect(styles.minHeight).toBe('44px'); // often reports '0px' or empty
+});
+```
+
+**Why this is wrong:**
+- jsdom's CSSOM does not fully apply imported global stylesheets. `getComputedStyle` for custom properties and for rules originating from a linked stylesheet can return empty, stale, or zero values.
+- The test passes or fails based on the jsdom version, not on the actual CSS contract.
+- You end up writing "make this specific jsdom quirk look correct" code in your stylesheet, which then breaks when the real browser renders it.
+
+**The fix:**
+
+Separate the two things this test is trying to do:
+
+```typescript
+// ✅ GOOD: assert the CSS contract by reading the source stylesheet directly
+import { readFileSync } from 'node:fs';
+
+const css = readFileSync(new URL('../src/styles/globals.css', import.meta.url), 'utf8');
+expect(css).toMatch(/--color-bg:\s*#0f172a/);
+expect(css).toMatch(/min-height:\s*44px/);
+```
+
+```typescript
+// ✅ GOOD: assert the rendered-behavior contract in a real browser (Playwright)
+test('tap target is ≥44px', async ({ page }) => {
+  await page.goto('/');
+  const box = await page.locator('[data-testid="primary-action"]').boundingBox();
+  expect(box!.height).toBeGreaterThanOrEqual(44);
+});
+```
+
+The first test verifies that the stylesheet has the token. The second verifies the user-observable behavior. Neither of them asks jsdom to do something jsdom cannot reliably do.
+
+### Gate Function
+
+```
+BEFORE asserting on window.getComputedStyle(...) under jsdom:
+  Ask: "Is this value supplied by a linked stylesheet or by a CSS custom property?"
+
+  IF yes:
+    STOP. jsdom's CSSOM does not guarantee this value.
+    Split the assertion:
+      - Assert the CSS source via readFileSync (for the contract), OR
+      - Assert the behavior via Playwright in a real browser (for the UX).
+
+  IF no (inline style attribute you set in the test):
+    getComputedStyle is fine for inline styles you control.
+```
+
+## Anti-Pattern 7: Vitest Accidentally Excluding Your Test File Because It Looks Like a Config
+
+**The violation:**
+```typescript
+// vitest.config.ts — file is test-of-vite-config
+export default defineConfig({
+  test: {
+    include: ['src/**/*.test.ts', 'tests/**/*.test.ts'],
+    // default excludes apply — includes **/*.config.*
+  },
+});
+
+// src/vite.config.test.ts — named so it sits next to vite.config.ts
+describe('vite.config', () => { /* ... */ });
+// vitest run finds NO test files
+```
+
+**Why this is wrong:**
+- Vitest's default `configDefaults.exclude` contains `**/*.config.*` to keep tool configs out of the suite. A test named `vite.config.test.ts` matches that glob and is silently excluded.
+- You change the `include` pattern, you change the test filename, you add individual file paths — nothing fixes it until you realize the exclude list is the problem.
+- The failure mode is "zero tests run, command exits 0" — passes CI, proves nothing.
+
+**The fix:**
+
+Filter `configDefaults.exclude` to drop only the specific glob, keeping the rest:
+
+```typescript
+// ✅ GOOD
+import { defineConfig, configDefaults } from 'vitest/config';
+
+export default defineConfig({
+  test: {
+    include: ['src/**/*.test.ts', 'tests/**/*.test.ts'],
+    exclude: configDefaults.exclude.filter((glob) => glob !== '**/*.config.*'),
+  },
+});
+```
+
+Do not replace the entire exclude list — you'll re-admit `node_modules`, `dist`, and other paths the default excludes for good reasons.
+
+## Anti-Pattern 8: Importing Vite Config in a Test Under the Default jsdom Environment
+
+**The violation:**
+```typescript
+// src/vite.config.test.ts — no environment annotation
+import viteConfig from '../vite.config';
+
+it('declares the PWA plugin', () => {
+  // throws: "TextEncoder().encode("") instanceof Uint8Array" — esbuild invariant
+  const plugins = viteConfig.plugins ?? [];
+  // ...
+});
+```
+
+**Why this is wrong:**
+- Vite's config module is evaluated by esbuild, which expects a Node runtime. Under jsdom, `TextEncoder` and related globals are the jsdom shim, not Node's; esbuild's invariant check fires and the whole test file fails to load.
+- The error points at esbuild internals, not at your test — finding the root cause takes multiple iterations.
+- Switching the whole project to `environment: 'node'` breaks every component test that relies on a DOM.
+
+**The fix:**
+
+Annotate only the config-loading tests with a Node environment:
+
+```typescript
+// ✅ GOOD — per-file environment annotation
+// @vitest-environment node
+import { defineConfig } from 'vite';
+import viteConfig from '../vite.config';
+
+describe('vite.config', () => {
+  it('declares the PWA plugin', () => {
+    const plugins = (viteConfig as ReturnType<typeof defineConfig>).plugins ?? [];
+    const names = (plugins as Array<{ name?: string }>).flat().map((p) => p?.name);
+    expect(names).toContain('vite-plugin-pwa');
+  });
+});
+```
+
+Other tests in the same suite continue to use the project default (`jsdom` or whatever else). The annotation is per-file; drop it into the one or two files that load Node-only modules.
+
+### When this pattern generalizes
+
+Any module that calls Node-only APIs during import — `node:fs`, `node:path` in a way that touches esbuild/Vite internals, Rollup plugin factories — needs the same treatment. The rule is "if it's meant for the build, test it in Node". Don't try to make jsdom survive Node-only imports.
+
 ## When Mocks Become Too Complex
 
 **Warning signs:**
@@ -346,6 +491,9 @@ TDD cycle:
 | Incomplete mocks | Mirror real API completely |
 | Tests as afterthought | TDD - tests first |
 | Over-complex mocks | Consider integration tests |
+| `getComputedStyle` assertion under jsdom | Split: source-read for CSS contract, Playwright for UX behavior |
+| Config-named test file silently excluded | Filter `configDefaults.exclude`; don't replace it |
+| Config import breaks under jsdom | Annotate per-file with `// @vitest-environment node` |
 
 ## Red Flags
 

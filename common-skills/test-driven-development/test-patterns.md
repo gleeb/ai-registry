@@ -129,3 +129,152 @@ it('exports the correct PWA manifest icons', () => {
 ```
 
 **Why:** Importing the config module lets TypeScript type-check the assertion and keeps the test decoupled from formatting. If the config uses conditional logic, the imported value reflects the actual runtime result rather than raw source text.
+
+---
+
+## Pattern 5: Guarding browser-only APIs under jsdom (matchMedia / ResizeObserver / IntersectionObserver)
+
+**When to use:** Testing code that calls browser APIs jsdom does not ship — `window.matchMedia`, `ResizeObserver`, `IntersectionObserver`, `requestIdleCallback` — and you can neither avoid the API nor switch the whole environment to a real browser.
+
+**The trap:** These APIs are `undefined` under jsdom. Calling them throws before your component mounts. Stubbing them via `vi.stubGlobal` can leak between tests; patching `window.matchMedia = () => ...` without `configurable: true` fails when the property is read-only.
+
+```typescript
+// ✅ GOOD — test-double at the descriptor level + afterEach restore
+
+type MediaQueryMock = Pick<MediaQueryList, 'matches' | 'media'> & {
+  addEventListener: () => void;
+  removeEventListener: () => void;
+  addListener: () => void;
+  removeListener: () => void;
+  dispatchEvent: () => boolean;
+  onchange: null;
+};
+
+function installMatchMediaMock(matches: boolean) {
+  const original = Object.getOwnPropertyDescriptor(window, 'matchMedia');
+
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    writable: true,
+    value: (query: string): MediaQueryMock => ({
+      matches,
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+      onchange: null,
+    }),
+  });
+
+  return () => {
+    if (original) {
+      Object.defineProperty(window, 'matchMedia', original);
+    } else {
+      // jsdom didn't have it at all — remove so the "undefined" path remains observable
+      delete (window as unknown as Record<string, unknown>).matchMedia;
+    }
+  };
+}
+
+describe('ThemeProvider', () => {
+  let restoreMatchMedia: () => void;
+
+  afterEach(() => {
+    restoreMatchMedia?.();
+  });
+
+  it('uses dark scheme when prefers-color-scheme is dark', () => {
+    restoreMatchMedia = installMatchMediaMock(true);
+    // ... render and assert
+  });
+
+  it('falls back to light when matchMedia is missing entirely', () => {
+    // Don't install — exercises the guard path
+    // ... render and assert the fallback
+  });
+});
+```
+
+**Why the fallback case matters:** Production code often runs in environments that also lack the API (old embedded WebViews, SSR hosts). The guard in your code — `if (typeof window.matchMedia === 'function') { ... } else { /* fallback */ }` — is behavior you must verify, not just implementation detail. Test both branches.
+
+**Do not:** write `window.matchMedia = vi.fn(...)` at module top level. That mutation persists across test files that run in the same jsdom instance and creates order-dependent failures that are painful to diagnose.
+
+---
+
+## Pattern 6: In-memory localStorage double for jsdom
+
+**When to use:** Testing code that reads/writes `window.localStorage` under a jsdom environment where the provided Storage implementation is unreliable (known to happen across Vitest/jsdom versions — `removeItem` or `getItem` can be `undefined` in test contexts that bootstrap providers early).
+
+**The trap:** `window.localStorage = { ... }` sometimes works, sometimes fails with a read-only-property error depending on the jsdom release. `vi.spyOn(window.localStorage, 'getItem')` fails entirely if `localStorage` itself is missing the method shape you expect.
+
+```typescript
+// ✅ GOOD — full in-memory Storage double, installed via descriptor, restored per test
+
+function createMemoryStorage(): Storage {
+  let store = new Map<string, string>();
+  return {
+    get length() {
+      return store.size;
+    },
+    clear: () => {
+      store = new Map();
+    },
+    getItem: (key) => (store.has(key) ? store.get(key)! : null),
+    key: (index) => Array.from(store.keys())[index] ?? null,
+    removeItem: (key) => {
+      store.delete(key);
+    },
+    setItem: (key, value) => {
+      store.set(key, String(value));
+    },
+  };
+}
+
+function installLocalStorageDouble() {
+  const original = Object.getOwnPropertyDescriptor(window, 'localStorage');
+  Object.defineProperty(window, 'localStorage', {
+    configurable: true,
+    writable: true,
+    value: createMemoryStorage(),
+  });
+  return () => {
+    if (original) {
+      Object.defineProperty(window, 'localStorage', original);
+    } else {
+      delete (window as unknown as Record<string, unknown>).localStorage;
+    }
+  };
+}
+
+describe('SettingsProvider persistence', () => {
+  let restore: () => void;
+
+  beforeEach(() => {
+    restore = installLocalStorageDouble();
+  });
+
+  afterEach(() => {
+    restore();
+  });
+
+  it('persists the chosen theme across reloads', () => {
+    // ... set, re-read, assert
+  });
+});
+```
+
+**Why this specific shape:**
+- Full `Storage` contract — `getItem`, `setItem`, `removeItem`, `clear`, `key`, `length`. Partial doubles break when code reaches for a method you skipped.
+- Descriptor-based install/restore — survives strict-mode readonly properties.
+- Per-test install, not module-level — isolation across tests, no state leak.
+
+**Do not:** reach for `JSON.stringify(window.localStorage)` as a "snapshot" in tests. The Storage interface is intentionally opaque; you'll either get `{}` or unpredictable output depending on jsdom version. Assert on what your production code observes (`getItem` return values), not on the Storage container itself.
+
+---
+
+## Related
+
+- `testing-anti-patterns.md` — the "jsdom fidelity gaps" family of anti-patterns covers the general rule these patterns implement.
+- `common-skills/webapp-testing/` — when jsdom fidelity is insufficient for the assertion you need (e.g. real CSS computation, true SW registration), move the test to a real browser via Playwright instead of building a more elaborate jsdom shim.
