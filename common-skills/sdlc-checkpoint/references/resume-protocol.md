@@ -7,11 +7,29 @@ When an agent receives a `/sdlc-continue` command (or loads the checkpoint skill
 ## Coordinator Resume
 
 1. Run `verify.sh` (no arguments).
-2. Read the `hub` field to determine routing target.
-3. Read the `recommendation` field for the dispatch target.
-4. Compose a delegation message to the target mode (sdlc-planner or sdlc-architect) including:
-   - The story from the `current_story` field.
-   - Instruction to load the `sdlc-checkpoint` skill and run `verify.sh {hub}` for detailed resume context.
+2. Read the `status` field: `ACTIVE`, `PAUSED`, or `IDLE`.
+3. Act on the status:
+
+| Status | Action |
+|--------|--------|
+| `ACTIVE` | Read `hub` and `current_story`; compose a delegation message to the target mode (sdlc-planner or sdlc-architect). Include the story and instruction to load the `sdlc-checkpoint` skill and run `verify.sh {hub}` for detailed resume context. |
+| `PAUSED` | The user set a review gate via `pause_after` and the gate was hit. Report the completed story and the remaining queue to the user. Wait for user acknowledgment before resuming. On "continue" or equivalent, run `checkpoint.sh coordinator --clear-pause-after --hub execution` and route to sdlc-architect. On "set a new gate," run `--pause-after US-NNN` for the new gate and optionally clear with `--clear-pause-after`. |
+| `IDLE` with `ungated_on_disk` in output | Stories exist on disk that are neither in `stories_done` nor `stories_remaining`. Run `checkpoint.sh coordinator --sync` to repopulate, then re-run `verify.sh` and follow the refreshed status. |
+| `IDLE` with `remaining` but no `ungated_on_disk` | The queue is populated (e.g., immediately after a planner `--sync`) but no hub is active. Run `checkpoint.sh coordinator --hub execution` to activate, then route to sdlc-architect. |
+| `IDLE` with neither `remaining` nor `ungated_on_disk` | All work is complete. Report to the user and ask what to work on next. |
+
+## Planner Handoff to Coordinator
+
+When the planner completes Phase 7, it runs:
+
+```bash
+checkpoint.sh coordinator --sync      # Populate stories_remaining from plan/user-stories/
+checkpoint.sh coordinator --hub execution
+```
+
+`--sync` reads every `plan/user-stories/*/story.md`, sorts by `- execution_order:`, filters out any already in `stories_done`, and writes the result to `stories_remaining` + `current_story`. The coordinator then has a populated queue and can auto-advance between stories on each `--story-done`.
+
+If stories are re-planned mid-run (rare), the planner re-enters Phase 7 so `--sync` refreshes the queue.
 
 ## Planning Hub Resume
 

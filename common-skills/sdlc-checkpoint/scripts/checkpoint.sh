@@ -92,43 +92,111 @@ cmd_coordinator() {
   local file="$SDLC_DIR/coordinator.yaml"
   ensure_sdlc_dir
 
-  local hub="" story="" story_done=""
+  local hub="" story="" story_done="" sync_flag=""
+  local pause_after_flag="" clear_pause_after_flag=""
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --hub) hub="$2"; shift 2 ;;
       --story) story="$2"; shift 2 ;;
       --story-done) story_done="$2"; shift 2 ;;
+      --sync) sync_flag="true"; shift ;;
+      --pause-after) pause_after_flag="$2"; shift 2 ;;
+      --clear-pause-after) clear_pause_after_flag="true"; shift ;;
       *) echo "Unknown coordinator flag: $1" >&2; exit 1 ;;
     esac
   done
 
-  # Read existing values
-  local cur_hub cur_story cur_done cur_remaining
+  # Read existing values (normalize "null" scalars to empty string for downstream checks)
+  local cur_hub cur_story cur_done cur_remaining cur_pause_after
   cur_hub="$(yaml_read "$file" "active_hub")"
   cur_story="$(yaml_read "$file" "current_story")"
   cur_done="$(yaml_read_list "$file" "stories_done")"
   cur_remaining="$(yaml_read_list "$file" "stories_remaining")"
+  cur_pause_after="$(yaml_read "$file" "pause_after")"
+  [ "$cur_hub" = "null" ] && cur_hub=""
+  [ "$cur_story" = "null" ] && cur_story=""
+  [ "$cur_pause_after" = "null" ] && cur_pause_after=""
 
   # Apply patches
   [ -n "$hub" ] && cur_hub="$hub"
   [ -n "$story" ] && cur_story="$story"
+  [ -n "$pause_after_flag" ] && cur_pause_after="$pause_after_flag"
+  [ "$clear_pause_after_flag" = "true" ] && cur_pause_after=""
+
+  # --sync: rebuild stories_remaining from disk (plan/user-stories/*/story.md)
+  # sorted by execution_order, filtering out anything already in stories_done.
+  # Idempotent — safe to run any number of times.
+  if [ "$sync_flag" = "true" ]; then
+    if [ -d "plan/user-stories" ]; then
+      local sorted_names
+      sorted_names="$(coordinator_build_sorted_story_names)"
+      local rebuilt=""
+      while IFS= read -r name; do
+        [ -z "$name" ] && continue
+        if ! echo " $cur_done " | grep -q " $name "; then
+          rebuilt="${rebuilt}${name} "
+        fi
+      done <<< "$sorted_names"
+      cur_remaining="$(echo "$rebuilt" | sed 's/^ *//;s/ *$//;s/  */ /g')"
+      # Set current_story to the head of the queue if unset or stale
+      if [ -n "$cur_remaining" ]; then
+        local head_story
+        head_story="$(echo "$cur_remaining" | awk '{print $1}')"
+        if [ -z "$cur_story" ] || [ "$cur_story" = "null" ] \
+            || ! echo " $cur_remaining " | grep -q " $cur_story "; then
+          cur_story="$head_story"
+        fi
+      fi
+    fi
+  fi
 
   if [ -n "$story_done" ]; then
     # Add to done list if not already there
     if ! echo " $cur_done " | grep -q " $story_done "; then
       cur_done="$cur_done $story_done"
     fi
-    # Remove from remaining list
-    cur_remaining="$(echo "$cur_remaining" | tr ' ' '\n' | grep -v "^${story_done}$" | tr '\n' ' ')"
+    # Remove from remaining list (|| true: grep exits 1 when all lines match the -v pattern)
+    cur_remaining="$({ echo "$cur_remaining" | tr ' ' '\n' | grep -v "^${story_done}$" || true; } | tr '\n' ' ')"
     cur_remaining="$(echo "$cur_remaining" | sed 's/^ *//;s/ *$//;s/  */ /g')"
 
-    # Auto-transition: advance to next story or go idle
-    if [ -n "$cur_remaining" ]; then
-      cur_story="$(echo "$cur_remaining" | awk '{print $1}')"
-    else
+    # Re-sync from disk before advancing so newly-planned stories are picked up.
+    if [ -d "plan/user-stories" ]; then
+      local sorted_names_sd
+      sorted_names_sd="$(coordinator_build_sorted_story_names)"
+      local rebuilt_sd=""
+      while IFS= read -r name; do
+        [ -z "$name" ] && continue
+        if ! echo " $cur_done " | grep -q " $name "; then
+          rebuilt_sd="${rebuilt_sd}${name} "
+        fi
+      done <<< "$sorted_names_sd"
+      cur_remaining="$(echo "$rebuilt_sd" | sed 's/^ *//;s/ *$//;s/  */ /g')"
+    fi
+
+    # Honor pause_after: if the just-completed story matches pause_after,
+    # clear active_hub but preserve stories_remaining and pause_after.
+    # verify.sh surfaces this as status: PAUSED.
+    if [ -n "$cur_pause_after" ] && [ "$story_done" = "$cur_pause_after" ]; then
       cur_story=""
       cur_hub=""
+    elif [ -n "$cur_remaining" ]; then
+      # Auto-transition: advance to next story
+      cur_story="$(echo "$cur_remaining" | awk '{print $1}')"
+    else
+      # Queue genuinely empty — go idle
+      cur_story=""
+      cur_hub=""
+    fi
+  fi
+
+  # After --clear-pause-after (and any other state patch), if we now have an
+  # active hub, a non-empty queue, and no current story, advance to the head.
+  # This is how a paused coordinator resumes after the user clears pause_after.
+  if [ -n "$cur_hub" ] && [ -n "$cur_remaining" ]; then
+    if [ -z "$cur_story" ] || [ "$cur_story" = "null" ] \
+        || ! echo " $cur_remaining " | grep -q " $cur_story "; then
+      cur_story="$(echo "$cur_remaining" | awk '{print $1}')"
     fi
   fi
 
@@ -141,6 +209,8 @@ cmd_coordinator() {
     hint="${cur_hub^} active, story ${cur_story}. Route to sdlc-$([ "$cur_hub" = "planning" ] && echo "planner" || echo "architect")."
   elif [ -n "$cur_hub" ]; then
     hint="${cur_hub^} active. Route to sdlc-$([ "$cur_hub" = "planning" ] && echo "planner" || echo "architect")."
+  elif [ -n "$cur_pause_after" ] && [ -n "$cur_remaining" ]; then
+    hint="Paused after ${cur_pause_after}. Stories remain: ${cur_remaining}. Clear pause_after to resume."
   fi
 
   # Format lists for YAML
@@ -159,12 +229,33 @@ active_hub: ${cur_hub:-null}
 current_story: ${cur_story:-null}
 stories_done: ${done_yaml}
 stories_remaining: ${remaining_yaml}
+pause_after: ${cur_pause_after:-null}
 resume_hint: "${hint}"
 EOF
 
   local detail="hub:${cur_hub:-none}|story:${cur_story:-none}"
   [ -n "$story_done" ] && detail="story-done:${story_done}"
+  [ "$sync_flag" = "true" ] && detail="${detail}|sync"
+  [ -n "$pause_after_flag" ] && detail="${detail}|pause-after:${pause_after_flag}"
+  [ "$clear_pause_after_flag" = "true" ] && detail="${detail}|clear-pause-after"
   append_history "coordinator" "$detail"
+}
+
+# Emit newline-separated story directory names from plan/user-stories/
+# sorted by `execution_order` (ascending). Stories missing the field default
+# to 999, effectively sent to the tail in alphabetical order.
+# Used by cmd_coordinator --sync and --story-done to rebuild stories_remaining.
+coordinator_build_sorted_story_names() {
+  local queue_raw=""
+  for story_file in plan/user-stories/*/story.md; do
+    [ -f "$story_file" ] || continue
+    local dir_name order
+    dir_name="$(basename "$(dirname "$story_file")")"
+    order="$(grep '^- execution_order:' "$story_file" 2>/dev/null | sed 's/.*: *//' | tr -d ' ')"
+    [ -z "$order" ] && order="999"
+    queue_raw="${queue_raw}${order} ${dir_name}"$'\n'
+  done
+  printf '%s' "$queue_raw" | sort -n -k1 -s | awk 'NF{print $2}'
 }
 
 # ---------------------------------------------------------------------------
@@ -837,22 +928,10 @@ cmd_init() {
   # Write coordinator checkpoint
   cmd_coordinator --hub "${hub:-planning}" ${current_story:+--story "$current_story"}
 
-  # Sync stories_remaining from planning artifacts if available
+  # Sync stories_remaining from plan/user-stories/ into coordinator.yaml.
+  # This replaces the legacy sync-coordinator.sh lookup (P9).
   if [ -d "plan/user-stories" ]; then
-    local sync_script
-    for candidate in \
-      "$(dirname "$0")/../../scripts/sync-coordinator.sh" \
-      "./sync-coordinator.sh" \
-      "scripts/sync-coordinator.sh"; do
-      if [ -x "$candidate" ]; then
-        sync_script="$candidate"
-        break
-      fi
-    done
-    if [ -n "${sync_script:-}" ]; then
-      echo ""
-      "$sync_script"
-    fi
+    cmd_coordinator --sync
   fi
 
   echo "Checkpoint initialized. State written to .sdlc/"

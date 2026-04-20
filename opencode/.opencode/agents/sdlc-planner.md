@@ -172,11 +172,13 @@ For each iteration:
 ## Phase 7: Handoff
 
 1. `checkpoint.sh planning --phase 7`
-2. `sync-coordinator.sh` — derives `stories_remaining` from `plan/user-stories/` artifacts sorted by `execution_order`, sets `current_story` to the first remaining story.
+2. `checkpoint.sh coordinator --sync` — derives `stories_remaining` from `plan/user-stories/*/story.md` sorted by each story's `- execution_order:` field (filtering out anything already in `stories_done`), and sets `current_story` to the first remaining entry. Safe to run repeatedly.
 3. `checkpoint.sh coordinator --hub execution`
 4. Produce **summary** of the plan.
 5. **Hand off to sdlc-coordinator** with the full dependency graph.
 6. Coordinator takes over execution.
+
+**Mid-run re-planning.** If stories are added, removed, or re-ordered mid-run (rare), re-enter Phase 7 so `--sync` refreshes the coordinator queue. The sync is idempotent and only updates `stories_remaining` / `current_story`; it does not touch `stories_done`.
 
 ## Brownfield Protocol
 

@@ -84,16 +84,36 @@ verify_coordinator() {
     return
   fi
 
-  local hub story hint
+  local hub story pause_after remaining hint
   hub="$(yaml_read "$file" "active_hub")"
   story="$(yaml_read "$file" "current_story")"
+  pause_after="$(yaml_read "$file" "pause_after")"
+  remaining="$(yaml_read_list "$file" "stories_remaining")"
   hint="$(yaml_read "$file" "resume_hint")"
+  [ "$hub" = "null" ] && hub=""
+  [ "$story" = "null" ] && story=""
+  [ "$pause_after" = "null" ] && pause_after=""
+  remaining="$(echo "$remaining" | sed 's/^ *//;s/ *$//;s/  */ /g')"
 
   echo "hub: ${hub:-none}"
   echo "current_story: ${story:-none}"
-  echo "status: $([ -n "$hub" ] && [ "$hub" != "null" ] && echo "ACTIVE" || echo "IDLE")"
+  [ -n "$pause_after" ] && echo "pause_after: ${pause_after}"
 
-  if [ -n "$hub" ] && [ "$hub" != "null" ]; then
+  # Status classification:
+  #   ACTIVE  — a hub is active
+  #   PAUSED  — hub cleared, pause_after set, queue still has work (user-requested review gate)
+  #   IDLE    — no active hub, no pause, queue empty or no work
+  local status
+  if [ -n "$hub" ]; then
+    status="ACTIVE"
+  elif [ -n "$pause_after" ] && [ -n "$remaining" ]; then
+    status="PAUSED"
+  else
+    status="IDLE"
+  fi
+  echo "status: ${status}"
+
+  if [ "$status" = "ACTIVE" ]; then
     # Check if execution hub has already signaled completion
     if [ "$hub" = "execution" ] && [ -f "$SDLC_DIR/execution.yaml" ]; then
       local exec_status exec_story
@@ -110,7 +130,41 @@ verify_coordinator() {
     [ "$hub" = "execution" ] && target_mode="sdlc-architect"
     echo "recommendation: route to ${target_mode}, story ${story:-unknown}"
     echo "detail: run verify.sh ${hub} for specific resume action"
+  elif [ "$status" = "PAUSED" ]; then
+    echo "remaining: ${remaining}"
+    echo "recommendation: paused at user review gate (pause_after=${pause_after}) -- resume with checkpoint.sh coordinator --clear-pause-after --hub execution"
+    echo "detail: ${remaining%% *} is next; update pause_after to set a new gate, or clear to auto-advance"
   else
+    # IDLE: if plan/user-stories/ has stories not in stories_done AND not in stories_remaining,
+    # flag them as ungated_on_disk — the queue is out of sync with disk and needs --sync.
+    if [ -d "plan/user-stories" ]; then
+      local stories_done ungated
+      stories_done="$(yaml_read_list "$file" "stories_done")"
+      ungated=""
+      for d in plan/user-stories/*/; do
+        [ -d "$d" ] || continue
+        local name
+        name="$(basename "$d")"
+        if echo " $stories_done " | grep -q " $name "; then continue; fi
+        if echo " $remaining " | grep -q " $name "; then continue; fi
+        ungated="${ungated}${name} "
+      done
+      ungated="$(echo "$ungated" | sed 's/ *$//')"
+      if [ -n "$ungated" ]; then
+        echo "ungated_on_disk: ${ungated}"
+        echo "recommendation: stories on disk are not in stories_remaining or stories_done -- run checkpoint.sh coordinator --sync to repopulate, then retry"
+        echo "detail: ${ungated%% *} (and possibly others) are ungated"
+        return
+      fi
+      # If queue has pending stories but no active hub, the planner likely just handed off
+      # but the coordinator hasn't routed yet. Prompt the coordinator to activate execution.
+      if [ -n "$remaining" ]; then
+        echo "remaining: ${remaining}"
+        echo "recommendation: queue ready but no active hub -- run checkpoint.sh coordinator --hub execution to start"
+        echo "detail: ${remaining%% *} is queued; set active_hub=execution to begin the story"
+        return
+      fi
+    fi
     echo "recommendation: no active hub -- ask user what to do"
   fi
 }

@@ -51,14 +51,15 @@ Determine project state from the checkpoint system before making any routing dec
 1. Check if `.sdlc/coordinator.yaml` exists.
 2. If it exists, run `.opencode/skills/sdlc-checkpoint/scripts/verify.sh` to get project state and routing recommendation.
 3. If no checkpoint exists, classify as STATE_NONE (new project).
-4. Classify the project into one of: STATE_NONE, STATE_PLANNED, STATE_READY, STATE_IN_PROGRESS, STATE_DONE.
+4. Classify the project into one of: STATE_NONE, STATE_PLANNED, STATE_READY, STATE_IN_PROGRESS, STATE_PAUSED, STATE_DONE.
 
 State definitions:
 - STATE_NONE: No checkpoint exists — new project, no planning has started.
 - STATE_PLANNED: Checkpoint exists with planning hub active, but no stories have been moved to execution.
 - STATE_READY: Stories exist in `stories_remaining`, execution hub not yet active.
 - STATE_IN_PROGRESS: Execution hub is active, `current_story` is set.
-- STATE_DONE: All stories completed, no `stories_remaining`.
+- STATE_PAUSED: `verify.sh` reports `status: PAUSED` — the coordinator hit a user-requested review gate (`pause_after` matched the last completed story). `stories_remaining` is non-empty; `active_hub` is null until the user clears the gate.
+- STATE_DONE: All stories completed, no `stories_remaining`, no `pause_after`.
 
 ## Phase 2: Routing Decision
 
@@ -69,6 +70,7 @@ Routing table:
 - STATE_PLANNED → `@sdlc-planner` (Stories not yet created — continue planning.)
 - STATE_READY → `@sdlc-engineering` (Execution phase — stories ready for implementation.)
 - STATE_IN_PROGRESS → `@sdlc-engineering` (Resume execution — pass in-progress story context.)
+- STATE_PAUSED → none (Report the hit review gate and remaining queue; wait for the user to acknowledge before clearing the pause and resuming.)
 - STATE_DONE → none (Report completion status, ask user about next work.)
 
 Command overrides:
@@ -129,13 +131,27 @@ The coordinator is the **sole owner** of `coordinator.yaml`. The engineering hub
 When the engineering hub returns a COMPLETE/closeable verdict for a story:
 
 1. **Trust the verdict.** The engineering hub's completion result is authoritative. Do NOT re-read the checkpoint to verify — the checkpoint may be stale.
-2. **Update the checkpoint:** Run `.opencode/skills/sdlc-checkpoint/scripts/checkpoint.sh coordinator --story-done {US-NNN-name}`. This marks the story as completed and **auto-transitions** coordinator state: if stories remain in the queue, `current_story` advances to the next one; if none remain, `active_hub` and `current_story` are cleared (idle).
+2. **Update the checkpoint:** Run `.opencode/skills/sdlc-checkpoint/scripts/checkpoint.sh coordinator --story-done {US-NNN-name}`. This marks the story as completed, re-syncs `stories_remaining` from disk, and **auto-transitions** coordinator state:
+   - If `pause_after` matches the completed story → clears `active_hub` (PAUSED state), preserves `stories_remaining` and `pause_after`.
+   - Else if stories remain → advances `current_story` to the next entry.
+   - Else clears `active_hub` and `current_story` (IDLE state).
 3. **Find the next story:**
-   - After `--story-done`, run `.opencode/skills/sdlc-checkpoint/scripts/verify.sh` to get the updated routing recommendation. If `--story-done` auto-advanced to a next story, verify.sh will recommend routing to execution. If no stories remain, it will report IDLE.
-   - If no next story is identifiable, report the completion to the user and ask what to work on next.
-4. **Dispatch immediately.** Do NOT pause to ask the user for permission to continue. Dispatch `@sdlc-engineering` for the next story, or report that all stories are complete.
+   - After `--story-done`, run `.opencode/skills/sdlc-checkpoint/scripts/verify.sh` to get the updated routing recommendation.
+   - `status: ACTIVE` → route to the named hub.
+   - `status: PAUSED` → the user set a review gate and it was hit; go to step 4b.
+   - `status: IDLE` with `ungated_on_disk` in output → stories exist on disk but are in neither `stories_remaining` nor `stories_done`; re-sync by running `checkpoint.sh coordinator --sync` and re-run `verify.sh`. This is a self-heal fallback for queue corruption or legacy checkpoints.
+   - `status: IDLE` with `remaining` listed but no `ungated_on_disk` → queue was just synced but no hub is active (typical of a freshly handed-off plan); run `checkpoint.sh coordinator --hub execution` then dispatch `@sdlc-engineering`.
+   - `status: IDLE` without `remaining` or `ungated_on_disk` → all work is done; report to the user.
+4. **Dispatch based on status:**
+   - **ACTIVE:** Dispatch `@sdlc-engineering` for the next story immediately. Do NOT pause to ask the user for permission to continue.
+   - **PAUSED (4b):** Report the completed story, the remaining queue, and the pause gate to the user. Wait for an explicit continue signal. On "continue" (or equivalent), run `checkpoint.sh coordinator --clear-pause-after --hub execution` then dispatch `@sdlc-engineering`. On "set a new gate at US-NNN," run `checkpoint.sh coordinator --pause-after US-NNN --clear-pause-after --hub execution` (the clear resolves the prior gate, the new `--pause-after` sets the next one).
+   - **IDLE (all done):** Report completion to the user and ask what to work on next.
 
 **DENY:** Running `verify.sh` to find the next story BEFORE updating the checkpoint with `--story-done`. This returns stale data and is the primary cause of incorrect routing after story completion.
+
+**DENY:** Treating PAUSED as IDLE. PAUSED means the user asked to stop at a gate; IDLE means there is no more work. Do not auto-advance through a PAUSED state.
+
+**DENY:** Giving up on an IDLE state without checking for `ungated_on_disk`. If `verify.sh` reports IDLE but `plan/user-stories/` contains stories not in `stories_done`, the queue was never populated — run `--sync` and retry instead of asking the user what to do next.
 
 ## Best Practices
 
