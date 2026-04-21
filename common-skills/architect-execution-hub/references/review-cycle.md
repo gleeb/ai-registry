@@ -34,7 +34,37 @@ The security review is part of the code review step, not a separate dispatch. Wh
 |------|---------------|------------------|
 | Code Review (incl. security) | Adaptive (see below) | Adaptive Recovery Protocol — architect self-implements after diagnostic analysis. Never blocks. |
 | QA Verification | 2 failures | Mark task BLOCKED. Return to coordinator with QA failure evidence. |
+| Story Review (Phase 3) | 3 Changes Required | Escalate per "Story-Review Cap" below. Write planning-gotchas entry. Never user-escalate. Never dispatch a standard 4th iteration. |
 | Semantic Review (Phase 3b) | 2 NEEDS WORK | Escalate to coordinator. Include both review reports and all guidance packages. |
+
+## Story-Review Cap (Phase 3)
+
+The `sdlc-engineering-story-reviewer` has a hard cap of **3 Changes Required** verdicts per story. After the 3rd, the hub MUST NOT dispatch a 4th standard story-review round.
+
+**Required dispatch metadata (every story-review dispatch):**
+- `STORY REVIEW ITERATION: N` (starting at 1).
+- From iteration 2 onward: `PRIOR STORY REVIEW (iteration N-1):` with the prior report verbatim (no summarization — the reviewer needs it for the New-vs-Rediscovered Audit).
+
+**Required reviewer output (every iteration):**
+- **Review Coverage Matrix** — hardcoded minimum lenses (spec compliance, cross-task integration seams, full-story AC coverage and traceability, security controls uniformity, payload/input-boundary edges, error-path and negative-case tests, automated checks, docs and staging-doc consistency, comment policy) plus story-specific lenses derived from plan artifacts. Every row is either `findings: [...]` or `no findings: [one-line rationale]`. Bare `no findings` without rationale is a protocol violation.
+- **New-vs-Rediscovered Audit** (iteration ≥ 2 only, for findings in code unchanged since N-1) — each such finding tagged and justified, or downgraded to Suggestion-class.
+
+**Verdict rules:**
+- Iteration 1 with Suggestion-only findings → Changes Required (graduated rule — cost of addressing is low, we are already in the loop).
+- Iteration ≥ 2 with Suggestion-only findings → Approved.
+- Any Critical or Important → Changes Required.
+
+**Escalation routing at the cap (after 3rd Changes Required):**
+- **Integration / complexity / external-API / platform-capability findings** → dispatch `@sdlc-engineering-oracle` with the full iteration chain. Oracle returns FIX (apply, verify, closing architect-verified story-review pass) or ESCALATION REPORT (return to coordinator, Tier 4).
+- **Code-quality / pattern-consistency / cross-task-refactor findings** → architect self-implements at story scope (`architect-implemented (story-scope)`), runs verify, then ONE closing architect-verified story-review pass.
+- **Mixed** → Oracle subset first; architect-self subset in parallel if independent, serial otherwise.
+
+**Planning-gotchas write (required on cap trigger):**
+At the moment the cap triggers, append a structured entry to `docs/staging/US-NNN-name.planning-gotchas.md` per the schema in `.opencode/skills/project-documentation/references/planning-gotchas-template.md`. Fill `runtime_resolution` after the escalation resolves. The hub only writes this file; it does NOT read, roll up, or otherwise consume it during the run. Post-run evaluation and any promotion back into planning agents/skills is a separate out-of-band process.
+
+**DENY:**
+- 4th standard story-review round after 3 Changes Required verdicts.
+- User escalation for story-review iteration caps (Review Milestones and Oracle ESCALATION REPORTs are the only user-pause paths).
 
 ## Situational References
 

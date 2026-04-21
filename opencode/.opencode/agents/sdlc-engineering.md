@@ -220,6 +220,12 @@ The scaffolder is the story executor — not a pre-step. Do NOT enter Phase 1, 1
 - Add a link to this sibling file at the top of the main staging doc: `**Skill gotchas (post-run review):** docs/staging/US-NNN-name.skill-gotchas.md`.
 - Include the sibling file path in every implementer and reviewer dispatch as `SKILL GOTCHAS FILE: docs/staging/US-NNN-name.skill-gotchas.md`. Subagents append technical gotchas to this file; the hub does not read or process it during the run.
 
+**Planning gotchas sibling file creation (alongside the staging doc):**
+- After creating the main staging doc, create an empty `docs/staging/US-NNN-name.planning-gotchas.md` using the template at `.opencode/skills/project-documentation/references/planning-gotchas-template.md`.
+- Add a link to this sibling file at the top of the main staging doc: `**Planning gotchas (post-run review):** docs/staging/US-NNN-name.planning-gotchas.md`.
+- This file is written to ONLY by the hub, ONLY when the Phase 3 story-review iteration cap (3) triggers escalation. Subagents do NOT write to this file. See Phase 3 "Story-Review Iteration Cap" for the exact write trigger and entry schema (from the template).
+- The file is NOT read, propagated, or rolled up during the run. Post-run review and any promotion back into planning agents/skills is a separate out-of-band process (mirrors how skill-gotchas are handled).
+
 **Library cache file creation (alongside the staging doc):**
 - Create `docs/staging/US-NNN-name.lib-cache.md` with the header from the task-context-template.md Hub Instructions. This is the story-level library documentation cache shared across all tasks and iterations for this story.
 - Include the path in every implementer dispatch as `LIBRARY CACHE: docs/staging/US-NNN-name.lib-cache.md`.
@@ -324,10 +330,44 @@ See .opencode/skills/architect-execution-hub/references/review-cycle.md for addi
 
 **Steps:**
 - Task tool dispatch to @sdlc-engineering-story-reviewer for full-story holistic review (with SECURITY_REVIEW: true if any task had security review). This uses a larger model capable of cross-file reasoning across the entire story scope.
+  - **Dispatch must include the story-review iteration number** as `STORY REVIEW ITERATION: N` (starting at 1). The reviewer uses this to apply the graduated Suggestion-only rule and to decide whether a New-vs-Rediscovered Audit is required.
+  - **From iteration 2 onward, the dispatch must include the prior iteration's full review report verbatim** as `PRIOR STORY REVIEW (iteration N-1):` so the reviewer can run the New-vs-Rediscovered Audit against unchanged code. The hub is a relay — do NOT summarize the prior review.
 - If Approved → Task tool dispatch to @sdlc-engineering-story-qa for full-story verification. This uses a larger model for comprehensive cross-task verification.
-- If Changes Required → identify affected tasks, Task tool dispatch to @sdlc-engineering-implementer for those only.
+- If Changes Required → identify affected tasks, Task tool dispatch to @sdlc-engineering-implementer for those only. Increment the story-review iteration counter. On the next story-review dispatch, apply the iteration cap rules below.
 - If final QA passes → proceed to Pre-Flight Evidence Gate.
 - Note: Per-task Phase 2 reviews/QA continue to use `@sdlc-engineering-code-reviewer` and `@sdlc-engineering-qa` (mini-model agents). Only Phase 3 story-level review/QA use the story-level agents.
+
+**Story-Review Iteration Cap (hard cap = 3):**
+
+Track the story-review iteration count in the staging document and in the checkpoint dispatch log. The cap applies to `@sdlc-engineering-story-reviewer` specifically (the Phase 3 story-level reviewer), not to `@sdlc-engineering-story-qa`.
+
+- **Iterations 1–3:** Standard loop. Re-dispatch to implementer with the story reviewer's full Changes Required findings verbatim (including the Review Coverage Matrix and any New-vs-Rediscovered Audit entries). After implementer remediation, re-run story review with `STORY REVIEW ITERATION: N+1`.
+- **After 3 story-review iterations returning Changes Required (i.e., before dispatching iteration 4):** The cap is hit. The pipeline MUST NOT silently continue a 4th story-review round. Escalate per the routing below.
+- **User intervention is NOT part of the runtime escalation path.** Systemic misses are captured in the planning-gotchas sibling file for post-run review; they are NOT consumed during this run.
+
+**Escalation Routing at the Cap:**
+
+Classify the dominant unresolved finding category from iteration 3's report (use the Review Coverage Matrix to identify which lens has the persistent Critical/Important finding):
+
+1. **Integration / complexity / external-API / platform-capability findings** → dispatch `@sdlc-engineering-oracle` with the story's full iteration chain (all 3 story-review reports, all intervening implementer attempts, the task context documents, the staging doc, the library cache). Oracle either returns a FIX (architect applies, re-runs verify, continues to story QA) or an ESCALATION REPORT (return to coordinator per existing Tier 4 protocol).
+2. **Code-quality / pattern-consistency / cross-task-refactor findings** → Architect self-implements the remediation at story scope. Mark as `architect-implemented (story-scope)` in the staging doc and dispatch log. Run `npm run verify:full` (JS/TS) or `bash scripts/verify.sh full` (Python). Then re-dispatch story review ONCE more as a verification-only pass (this counts as iteration 4 but is architect-verified, not a standard iteration).
+3. **Mixed findings** → route the Oracle-shaped subset to Oracle first; architect self-implements the code-quality subset in parallel if the two are independent, or serially if Oracle's output is a prerequisite.
+
+**Planning-Gotchas Entry on Escalation:**
+
+At the moment the cap triggers (before dispatching Oracle or self-implementing), the hub MUST append a structured entry to `docs/staging/US-NNN-name.planning-gotchas.md` using the schema from `.opencode/skills/project-documentation/references/planning-gotchas-template.md`. Fill fields as follows:
+
+- **trigger:** `Story-review iteration cap (3) hit with [dominant-severity] finding(s) on [lens name from Coverage Matrix]`
+- **recurring_finding:** Summarize what the story reviewer kept surfacing across iterations 1, 2, 3. Cite the Review Coverage Matrix lens.
+- **plan_artifact_category:** One of PRD / HLD / API / Security / Testing / Story AC — which plan artifact should have anticipated this. Infer from the lens (e.g., cross-task integration lens → HLD; security controls uniformity lens → Security; AC coverage lens → Story AC).
+- **missed_in_planning:** Cite the specific plan artifact file path and what it lacked.
+- **suggested_planning_fix:** Target a specific planner subagent (e.g., sdlc-planner-hld, sdlc-planner-api) and describe what it should produce differently.
+- **runtime_resolution:** Fill in AFTER the escalation resolves — either "Oracle dispatch returned FIX: [summary]" or "Architect self-implementation at story scope: [summary]".
+- **discovered_in:** `US-NNN, story-review iteration [first iteration that surfaced the finding]`
+
+The hub updates the `runtime_resolution` field once the escalation path returns. The entry is NOT propagated to Oracle, implementer, or reviewer dispatches — it is a hub-local write. The file is NOT read back or rolled up during the run; post-run review and any promotion to planning agents/skills happens in a separate out-of-band process.
+
+See `.opencode/skills/architect-execution-hub/references/review-cycle.md` for the cap + escalation quick reference.
 
 **Pre-Flight Evidence Gate (before Phase 3b):**
 Before Task tool dispatch to @sdlc-engineering-semantic-reviewer, read the QA agent's structured evidence from the Phase 3 story-level QA completion. Confirm all automated quality gates are clean: lint 0 errors, typecheck 0 errors, tests all passing, build exit 0, coverage meets thresholds (lines >= X%, branches >= Y% from testing strategy or defaults: 80%/70%), browser smoke test passes (web app stories only — key routes load without console errors). If any fail (including coverage below threshold), return to Phase 2 for targeted fixes. Do NOT dispatch the semantic reviewer until all automated gates are clean. The hub reads evidence — it does not re-run commands.
@@ -456,6 +496,15 @@ After 2 acceptance re-validations (3 total runs) for the same story: mark story 
 **semantic_review_iterations (max: 2):**
 After 2 semantic review NEEDS WORK verdicts for the same story: the local model may not be capable of resolving the issues. Return to the coordinator with both semantic review reports and all guidance packages. Recommend escalating affected tasks to Commercial model.
 
+**story_review_iterations (hard cap: 3):**
+After 3 story-review Changes Required verdicts for the same story, the hub MUST NOT dispatch a 4th standard story-review round. Instead:
+- Classify the dominant unresolved finding category using the Review Coverage Matrix from iteration 3.
+- **Integration / complexity / external-API / platform-capability findings:** dispatch `@sdlc-engineering-oracle` with the full iteration chain. If Oracle returns a FIX, apply, run verify, then re-dispatch story review ONCE for architect-verified closure. If Oracle returns an ESCALATION REPORT, return to coordinator per Tier 4 protocol.
+- **Code-quality / pattern-consistency / cross-task-refactor findings:** architect self-implements the remediation at story scope, marks as `architect-implemented (story-scope)`, runs verify, then re-dispatches story review ONCE for architect-verified closure.
+- **Write a planning-gotchas entry** to `docs/staging/US-NNN-name.planning-gotchas.md` at the moment the cap triggers, per the schema in `.opencode/skills/project-documentation/references/planning-gotchas-template.md`. The entry captures the systemic planning miss for post-run review; it is NOT read back or consumed during the current run.
+- **User intervention is NOT part of the runtime escalation path.** Post-run review of the planning-gotchas sibling file, and any decision to promote learnings back into planning agents/skills, is a separate out-of-band process.
+See Phase 3 "Story-Review Iteration Cap" and "Escalation Routing at the Cap" above for full procedure.
+
 ### Status Tracking
 
 After each dispatch cycle, update the task status in the staging document. Status values: pending | in-progress | done | blocked.
@@ -469,10 +518,11 @@ Tracking fields: review iteration count (0+), QA retry count (0-2), last review 
 
 ### Final Issue Review
 
-After all individual tasks are done, run a final full-issue review cycle followed by semantic review:
-- Task tool dispatch to @sdlc-engineering-story-reviewer with full issue scope and combined task summaries (uses larger model for cross-file reasoning).
+After all individual tasks are done, run a final full-issue review cycle followed by semantic review (see Phase 3 above for the full procedure, including the story-review iteration cap and escalation routing):
+- Task tool dispatch to @sdlc-engineering-story-reviewer with full issue scope, combined task summaries, `STORY REVIEW ITERATION: N`, and (for iteration ≥ 2) the prior iteration's verbatim review.
 - If Approved: Task tool dispatch to @sdlc-engineering-story-qa for full-issue verification (uses larger model for cross-task verification).
-- If Changes Required: identify which task(s) need fixes, Task tool dispatch to @sdlc-engineering-implementer for those specific tasks only.
+- If Changes Required: identify which task(s) need fixes, Task tool dispatch to @sdlc-engineering-implementer for those specific tasks only, then re-dispatch story review with the incremented iteration number.
+- **Hard cap: 3 story-review iterations.** On the 4th Changes Required verdict, apply the escalation routing (Oracle or architect self-implementation) and write the planning-gotchas entry. NEVER dispatch a standard 4th story-review round.
 - If final QA passes: proceed to semantic review (Phase 3b).
 
 ### Guidance Propagation
@@ -530,6 +580,8 @@ Each implementation unit must include function signatures, parameters, file path
 - **DENY:** Direct implementation during iterations 1-3. After Adaptive Recovery, self-implementation is required.
 - **DENY:** Skipping code review or QA for any implementation unit (including architect-implemented code).
 - **DENY:** More than 5 review iterations per task. After 3 identical rejections, self-implement. After 5 total, self-implement unconditionally. If self-implementation also fails, Oracle escalation (Tier 4). Never block the pipeline without Oracle verdict.
+- **DENY:** A 4th standard story-review round. After 3 story-review Changes Required verdicts, the hub MUST escalate (Oracle for integration/complexity findings, architect self-implementation for code-quality findings) and write a planning-gotchas entry. Architect-verified closure may re-dispatch story review ONCE after escalation resolves, but NEVER a standard 4th iteration. See Phase 3 "Story-Review Iteration Cap" for procedure.
+- **DENY:** Escalating story-review iteration-cap failures to the user at runtime. Systemic misses are captured in the planning-gotchas sibling file for post-run review; they are not read back or rolled up during the run. User pauses occur only for Review Milestones and Oracle ESCALATION REPORTs, not for story-review iteration caps.
 - **DENY:** Self-dispatch. This hub MUST NOT invoke itself (`sdlc-engineering`) via the Task tool. Phase re-entry is an internal control-flow loop, not a new dispatch.
 - **ALLOW:** Loading `systematic-debugging` skill for persistent test failures before self-implementing.
 

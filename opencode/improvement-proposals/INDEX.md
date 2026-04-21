@@ -12,7 +12,6 @@ Drafted from analysis of `ses_26105317cffeCAev1W8UP3BtK1`. Discussion and priori
 
 | ID | Title | Theme | Expected Primary Impact |
 |----|-------|-------|-------------------------|
-| [P10](./P10-story-reviewer-severity-guard.md) | Story-Reviewer Severity-Escalation Guard and Iteration Cap | Review Discipline | Cap Phase 3 story-review iterations at 3; block Suggestion-only Changes-Required verdicts |
 | [P11](./P11-acceptance-validator-readonly.md) | Acceptance Validator Read-Only Contract and Budget Cap | Role Boundary | Bound Phase 4 validator to ≤30 min / ≤500K tokens; deny file writes; prevent 7h over-runs |
 | [P12](./P12-verify-staging-drift-fix.md) | Fix `verify.sh` Staging-Doc Drift Heuristic | Tooling Noise | Eliminate false "staging doc is more current" warnings that confuse downstream agents |
 | [P13](./P13-lib-cache-breadth-incentive.md) | Incentivize Comprehensive `lib-cache` Entries | Context / Cache | Raise cache quality bar; add cross-story cache promotion; cut doc queries 30–40% |
@@ -26,8 +25,8 @@ Drafted from analysis of `ses_26105317cffeCAev1W8UP3BtK1`. Discussion and priori
 
 Suggested dependency order (see each proposal's §9 for details):
 
-1. **Foundational / tooling first** — P12 (P9 landed 2026-04-19). Low-risk, high-unblock. Land before anything else.
-2. **Review discipline cluster** — P16 then P10 together. P16 shifts catch-work earlier; P10 caps Phase 3 safely.
+1. **Foundational / tooling first** — P12 (P9 landed 2026-04-19; P10 landed 2026-04-21). Low-risk, high-unblock. Land before anything else.
+2. **Review discipline cluster** — P16. Shifts catch-work earlier into Phase 2, reinforcing the Phase 3 cap P10 already established.
 3. **Role boundaries** — P11. Can land independently; highest single-run cost recovery.
 4. **Planning signals** — P15. Produces inputs for P14, P17, P18.
 5. **Dispatch contracts** — P18 (and P17) strictly after P15 is in place. P15 is a prerequisite for P18; without P15 annotations the P18 selection rule has no input and the proposal collapses into "always end-to-end".
@@ -51,6 +50,7 @@ Resolved proposals are kept as a permanent decision record. They explain why the
 | [P7](./archive/P7-scaffolding-story-ownership.md) | Scaffolding Story Ownership | Resolved | Make scaffolder own full story lifecycle; skip Phase 1/2/3 for scaffolding stories; cap reviewer severity escalation |
 | [P8](./archive/P8-cache-budget-coverage-embedding.md) | Story-Level Cache, Query Budget, Coverage Parsing, Role-Aware Embedding | Resolved | Cut documentation queries ~3x; ban LLM reads of coverage artifacts; emit `COVERAGE:` lines from verify.sh; inventory-only source for implementers |
 | [P9](./archive/P9-coordinator-story-queue-advance.md) | Coordinator Story-Queue Population and Auto-Advance | Resolved | `checkpoint.sh coordinator --sync` rebuilds `stories_remaining` from disk; `--story-done` auto-advances between stories; `pause_after` gates user reviews; `verify.sh` distinguishes `ACTIVE` / `PAUSED` / `IDLE` with self-heal on `ungated_on_disk` |
+| [P10](./archive/P10-story-reviewer-severity-guard.md) | Story-Reviewer Severity-Escalation Guard and Iteration Cap | Resolved | Cap Phase 3 story-review iterations at 3; Coverage Matrix + New-vs-Rediscovered Audit; graduated Suggestion-only rule (iter 1 blocks, iter ≥2 approves); planning-gotchas sibling file for post-run human review |
 
 ---
 

@@ -71,14 +71,16 @@ Follow the **code-review** skill (`skills/code-review/`) for the review framewor
 
 ### Report Output
 
-1. Spec Compliance: PASS or FAIL with gaps (covering ALL story ACs).
-2. Cross-Task Integration: issues found at task boundaries.
-3. Code Quality: strengths and issues by severity.
-4. Test Review: files present / missing / inadequate with references.
-5. Automated Checks: lint, typecheck, test results with exit codes.
-6. Overall Assessment: Approved or Changes Required.
-7. If Changes Required: each issue with file:line, affected task ID, and recommended fix.
-8. Documentation Search Recommendations: When a finding involves incorrect or missing library/framework API usage, include a `DOCUMENTATION SEARCH` recommendation specifying: the library name, what to look up, and why.
+1. **Review Coverage Matrix** (required first section of every iteration — see "Review Coverage Matrix" under Best Practices below). Declare all lenses at the top, then one row per lens with either findings or a one-line rationale. Bare `no findings` entries without rationale are a protocol violation.
+2. Spec Compliance: PASS or FAIL with gaps (covering ALL story ACs).
+3. Cross-Task Integration: issues found at task boundaries.
+4. Code Quality: strengths and issues by severity.
+5. Test Review: files present / missing / inadequate with references.
+6. Automated Checks: lint, typecheck, test results with exit codes.
+7. **New-vs-Rediscovered Audit** (required in iteration ≥ 2 when any finding lives in code unchanged since iteration N-1 — see "Severity Escalation Guard" under Best Practices below). Tag each such finding and justify why it was not catchable at N-1. Unexplained rediscoveries default to Suggestion-class.
+8. Overall Assessment: Approved or Changes Required.
+9. If Changes Required: each issue with file:line, affected task ID, and recommended fix.
+10. Documentation Search Recommendations: When a finding involves incorrect or missing library/framework API usage, include a `DOCUMENTATION SEARCH` recommendation specifying: the library name, what to look up, and why.
 
 Run verdict consistency check before returning (see Verdict Rules below).
 
@@ -93,6 +95,90 @@ Every review must produce at minimum one Suggestion-level finding. Treat a clean
 - **Critical:** bugs, security issues, spec violations, missing tests, cross-task integration failures. Must fix.
 - **Important:** design issues, poor patterns, missing error-path tests, inconsistent patterns across tasks. Should fix.
 - **Suggestion:** style improvements, minor refactors. Nice to have.
+
+### Severity escalation guard (CRITICAL)
+
+Severity is determined by impact, not by iteration pressure or prior-review history. These rules override any implicit pressure to find blocking issues:
+
+- A finding that was Suggestion-class in iteration N MUST NOT be re-classified as Important or Critical in iteration N+1. If you escalate a severity between iterations, you MUST cite new evidence — code that did not exist at iteration N, a newly discovered spec requirement, or an integration edge case revealed by the remediation — that was not available in the prior review.
+- A cross-task finding at iteration N+1 MUST be supported by new evidence. The lens-of-the-day pattern (scanning a different aspect each iteration and surfacing a "new" Critical on unchanged code) is a protocol violation — every lens must be acknowledged in every iteration via the Review Coverage Matrix below.
+- Documentation, naming, and organizational concerns that do not affect correctness, spec compliance, security, or cross-task integration are always Suggestion-class, regardless of iteration.
+- Identifying a pre-existing issue for the first time in iteration 2+ that you missed in iteration 1 is acceptable IF the issue is genuinely Critical or Important by the calibration above AND the code is unchanged since iteration N-1 AND you can justify why it was not catchable at N-1. Report it via the New-vs-Rediscovered Audit section. Do NOT inflate its severity simply because it is newly discovered.
+
+### New-vs-Rediscovered Audit (required in iteration ≥ 2 for findings in unchanged code)
+
+When iteration ≥ 2 and a finding lives in code that is unchanged since iteration N-1, the report MUST include a New-vs-Rediscovered Audit section that tags each such finding and justifies why it was not catchable at N-1.
+
+- Findings in code that CHANGED as part of iteration N-1 remediation are by construction new-in-N and do NOT need the tag.
+- Findings in UNCHANGED code MUST self-justify with a concrete reason (e.g., "this integration seam was not exercised until Task 4's cross-task wiring landed in iteration 2 remediation," "spec clarification from Oracle escalation revealed this constraint that was not in the original plan artifacts").
+- Unexplained rediscoveries — a finding in unchanged code at iteration N+1 without a valid justification — default to **Suggestion-class**. Do not block the run on rediscoveries the reviewer cannot justify missing earlier.
+
+Format the audit as a table:
+
+```markdown
+## New-vs-Rediscovered Audit
+
+| Finding | File:line | Severity | Code changed since N-1? | Justification |
+|---------|-----------|----------|-------------------------|---------------|
+| ... | ... | ... | No | [why not catchable at N-1, or "unjustified → downgraded to Suggestion"] |
+```
+
+Findings in changed code do not need to appear in this table.
+
+### Review exhaustion rule (iteration ≥ 2)
+
+When the dispatch message indicates iteration 2 or higher for story review:
+
+1. Confirm which prior-iteration findings are resolved (check the prior story-review feedback against the actual code).
+2. If all prior Critical and Important findings are resolved AND remaining findings are Suggestion-class only → **return Approved**. Include the residual Suggestions in the report but do not use them to block.
+3. If a prior finding is NOT resolved (it was Important/Critical in iteration N and the fix is absent or incorrect) → keep it at its original severity. Do not promote it.
+4. If you identify a brand-new Critical or Important issue not present in prior iterations → include it at the correct severity with the specific evidence that reveals it. Run it through the New-vs-Rediscovered Audit if it lives in unchanged code.
+
+### Review Coverage Matrix (CRITICAL — root-cause fix for lens-rotation loops)
+
+Every iteration, regardless of findings, MUST begin its report with a Review Coverage Matrix. This mechanism eliminates the "lens rotation" anti-pattern — where iteration 1 examines spec compliance, iteration 2 examines integration seams, iteration 3 examines payload edges, and each iteration surfaces a "new" Critical in unchanged code. By requiring every lens to be acknowledged in every iteration, iteration 1 becomes certifiably exhaustive and any iteration 2+ finding in unchanged code must self-justify under the Severity Escalation Guard.
+
+**Minimum hardcoded lenses** (every story-review report, every iteration, MUST acknowledge all of these):
+
+- Spec compliance (plan artifacts → code)
+- Cross-task integration seams
+- Full-story AC coverage and traceability
+- Security controls uniformity
+- Payload / input-boundary edges
+- Error-path and negative-case tests
+- Automated checks (lint / typecheck / tests)
+- Docs and staging-doc consistency
+- Comment policy
+
+**Plus story-specific lenses** derived from plan artifacts (PRD, HLD, API, Security, Testing, Story ACs). Examples: "PWA installability," "CDP timing sensitivity," "rate-limit edges," "cross-browser capability differences," "session persistence on reload." Declare these at the top of the matrix before filling rows.
+
+**Format:**
+
+```markdown
+## Review Coverage Matrix
+
+**Story-specific lenses declared (derived from plan artifacts):** [list, or "none beyond minimum"]
+
+| Lens | Outcome |
+|------|---------|
+| Spec compliance | findings: [list with severity + file:line] OR no findings: [one-line rationale citing what was examined] |
+| Cross-task integration seams | ... |
+| Full-story AC coverage and traceability | ... |
+| Security controls uniformity | ... |
+| Payload / input-boundary edges | ... |
+| Error-path and negative-case tests | ... |
+| Automated checks (lint / typecheck / tests) | ... |
+| Docs and staging-doc consistency | ... |
+| Comment policy | ... |
+| [story-specific lens 1] | ... |
+| [story-specific lens 2] | ... |
+```
+
+**Rules:**
+
+- Every minimum lens MUST appear as a row. Omission is a protocol violation.
+- Every `no findings` entry MUST include a one-line rationale citing what was examined (e.g., "no findings: reviewed all 4 API handlers in `src/api/` for input validation; all use the shared `validateRequest()` schema"). Bare `no findings` is a protocol violation.
+- The findings listed in the matrix are the canonical issues — they feed the Spec Compliance, Cross-Task Integration, Code Quality, and Test Review sections below. Do NOT surface additional findings in later sections that are not also in the matrix.
 
 ### Comment policy enforcement
 
@@ -114,12 +200,20 @@ NEVER mix vocabularies between fields.
 
 - ANY Critical issue → Changes Required.
 - Important issues (no Critical) → Changes Required.
-- Only Suggestions → Approved.
+- **Graduated Suggestion-only rule (by iteration):**
+  - **Iteration 1 with Suggestion-only findings → Changes Required.** We are already in the story-review loop on the first pass; the cost of addressing suggestions is low and it preserves quality on first entry. Suggestions retain signaling value on iteration 1.
+  - **Iteration ≥ 2 with Suggestion-only findings → Approved.** Do not burn an Oracle or implementer cycle on nice-to-haves after the first pass. Record residual Suggestions in the staging doc for a future story, but do not block this story.
 - Spec compliance FAIL requires at least one missing/incorrect requirement.
 
 ### Consistency check
 
-Before returning: count Critical + Important. If any exist → Changes Required. If zero → Approved.
+Before returning:
+
+1. Confirm the Review Coverage Matrix is present and complete (every minimum lens row present with findings or rationale).
+2. If iteration ≥ 2 and any finding lives in unchanged code, confirm the New-vs-Rediscovered Audit section is present and each such finding is justified.
+3. Count Critical + Important. If any exist → Changes Required.
+4. If zero Critical/Important AND iteration == 1 AND any Suggestion exists → Changes Required (graduated rule).
+5. If zero Critical/Important AND (iteration ≥ 2 OR zero Suggestions) → Approved.
 
 ## Error Handling
 
@@ -134,10 +228,12 @@ Before returning: count Critical + Important. If any exist → Changes Required.
 
 Return your final summary to the Engineering Hub with:
 
+- **Review Coverage Matrix:** all minimum lenses + declared story-specific lenses, each row with findings or one-line rationale.
 - Spec Compliance: PASS or FAIL with cited gaps (full story scope).
 - Cross-Task Integration: issues at task boundaries with file references.
 - Code Quality: strengths and issues by severity, each with file:line and fix.
 - Test Review: present / missing / inadequate with file references.
 - Automated Checks: lint, typecheck, test results with exit codes.
-- Overall Assessment: Approved or Changes Required (per verdict rules).
+- **New-vs-Rediscovered Audit** (iteration ≥ 2 only, when findings exist in unchanged code): each such finding tagged with justification or downgraded to Suggestion-class.
+- Overall Assessment: Approved or Changes Required (per verdict rules, including the graduated Suggestion-only rule).
 - Documentation verification notes if claims and staging doc disagree.
