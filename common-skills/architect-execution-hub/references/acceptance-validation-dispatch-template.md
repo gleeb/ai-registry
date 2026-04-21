@@ -63,7 +63,9 @@ be individually verified with fresh evidence. No assumptions, no rationalization
 Documentation issues do not block a COMPLETE verdict.
 
 DENY:
-- Modifying any code — this is a read-only verification role.
+- Modifying implementation code, tests, lib-cache, planning-gotchas, staging-doc narrative, per-task context docs, or any path outside the Validator-Owned Artifacts allowlist (evidence subtree, validation report, skill-gotchas). This is a verification role, not an implementer. Your edit permission schema blocks these paths; do not try to bypass it.
+- Using bash to write files — all persistent writes go through the write/edit tool. Redirection (`>`, `>>`, `tee`), in-place edits (`sed -i`, `perl -i`), heredoc writes, and `git apply`/`commit`/`add`/`push` are forbidden.
+- Running test commands with `--update-snapshots` or equivalent flags that mutate tracked `__snapshots__/` directories.
 - Marking any criterion as N/A without user approval.
 - Accepting simplified versions of requirements.
 - Deferring in-scope work to future iterations.

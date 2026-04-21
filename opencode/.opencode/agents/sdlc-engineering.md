@@ -396,7 +396,7 @@ Before Task tool dispatch to @sdlc-engineering-semantic-reviewer, read the QA ag
 
 ### Phase 4: Acceptance Validation
 
-**Description:** Independent verification of every acceptance criterion.
+**Description:** Independent verification of every acceptance criterion. The validator has a narrow write scope enforced by its own permission schema and spec (evidence bundles, validation report, skill-gotchas only); the hub does not police it further.
 
 `checkpoint.sh execution --phase 4`
 
