@@ -312,6 +312,83 @@ verify_planning() {
 }
 
 # ---------------------------------------------------------------------------
+# Staging-doc task counter — convention-aware
+# ---------------------------------------------------------------------------
+#
+# Counts task sections (headers matching `^### Task `) in the staging doc and
+# determines how many are complete. A section counts as done if ANY of:
+#   1. The heading line contains ✓, ✅, or a case-insensitive "complete"/"done"
+#      marker after the first colon.
+#   2. The section body contains a `**Status:**` line whose value (before any
+#      pipe) matches complete/done (case-insensitive).
+#   3. Legacy: a GitHub-style `- [x]` checkbox appears in the section body.
+#
+# Prints "<done> <total>" on stdout. Returns 0 always (empty doc → "0 0").
+count_completed_tasks_in_staging() {
+  local staging_doc="$1"
+  if [ ! -f "$staging_doc" ]; then
+    echo "0 0"
+    return 0
+  fi
+  awk '
+    function flush_section() {
+      if (in_task) {
+        total++
+        if (done_this) done++
+      }
+      in_task = 0
+      done_this = 0
+    }
+    function lc(s) { return tolower(s) }
+    /^### Task / {
+      flush_section()
+      in_task = 1
+      done_this = 0
+      # Check heading for completion markers after the first colon
+      line = $0
+      colon = index(line, ":")
+      tail = (colon > 0) ? substr(line, colon + 1) : line
+      tl = lc(tail)
+      if (index(tail, "\xe2\x9c\x93") > 0 || \
+          index(tail, "\xe2\x9c\x85") > 0 || \
+          tl ~ /(^|[^a-z])complete([^a-z]|$)/ || \
+          tl ~ /(^|[^a-z])done([^a-z]|$)/) {
+        done_this = 1
+      }
+      next
+    }
+    /^#/ {
+      # Any other heading ends the current section
+      flush_section()
+      next
+    }
+    {
+      if (!in_task) next
+      # Status line: must contain **Status:** (with optional leading list marker/whitespace)
+      if ($0 ~ /\*\*[Ss]tatus:\*\*/) {
+        val = $0
+        sub(/^.*\*\*[Ss]tatus:\*\*[[:space:]]*/, "", val)
+        # Value before first pipe
+        pipe = index(val, "|")
+        if (pipe > 0) val = substr(val, 1, pipe - 1)
+        vl = lc(val)
+        if (vl ~ /(^|[^a-z])complete([^a-z]|$)/ || vl ~ /(^|[^a-z])done([^a-z]|$)/) {
+          done_this = 1
+        }
+      }
+      # Legacy checkbox
+      if ($0 ~ /-[[:space:]]*\[[xX]\]/) {
+        done_this = 1
+      }
+    }
+    END {
+      flush_section()
+      printf "%d %d\n", done+0, total+0
+    }
+  ' "$staging_doc"
+}
+
+# ---------------------------------------------------------------------------
 # VERIFY: execution
 # ---------------------------------------------------------------------------
 
@@ -370,14 +447,20 @@ verify_execution() {
   if [ -n "$staging_doc" ] && [ "$staging_doc" != "null" ] && [ -f "$staging_doc" ]; then
     echo "staging_doc: ${staging_doc} (exists)"
 
-    # Count actual task status from staging doc
-    local actual_done actual_total
-    actual_done="$(grep -c "\- \[x\]" "$staging_doc" 2>/dev/null || echo 0)"
-    actual_total="$(grep -c "\- \[.\]" "$staging_doc" 2>/dev/null || echo 0)"
+    # Count actual task status from staging doc using convention-aware parser
+    local counts actual_done actual_total cp_done
+    counts="$(count_completed_tasks_in_staging "$staging_doc")"
+    actual_done="${counts%% *}"
+    actual_total="${counts##* }"
+    cp_done="${tasks_completed:-0}"
 
-    if [ "$actual_done" != "${tasks_completed:-0}" ]; then
-      echo "verification: staging doc shows ${actual_done}/${actual_total} tasks done (checkpoint says ${tasks_completed:-0}) -- staging doc is more current"
+    if [ "$actual_done" = "$cp_done" ]; then
+      : # counts agree — no drift warning
+    elif [ "$actual_done" -gt "$cp_done" ] 2>/dev/null; then
+      echo "verification: staging ahead of checkpoint (staging: ${actual_done}/${actual_total}, checkpoint: ${cp_done}) -- trusting staging doc"
       tasks_completed="$actual_done"
+    else
+      echo "verification: checkpoint ahead of staging (checkpoint: ${cp_done}, staging: ${actual_done}/${actual_total}) -- counts differ; inspect staging doc manually"
     fi
   elif [ -n "$staging_doc" ] && [ "$staging_doc" != "null" ]; then
     echo "staging_doc: ${staging_doc} (MISSING)"

@@ -1,0 +1,9 @@
+story: US-TEST-checkpoint-ahead
+phase: 2
+tasks_total: 3
+tasks_completed: 3
+current_task_id: 3
+current_task_name: "Third task"
+current_step: implement
+current_iteration: 1
+staging_doc: "FIXTURE_STAGING_DOC"

@@ -74,7 +74,7 @@ If stories are re-planned mid-run (rare), the planner re-enters Phase 7 so `--sy
 | `Phase 4 acceptance -- dispatch sdlc-acceptance-validator` | Dispatch acceptance validator |
 | `Phase 5 documentation integration` | Follow doc-integration-protocol |
 | `Phase 6 user acceptance` | Present evidence report to user |
-| `read staging doc to identify next pending task` | Open the staging doc and find the first `- [ ]` task |
+| `read staging doc to identify next pending task` | Open the staging doc and find the first `### Task` section whose `**Status:**` line is `pending` |
 
 4. After acting on the recommendation, resume normal workflow. The staging doc remains the detailed source of truth; the checkpoint provides the routing shortcut.
 
