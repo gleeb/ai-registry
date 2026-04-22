@@ -20,6 +20,7 @@ permission:
     "sdlc-engineering-story-reviewer": allow
     "sdlc-engineering-story-qa": allow
     "sdlc-engineering-oracle": allow
+    "sdlc-engineering-cache-curator": allow
 ---
 
 ## Role
@@ -93,6 +94,7 @@ Note: `scaffold-project` skill is loaded internally by `@sdlc-engineering-scaffo
 | `@sdlc-engineering-oracle` | Last-resort escalation for stuck implementation loops (most powerful model) |
 | `@sdlc-engineering-acceptance-validator` | Phase 4: evidence-based check of every acceptance criterion |
 | `@sdlc-engineering-documentation-writer` | Dedicated documentation work beyond hub's `docs/*.md` edits |
+| `@sdlc-engineering-cache-curator` | Phase 1b: one-shot pre-population of the story-level library documentation cache. Runs on the cheapest available model to offload doc-fetch-and-summarize output-token cost from hub and implementer. |
 
 ---
 
@@ -230,6 +232,25 @@ The scaffolder is the story executor — not a pre-step. Do NOT enter Phase 1, 1
 - Create `docs/staging/US-NNN-name.lib-cache.md` with the header from the task-context-template.md Hub Instructions. This is the story-level library documentation cache shared across all tasks and iterations for this story.
 - Include the path in every implementer dispatch as `LIBRARY CACHE: docs/staging/US-NNN-name.lib-cache.md`.
 - After each implementer dispatch returns, open the cache file and verify: (a) every library in `EXTERNAL LIBRARIES` has an entry, (b) each entry has non-empty `apis_used` and `code_snippets` fields. If an entry is missing or has empty required fields, write it from the implementer's completion summary. Track the per-library query count (first query = 1, plus the count of `re_query_log` entries). Emit `LIBRARY BUDGET: <lib> N/3 used` in the next implementer dispatch for any library at 2/3 or above.
+
+**Library cache pre-population (after lib-cache file is created, before Phase 2):**
+
+This is the single entry point for populating the cache with story-scope library surface area. The curator runs once per story, on the cheapest available model, offloading doc-fetch-and-summarize output-token cost from the hub and implementer. See P13 for rationale.
+
+- Build the curator dispatch inputs:
+  - **CACHE FILE:** `docs/staging/US-NNN-name.lib-cache.md`
+  - **LIBRARIES:** union of every task's `External libraries` field from the Task Decomposition, deduplicated. Qualify each with its pinned version from `package.json` / `pyproject.toml` / `Cargo.toml` / `go.mod`. If the library is not in the manifest, tag it `version unknown — unspecified`.
+  - **STORY SCOPE:** a compact excerpt assembled from `story.md` (goal + AC summary) and `hld.md` (design-unit excerpts that mention each library). Keep this under ~200 lines; the curator does not need full artifacts.
+  - **TASK USAGE HINTS:** for each library, list the task IDs that use it (e.g., `dexie: used by Task 2, Task 3, Task 5`). Libraries used in 2+ tasks must meet the comprehensive quality bar; libraries used in 1 task may stay lean.
+- If the LIBRARIES list is empty (no external libraries in any task), skip the curator dispatch entirely. Proceed to Phase 1c / Phase 2.
+- Otherwise, Task tool dispatch to `@sdlc-engineering-cache-curator` with the inputs above. Dispatch log entry: `checkpoint.sh execution --dispatch-event dispatch --dispatch-agent sdlc-engineering-cache-curator --dispatch-id "exec-{story}-cache-curator-i1"`.
+- On return, handle the STATUS:
+  - `STATUS: COMPLETE` → record in Technical Decisions that the curator ran, list libraries populated + any gaps. Libraries with gaps are NOT a blocker — the implementer will fill them via the `re_query_log` path during Phase 2. Proceed to Phase 1c / Phase 2.
+  - `STATUS: PARTIAL` → at least one library had a blocker. Record in Technical Decisions. Proceed to Phase 2 — the implementer will query context7/Tavily for those libraries at first use and fill the cache normally.
+  - `STATUS: BLOCKED` → the cache file itself could not be read or written. Verify the file exists and is writable; re-dispatch once. If still BLOCKED, record the blocker in staging doc Issues and proceed without pre-population (implementer still has its own cache-first protocol and will populate on first use).
+- Log response: `checkpoint.sh execution --dispatch-event response --dispatch-agent sdlc-engineering-cache-curator --dispatch-id "exec-{story}-cache-curator-i1" --dispatch-verdict "{COMPLETE|PARTIAL|BLOCKED}"`.
+
+The curator runs exactly **once per story**. It is NOT re-dispatched on review rejections, QA failures, or remediation cycles — those rely on the implementer's in-flight re-query path.
 
 ### Phase 1c: Actionable Plan
 

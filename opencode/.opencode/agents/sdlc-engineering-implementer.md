@@ -51,30 +51,39 @@ You are the SDLC Implementer focused on writing, testing, and verifying code exa
 **Step 0 — Version pinning:** Before any context7 query, read `package.json` (or `pyproject.toml` / `Cargo.toml` for non-JS projects) to get the installed major.minor for each library you will query. Pass this version as the qualifier to `resolve-library-id`. Record the installed version in every cache entry. If the library is not in the manifest (peer dep, implicit dep), query without a version qualifier and note "version unknown — unspecified" in the cache entry.
 
 **Step 1 — Cache-first:** Before querying context7 or Tavily for any library, check the story-level cache file at the path provided in the dispatch `LIBRARY CACHE:` field (typically `docs/staging/<story-id>.lib-cache.md`).
-- If the library has an entry there with non-empty `apis_used` and `code_snippets` fields sufficient for your current need: use the cached findings. Do NOT query context7 or Tavily. Report `cached (skipped re-query, cache path: <file>#<lib>)` in the completion summary.
-- If the library is NOT in the cache: proceed to Step 2.
+
+The cache is **pre-populated by the cache-curator subagent during Phase 1b** for every library listed in any task's `External libraries` field. You are a consumer. In the normal case the entry already exists and covers the APIs you need.
+
+- If the library has an entry with non-empty `apis_used` and `code_snippets` fields sufficient for your current need: use the cached findings. Do NOT query context7 or Tavily. Report `cached (skipped re-query, cache path: <file>#<lib>)` in the completion summary.
+- If the library is NOT in the cache at all: the curator did not cover it (library added at task time, or curator blocked on this library). Proceed to Step 2 — query context7/Tavily and write a new entry. Do NOT skip this — the completion contract requires a cache entry for every library your task uses.
 - If the library IS in the cache but a specific API detail you need is absent from `apis_used` or `code_snippets`: you may re-query, but you MUST record the justification (what detail was missing) in a new `re_query_log` entry before querying. A re-query without a recorded justification is a **completion contract violation**.
 
-**Step 2 — Query and write-back:** Query context7 with the pinned version qualifier. If context7 returns `Monthly quota exceeded`, set a **session quota flag** — do NOT retry context7 for the remainder of this dispatch; route all subsequent doc queries to Tavily. After any successful query, write a **verbose cache entry** to `docs/staging/<story-id>.lib-cache.md` using this required schema:
+**What "sufficient for your current need" means (comprehensiveness expectation):** The curator writes entries scoped to the STORY's library surface area, not any single task. If you are the first task to use a library, assume the cache entry already covers what you need and read it end-to-end before deciding you need to re-query. A cache entry for a library used in 2+ tasks should have ≥ 5 APIs, ≥ 3 code snippets, ≥ 2 error_types, ≥ 2 gotchas (when the docs have them). If the entry is visibly sparser than this and the gap affects your task, treat it as a curator miss — record a `re_query_log` entry with justification and query to fill the gap. Do NOT duplicate APIs or snippets already present.
+
+**Step 2 — Query and write-back (curator miss path):** Query context7 with the pinned version qualifier. If context7 returns `Monthly quota exceeded`, set a **session quota flag** — do NOT retry context7 for the remainder of this dispatch; route all subsequent doc queries to Tavily. After any successful query, write a **verbose cache entry** to `docs/staging/<story-id>.lib-cache.md` using this required schema:
 
 ```markdown
 ## <library> @ <pinned version>
 - source_urls: [context7-url or tavily-url]
+- curated_by: implementer (Task-N, iteration-M — curator miss)
+- story_scope: <one-line summary of why the story uses this library>
 - first_queried_in: Task-N / iteration-M
 - apis_used:
-  - FunctionName(param: Type): ReturnType   ← exact signatures from docs
+  - FunctionName(param: Type): ReturnType — <one-line purpose>
 - error_types:
-  - ErrorClassName — when it occurs         ← enumerate all typed errors
+  - ErrorClassName — when it occurs
 - code_snippets:
   ```<lang>
   // verbatim minimal working example from the docs
   ```
-- gotchas: version-specific behavior that surprised us (or "none observed")
+- gotchas: version-specific behavior (only if doc-flagged), or "none flagged"
 - re_query_log:
   - (empty on first query)
 ```
 
 A cache entry missing `apis_used` or `code_snippets` is a **completion contract violation**. "Key findings: 3 bullets" is not a valid cache entry.
+
+**Write to the story-scope quality bar, not task-scope.** When you are filling a curator miss, cover the full surface area the story will need for this library, not only what Task-N uses right now. Use the same framing the curator uses: "An implementer reading this entry, without access to docs, should be able to complete any task in this story that uses this library." This prevents the next task from re-querying the same library for adjacent APIs. Libraries used in a single task may stay lean (≥ 2 APIs, ≥ 1 snippet); libraries used in 2+ tasks must meet the comprehensive bar (≥ 5 APIs, ≥ 3 snippets, ≥ 2 error_types, ≥ 2 gotchas where doc-flagged).
 
 **Step 2b — Hard budget:** The per-library budget is **3 queries per story** (first query + 2 re-queries). The hub tracks the count and includes `LIBRARY BUDGET: <lib> N/3 used` in the dispatch. If you are at 2/3 or higher, be conservative — only re-query if the missing API detail is strictly required. A 4th query (budget exhausted) must be flagged as a blocker `library-doc-budget-exceeded: <lib>` and reported to the hub, unless the dispatch carries an explicit `DOCUMENTATION SEARCH` override directive from the hub.
 

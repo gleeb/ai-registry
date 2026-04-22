@@ -123,9 +123,11 @@ For each, include a brief description of what it shows and what decisions it inf
 ## Library Documentation Cache
 
 > Story-level cache file: `docs/staging/<story-id>.lib-cache.md`
+> Pre-populated by `@sdlc-engineering-cache-curator` during Phase 1b for every library listed in any task's `External libraries` field.
 > Implementer: check that file BEFORE querying context7 or Tavily (see Documentation Search protocol).
 > This section is intentionally blank in the context doc — all cache content lives in the story-level file.
 > Re-query of a cached library requires a recorded justification and a `re_query_log` entry in the cache file.
+> Curator misses (library not in the cache, or visibly sparse entry blocking your task) are filled by the implementer using the same schema — see implementer Step 2 "curator miss path".
 
 ---
 
@@ -195,24 +197,98 @@ Use this header:
 # Library Documentation Cache — <story-id>
 
 > Story-level, append-only. One section per external library. All tasks in this story share this cache.
-> Hub creates at Phase 1b (empty). Implementer appends after first query. Hub confirms entries after each dispatch.
-> Budget: 3 queries per library per story. Each re-query must add a re_query_log entry.
+> Hub creates the file at Phase 1b (empty). `@sdlc-engineering-cache-curator` populates it once, before Phase 2,
+> with one verbose entry per library listed in any task's `External libraries` field.
+> Implementer consumes the cache. Implementer fills curator misses (libraries added post-Phase-1b, or gaps that block
+> the task) using the same schema under `curated_by: implementer`. Hub confirms entries after each dispatch.
+> Budget: 3 queries per library per story (first query + 2 re-queries). Each re-query must add a re_query_log entry.
+>
+> Quality bar:
+> - Libraries used in 2+ tasks (COMPREHENSIVE): ≥ 5 APIs, ≥ 3 code snippets, ≥ 2 error_types, ≥ 2 gotchas (if doc-flagged).
+> - Libraries used in 1 task (LEAN): ≥ 2 APIs, ≥ 1 code snippet.
+> - Framing: "An implementer reading this entry, without access to docs, should be able to complete any task in this
+>   story that uses this library."
+> - Gotchas are only recorded when doc-flagged (warning/note/pitfall/migration callout). Do not infer gotchas.
 
-<!-- Entry template:
+<!-- Entry template (curator-authored, comprehensive):
 ## <library> @ <pinned version>
 - source_urls: [context7-url, tavily-url, ...]
-- first_queried_in: Task-N / iteration-M
+- curated_by: cache-curator (Phase 1b)   # or: implementer (Task-N, iteration-M — curator miss)
+- story_scope: <one-line summary of why the story uses this library>
+- first_queried_in: Phase 1b              # implementer-filled entries use Task-N / iteration-M
 - apis_used:
-  - FunctionName(param: Type): ReturnType
+  - FunctionName(param: Type): ReturnType — <one-line purpose>
+  - ...
 - error_types:
   - ErrorClassName — when it occurs
+  - ...
 - code_snippets:
   ```<lang>
-  // minimal working example from docs
+  // minimal working example: setup
   ```
-- gotchas: version-specific behavior that surprised us
+  ```<lang>
+  // minimal working example: primary use
+  ```
+  ```<lang>
+  // minimal working example: error path (if applicable)
+  ```
+- gotchas:
+  - <gotcha — only if doc-flagged>
+  - (or) none flagged in top-ranked sections
 - re_query_log:
   - <ISO timestamp> — justification: <what specific detail was missing> — added: <what new info was appended>
+-->
+
+<!-- Example — comprehensive curator-authored entry:
+## dexie @ 4.0
+- source_urls:
+  - https://context7.ai/dexie/4.0/overview
+  - https://context7.ai/dexie/4.0/versioning
+- curated_by: cache-curator (Phase 1b)
+- story_scope: Offline queue persistence with version migration for the outbox pattern
+- first_queried_in: Phase 1b
+- apis_used:
+  - new Dexie(dbName: string): Dexie — constructor, one instance per DB
+  - db.version(versionNumber: number).stores(schema: Record<string, string>): Version — schema declaration
+  - db.version(N).upgrade(cb: (tx: Transaction) => Promise<void>): Version — migration hook
+  - table.add(item: T, key?: IndexableType): Promise<IndexableType> — primary insert
+  - table.get(key: IndexableType): Promise<T | undefined> — primary read
+  - table.where(index).equals(value).toArray(): Promise<T[]> — indexed query
+- error_types:
+  - Dexie.OpenFailedError — thrown when IndexedDB open fails (storage full, private mode in some browsers)
+  - Dexie.VersionError — thrown when an existing DB has a higher version than the code declares
+  - Dexie.ConstraintError — thrown on unique-index violation during add/put
+- code_snippets:
+  ```ts
+  // setup
+  import Dexie, { Table } from 'dexie';
+  class AppDB extends Dexie {
+    outbox!: Table<OutboxItem, string>;
+    constructor() {
+      super('AppDB');
+      this.version(1).stores({ outbox: '&id, createdAt' });
+    }
+  }
+  export const db = new AppDB();
+  ```
+  ```ts
+  // primary use: add + query
+  await db.outbox.add({ id: crypto.randomUUID(), payload, createdAt: Date.now() });
+  const pending = await db.outbox.where('createdAt').above(cutoff).toArray();
+  ```
+  ```ts
+  // error path: OpenFailedError handling
+  try { await db.open(); }
+  catch (e) {
+    if (e instanceof Dexie.OpenFailedError) { /* degrade to in-memory fallback */ }
+    else throw e;
+  }
+  ```
+- gotchas:
+  - Migrations that add unique indexes fail on existing rows with duplicate values — clean the data in an upgrade() callback before declaring the index (doc-flagged: "Upgrade Callbacks" note).
+  - Dexie instances must be closed (db.close()) before a schema upgrade on another tab, otherwise VersionError fires on reopen (doc-flagged: versioning guide warning).
+- re_query_log:
+  - (empty)
 -->
 ```
 

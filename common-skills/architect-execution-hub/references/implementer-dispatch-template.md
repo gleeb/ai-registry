@@ -24,12 +24,16 @@ TECH SKILLS:
   Load and apply patterns from this skill during implementation.
 [Include all tech skills identified in Phase 0. Omit section if no tech skills apply.]
 
-EXTERNAL LIBRARIES (search documentation before implementing):
+EXTERNAL LIBRARIES (cache is pre-populated — check before querying):
 - [library-name] (topic: [what to look up])
 - [library-name-2] (topic: [what to look up])
 [List every external library/SDK/platform API this task integrates with.
-The implementer MUST search context7 and/or Tavily for each before writing
-integration code. Omit only if the task uses no external libraries.]
+The cache is pre-populated by @sdlc-engineering-cache-curator during Phase 1b.
+The implementer MUST check the LIBRARY CACHE (below) for each library first.
+Only query context7/Tavily if the library is absent from the cache (curator
+miss) or if a specific API detail you need is not in the entry (record a
+re_query_log justification). Omit this section only if the task uses no
+external libraries.]
 
 REQUIRED CONTEXT (read before writing any code):
 1. Task context document: Read [exact path to docs/staging/US-NNN-name.task-N.context.md].
@@ -45,9 +49,13 @@ REQUIRED CONTEXT (read before writing any code):
 [Any additional context from prior tasks — include here, not in the context doc]
 
 LIBRARY CACHE: docs/staging/[story-id].lib-cache.md
-[Always include. This is the story-level library documentation cache. Check this file
-BEFORE querying context7 or Tavily for any library. An entry with non-empty apis_used
-and code_snippets is sufficient — do not re-query. Write new entries here after querying.]
+[Always include. This is the story-level library documentation cache, pre-populated by
+@sdlc-engineering-cache-curator during Phase 1b. Check this file BEFORE querying context7
+or Tavily for any library. An entry with non-empty apis_used and code_snippets covering the
+APIs you need is sufficient — do not re-query. If the entry exists but a specific API detail
+is missing, re-query is permitted with a recorded re_query_log justification. If the library
+is entirely absent (curator miss), query context7/Tavily and write a full entry per the
+curator's schema (story-scope, not task-scope).]
 
 [If any library is at 2/3 or above of the 3-query budget, include:]
 LIBRARY BUDGET: [library-name] [N]/3 used — re-query only if strictly required.

@@ -11,6 +11,8 @@ Use this template when the engineering hub creates the skill gotchas sibling fil
 **Who reads it:** The human, post-run. NOT read by the documentation-writer during consolidation.
 **Who must NOT promote from it:** Any agent during the story run. Promotion to skill files is a human post-run action only.
 
+**Additional post-run review source (P13):** When reviewing this file for skill-update candidates, also open the story's library documentation cache at `docs/staging/US-NNN-name.lib-cache.md` and scan the `gotchas` fields across all library entries. The cache contains doc-flagged gotchas captured at Phase 1b by the curator and at Phase 2 by implementers. A gotcha that appears in the cache AND was encountered during execution (look for matching entries in this skill-gotchas file) is a strong candidate for promotion to a library-specific skill. A gotcha that appears in the cache but was *not* encountered during execution may still be worth promoting pre-emptively — the curator pulled it from the docs for a reason. This cross-source review is the compounding mechanism that replaces the rejected project-level cache idea (see P13 section 4).
+
 ---
 
 ## Template
@@ -20,7 +22,8 @@ Use this template when the engineering hub creates the skill gotchas sibling fil
 
 **Story:** [Story Title]
 **Main staging doc:** `docs/staging/US-NNN-name.md`
-**Post-run action:** Review entries below with the run transcript. Promote Technical gotchas to the suggested skill files manually.
+**Library cache (cross-source review):** `docs/staging/US-NNN-name.lib-cache.md` — scan its `gotchas` fields alongside this file when deciding what to promote.
+**Post-run action:** Review entries below with the run transcript AND the library cache's gotcha fields. Promote Technical gotchas to the suggested skill files manually.
 
 ---
 

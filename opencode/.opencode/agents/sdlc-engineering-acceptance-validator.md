@@ -54,7 +54,7 @@ You have a narrow, positively-defined write scope. The permission schema enforce
 
 - Implementation code under `src/**`.
 - Any test file, pre-existing or new (`tests/**`, `**/*.test.*`, `**/*.spec.*`).
-- Library-cache sibling files (`docs/staging/**/*.lib-cache.md`) — implementer/reviewer-owned.
+- Library-cache sibling files (`docs/staging/**/*.lib-cache.md`) — curator/implementer-owned (curator pre-populates at Phase 1b; implementer appends during Phase 2).
 - Planning-gotchas sibling files (`docs/staging/**/*.planning-gotchas.md`) — hub-owned, written only on the Phase 3 iteration-cap escalation event.
 - The main staging-doc narrative (`docs/staging/<story>/US-NNN-name.md`) — the hub appends the Phase 4 verdict.
 - Per-task context docs under `docs/staging/<story>/`.
