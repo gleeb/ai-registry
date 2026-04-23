@@ -47,6 +47,31 @@ Reference `webapp-testing` and `playwright-best-practices` skills for E2E test e
 - Run `npm run verify:full` (which includes coverage) and check coverage numbers against dispatch thresholds (defaults: 80% lines, 70% branches). Compare against implementer's claimed numbers — flag discrepancies. If vitest coverage thresholds are configured in `vitest.config.ts`, a passing `verify:full` already confirms thresholds were met.
 - Test adequacy failure or coverage below threshold = **FAIL verdict**.
 
+### Phase 2b: Test-Mode Accounting
+
+Every test file declares a `test-mode` header (`real` or `stub`). The QA agent must produce a count across the story's test suite so the acceptance validator can decide whether the run is eligible for full acceptance or only `ACCEPTED-STUB-ONLY`.
+
+Procedure:
+
+1. Walk every test file in the story scope (new/modified in the diff, plus the existing suites they exercise).
+2. For each file, read the `test-mode:` header (typically in a top-of-file comment block or a test-framework tag). Values:
+   - `test-mode: real` — the file reads a real credential via `process.env.<NAME>` and exercises the real external service. Eligible for `real` counting ONLY when the required variable was actually set at run time.
+   - `test-mode: stub` — the file uses mocks / fixtures / placeholders. Never exercises an external service.
+   - Missing / no header → treat as `unknown` and flag as an **Important** gap (every test file must declare a mode).
+3. For each `test-mode: real` file, check whether the required variables were present at this QA run:
+   - Present → record under `real`.
+   - Absent → record under `skipped-real` (the runner skipped / short-circuited because the credential was missing). A `test-mode: real` file silently switching to a stub path when the variable is missing is a violation — flag **Critical**.
+4. Emit the counts to the return message under a dedicated block:
+   ```
+   TEST-MODE ACCOUNTING:
+   - real: N (list of file paths)
+   - stub: M (list of file paths)
+   - skipped-real: K (list of file paths with the missing env var named)
+   - unknown: U (list of file paths — flag as Important)
+   ```
+
+**All-stub flagging.** If every test file covering a story's acceptance criteria is `test-mode: stub` — i.e., there is not a single `real` test actually exercised this run — annotate the QA report with `FLAG: ALL-STUB-SUITE`. The downstream acceptance validator uses this flag to downgrade the verdict to `ACCEPTED-STUB-ONLY` rather than COMPLETE. This is not a QA failure on its own — it is an informational signal that the plan's `required_env` declarations may be too narrow, or that integration tests were never wired up.
+
 ### Phase 3: Fresh Execution
 
 Run the unified quality gate: `npm run verify:full` (JS/TS) or `bash scripts/verify.sh full` (Python). The script is silent on success — `=== ALL GATES PASSED ===` is sufficient evidence for the gate suite. If it fails, the output names the failing gate; include that output in your findings. Do not run lint, typecheck, test, or build as separate commands.

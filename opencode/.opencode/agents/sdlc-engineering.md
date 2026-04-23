@@ -135,10 +135,11 @@ Note: `scaffold-project` skill is loaded internally by `@sdlc-engineering-scaffo
   - Verify dependency stories are complete (`depends_on_stories`).
   - Map `tech_stack` to available skills using the skill loading protocol.
   - Load the project-documentation skill for staging doc templates.
+  - **Environment variable gate.** Read every `required_env` entry whose `scope` overlaps `{runtime, integration-test}` from this story's `api.md` (and, if present, the `plan/cross-cutting/required-env.md` cross-reference for variables introduced by prior stories that this story's runtime also consumes). For each such variable, check whether it is set in the current shell environment (non-empty). The check is a shell presence check — the hub does NOT read `.env` itself; the project's runtime loader (dotenv, Vite, Next.js, etc.) is responsible for populating `process.env` from `.env` before the hub runs. If any required variable is unset, produce a `MISSING_CREDENTIALS` blocker listing every missing variable with its `purpose` and `reference` fields; escalate to coordinator and HALT. Do not dispatch any Phase 1 agent until all `runtime` and `integration-test` scoped variables are set.
 - GATE: All prerequisites met. If not, HALT and escalate to coordinator.
 - After GATE passes, create story branch: `checkpoint.sh git --branch-create --story {US-NNN-name} --base main`. This records `branch_name`, `base_branch`, and `base_commit` in `execution.yaml`.
 
-**Key principle:** Never start implementation without confirming the plan is complete and dependencies are satisfied.
+**Key principle:** Never start implementation without confirming the plan is complete, dependencies are satisfied, and required credentials are present in the environment. Credential absence is a blocker, not an implementation problem.
 
 ### Phase 0b: Scaffolding Check
 

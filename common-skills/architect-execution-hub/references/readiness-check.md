@@ -58,6 +58,31 @@ Check if `plan/cross-cutting/testing-strategy.md` exists. If it does:
 
 If it does not exist: log a warning but do not block. Testing obligations still apply via agent rules (implementer must write tests, reviewer gates on test existence, QA verifies adequacy).
 
+### 7. Verify Required Environment Variables
+
+Every story declares its external-service credentials and configuration as `required_env` entries in `api.md`. Phase 0a is the single choke point where the hub checks that those variables are actually set in the shell environment before dispatching any agent.
+
+Procedure:
+
+1. Read `required_env` from `plan/user-stories/US-NNN-name/api.md`.
+2. If `plan/cross-cutting/required-env.md` exists, additionally read it to pick up variables introduced by prior stories that this story's runtime or tests also consume.
+3. Filter to entries whose `scope` includes any of: `runtime`, `integration-test`. Variables scoped only `unit-test-placeholder` are NOT blocking — placeholder values in fixtures are expected for those.
+4. For each filtered entry, check whether the variable is set in the shell (non-empty). Use a presence check like `printenv <NAME>` or `[ -n "${<NAME>}" ]`. Do NOT read or write `.env`. Do NOT echo or log the variable's value.
+5. Collect all missing variables.
+
+**If the missing set is non-empty**: HALT with a `MISSING_CREDENTIALS` blocker. Do not proceed to Phase 0b. Return the blocker to the engineering hub, which forwards it to the coordinator. The blocker message format:
+
+```
+BLOCKER: MISSING_CREDENTIALS — US-NNN
+Missing variables:
+- <NAME> — <purpose> (reference: <url or "none">)
+- <NAME> — <purpose> (reference: <url or "none">)
+
+Action required: user sets each variable in .env (or shell environment) and re-invokes the coordinator.
+```
+
+**Do NOT attempt to work around missing credentials** by generating placeholder values, by downgrading the scope to `unit-test-placeholder`, or by modifying `required_env`. The plan declares what is needed; the hub's job is to gate on it, not to relax it.
+
 ## Gate Criteria
 
 All of the following must be true to proceed:
@@ -68,6 +93,7 @@ All of the following must be true to proceed:
 - [ ] Tech skills identified (missing skills noted but not blocking)
 - [ ] Documentation skill loaded
 - [ ] Cross-cutting testing strategy noted if available (soft — does not block)
+- [ ] Every `required_env` entry with `scope` including `runtime` or `integration-test` is set in the shell environment (hard gate)
 
 ## On Failure
 
@@ -79,6 +105,9 @@ READINESS CHECK FAILED — US-NNN
 Missing artifacts: [list]
 Incomplete dependencies: [list]
 Missing skills: [list]
+Missing credentials: [list of env-var names with purpose and reference]
 
 Action required: [what needs to happen before this story can proceed]
 ```
+
+Missing credentials are reported under their own `MISSING_CREDENTIALS` blocker (see Step 7 above) so the coordinator can route them to the correct escalation path — not conflated with missing artifacts or missing skills.

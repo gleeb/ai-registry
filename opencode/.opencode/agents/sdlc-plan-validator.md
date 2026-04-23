@@ -125,7 +125,7 @@ The Plan Validator is a cross-plan validation agent with a Reality Checker philo
 1. Read all artifacts in `plan/user-stories/US-NNN-name/`.
 2. Read consumed contracts listed in the story's dependency manifest.
 3. Build a term registry from `plan/contracts/` and `plan/system-architecture.md` for terminology checks.
-4. Run all 11 checks from `references/per-story-validation.md`:
+4. Run all 11 checks from `references/per-story-validation.md`, plus the required-env check below:
    - Dependency Manifest Completeness
    - Acceptance Criteria Traceability
    - HLD-to-Story Alignment
@@ -137,6 +137,14 @@ The Plan Validator is a cross-plan validation agent with a Reality Checker philo
    - Files Affected Completeness
    - **Semantic Spot-Check** — verify 2-3 ACs correctly interpret their PRD references by meaning (see `references/semantic-spot-checks.md`)
    - **Terminology Consistency** — check for naming drift between story artifacts and canonical terms (see `references/terminology-enforcement.md`)
+   - **Required-Env Declaration Completeness**:
+     - `story.md` manifest has `required_env` field present (either `pending`, `[]`, or a concrete list). Missing field = **CRITICAL**.
+     - If `api.md` exists: it has a `## Required Environment Variables` section. Missing section = **CRITICAL**.
+     - Every external service / integration / provider referenced in `api.md` or `hld.md` (e.g., via hostname, SDK name, or integration component) has a corresponding `required_env` entry naming at least one variable. External integration without a `required_env` entry = **CRITICAL**.
+     - Every `required_env` entry has non-empty `name`, `purpose`, `scope` (array), and `sensitivity` fields. Missing any field = **Important**.
+     - No `name` field uses a placeholder like `YOUR_KEY_HERE` or `TBD` — must be the real variable name. Placeholder = **CRITICAL**.
+     - `purpose` does not quote, echo, or hint at any secret value. Value leakage = **CRITICAL**.
+     - Every entry with `sensitivity: secret` has `scope` that does NOT include `unit-test-placeholder` alone (secrets cannot be purely placeholder-scoped — they must have real runtime or integration-test consumers). Secret with only `unit-test-placeholder` scope = **Important** (usually indicates a scope error).
 5. **Each check defaults to FAIL** — prove PASS with explicit evidence.
 6. On NEEDS WORK: produce a **guidance package** (see `references/planning-guidance-format.md`):
    - Reasoned corrections for each failing check (what the better artifact looks like and why)
@@ -175,6 +183,12 @@ The Plan Validator is a cross-plan validation agent with a Reality Checker philo
    - **Contract compliance** — all providers and consumers aligned; no conflicting extensions.
    - **Cross-cutting coverage** — security overview covers all per-story controls; testing strategy maps all ACs; DevOps covers all services.
    - **Pattern detection** — aggregate findings from all per-story validations; flag recurring issues (3+ stories) as systemic; recommend root-cause fixes (see `references/pattern-detection.md`).
+   - **Required-Env Cross-Consistency**:
+     - Aggregate every `required_env` entry across all `api.md` files into a canonical set keyed by variable `name`.
+     - If `plan/cross-cutting/required-env.md` exists, cross-check that every canonical entry appears there with matching `purpose`, `scope`, `sensitivity`. Drift = **Important**.
+     - If `.env.example` exists, cross-check that every canonical entry has a matching entry in `.env.example` (with empty RHS). Missing or orphaned entries = **CRITICAL** — either `.env.example` is stale or a story declares a variable that will never be populated.
+     - A variable declared by multiple stories must have identical `sensitivity` across all declarations. Disagreement (one story says `secret`, another says `config`) = **CRITICAL**.
+     - A variable's `scope` is the union of all declaring stories' scopes; flag any aggregated scope that includes both `secret` sensitivity AND `unit-test-placeholder` as a scope conflict (**Important**) — the variable must be split into distinct variable names if a placeholder is genuinely needed for unit tests.
 5. For each check: document evidence and findings.
 6. On NEEDS WORK: produce a guidance package with systemic pattern analysis.
 7. Write report to `plan/validation/cross-validation-report.md`.

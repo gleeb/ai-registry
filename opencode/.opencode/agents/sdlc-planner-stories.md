@@ -117,6 +117,23 @@ This is the ONLY point in the planning workflow where the user is asked about ex
 3. Create `plan/contracts/` entries.
 4. Report completion to the Planning Hub.
 
+### Step 6b: Seed `required_env` Placeholder in Story Manifest
+
+Every `story.md` dependency manifest includes a `required_env` block. The Story Decomposer does NOT author the full environment declarations — that is the API Design agent's responsibility during Phase 3 (see `sdlc-planner-api.md` Phase 2b). This step seeds the structural placeholder so the manifest is well-formed and the downstream plan-validator can find it.
+
+For every story, add to the dependency manifest:
+
+```yaml
+required_env: pending  # populated by sdlc-planner-api in Phase 3; or "[]" if story has no external integrations
+```
+
+Rules:
+- Use `pending` literal when the story has any `candidate_domains` entry that plausibly needs external services (`api`, `data` with external DB, `security` with external auth, etc.). The API Design agent will resolve this to the final list.
+- Use `[]` ONLY when the story is clearly internal / in-memory / purely UI with no external calls (and note the rationale in a one-line comment above the field).
+- Never leave the field missing. Missing `required_env` fails the Dependency Integrity validation check.
+
+Cross-story aggregation (`plan/cross-cutting/required-env.md`) is written later by the Phase 4 DevOps agent — the Story Decomposer does not touch that file.
+
 ## Incremental Mode
 
 When the Hub dispatches incremental decomposition (brownfield changes):
@@ -356,6 +373,7 @@ Before submitting the decomposition to the Planning Hub, verify ALL of the follo
 - [ ] All `depends_on_stories` reference existing story folders.
 - [ ] No circular dependencies exist.
 - [ ] Execution order is consistent with dependency graph.
+- [ ] Every story's manifest has `required_env` present — either `pending` (to be resolved by sdlc-planner-api in Phase 3) or `[]` with a one-line rationale. Missing field is a CRITICAL failure.
 
 ### Contract Completeness Check
 

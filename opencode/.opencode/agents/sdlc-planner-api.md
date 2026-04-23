@@ -86,6 +86,52 @@ API Design Agent produces per-story API specifications. It writes to `plan/user-
 - Define error handling aligned with the error format contract.
 - Document idempotency for write operations where applicable.
 
+### Phase 2b: Environment-Variable Declarations
+
+Every external-service credential or configuration variable the story consumes must be declared as a first-class planning artifact. This includes:
+
+- External API keys and tokens (OpenRouter, OpenAI, Stripe, etc.)
+- BaaS credentials (Supabase keys, Firebase credentials, Auth0 secrets)
+- Database URLs and connection strings
+- Storage credentials (S3, R2, GCS)
+- Webhook signing secrets and shared-secret auth values
+- Non-secret config that must still be environment-sourced (base URLs, feature flags)
+
+Coverage is not limited to HTTP-API auth — any external-service variable the story's runtime, integration tests, or validation will read via `process.env` (or equivalent) is in scope.
+
+**For every external service this story integrates with**, emit a `required_env` entry in `api.md` under a dedicated `## Required Environment Variables` section using this schema:
+
+```yaml
+required_env:
+  - name: <ENV_VAR_NAME>
+    purpose: >
+      <one or two sentences: what this authenticates / configures, which
+      module consumes it at runtime, which tests consume it.>
+    scope: [runtime | integration-test | validation | unit-test-placeholder]
+    sensitivity: secret | config
+    reference: "<optional URL to provider technical docs; omit entirely if none>"
+```
+
+Rules:
+- **Never emit placeholder values** for `name`. Use the actual variable name the runtime will read (e.g., `OPENROUTER_API_KEY`, not `YOUR_KEY_HERE`).
+- **`scope` is multi-valued.** A variable used by production code AND by integration tests declares both `runtime` and `integration-test`. A validator that must re-run integration tests adds `validation`.
+- **`sensitivity: secret`** for any credential / token / key. Secrets must never be logged, echoed, committed, or quoted in the `purpose` field. Use `config` only for non-secret values like base URLs or region identifiers.
+- **`reference:`** is the provider's technical documentation (how to use the credential, rate limits, SDK reference). It is NOT an "acquisition guide" — the user supplies the value. Omit the field entirely when no useful public reference exists.
+- **Stories with no external variables** still declare the section as `required_env: []` with a one-line reason ("purely in-memory feature"; "uses only consumed contracts"). Empty-by-omission is forbidden.
+
+**Side-effect write: update `.env.example` at the repo root** as part of producing `api.md`. For every `required_env` entry, add or merge an entry in `.env.example` using this comment-header convention:
+
+```dotenv
+# Introduced by <story-id> (scope: <scope list>)
+# Purpose: <one-line purpose>
+# Reference: <url or omit if none>
+<NAME>=
+```
+
+When a variable is already present in `.env.example` from a prior story, append this story's ID to the `Introduced by` line (dedupe; do not duplicate the entry). The RHS of `=` is always empty in `.env.example`. Never write values. Never read `.env` (it is gitignored and holds the user's actual secrets).
+
+**Contract with validator:** the plan validator (sdlc-plan-validator) cross-checks that every external host referenced anywhere in `api.md` has a matching `required_env` entry, and that `.env.example` contains no entries orphaned from any story. Missing declarations are a CRITICAL finding.
+
 ### Phase 3: Review with User
 
 - Present the per-story API design with rationale.
@@ -104,6 +150,9 @@ API Design Agent produces per-story API specifications. It writes to `plan/user-
 - [ ] All API-relevant acceptance criteria have corresponding endpoints
 - [ ] Error cases documented for every endpoint
 - [ ] Contract compliance verified (error format, auth model, shared DTOs)
+- [ ] `## Required Environment Variables` section present in `api.md` — either populated with `required_env` entries or `required_env: []` with rationale
+- [ ] Every external service the story integrates with has a corresponding `required_env` entry
+- [ ] `.env.example` at repo root updated with matching entries
 - [ ] Self-validation passed before write
 
 

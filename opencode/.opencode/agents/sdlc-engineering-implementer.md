@@ -165,6 +165,8 @@ TERMINAL PHASE — compose return message and STOP.
 | **No vague staging doc claims** | "Staging doc updated" without listing specific sections and changes is a violation. |
 | **Run actual verification** | "Tests pass" without running `npm run verify:full` is not verification. Run it — if it prints `ALL GATES PASSED`, that is your evidence. If it fails, fix and re-run. |
 | **No narration comments** | Do NOT write comments that describe what the code does (`// Create the user`, `// Return result`, `// Initialize state`, `// Handle error`). Only write comments that explain non-obvious *why* — trade-offs, workarounds, platform constraints, or regulatory requirements the code cannot convey. JSDoc/TSDoc for public API contracts is permitted. |
+| **Never fabricate credentials** | Do NOT invent placeholder API keys, tokens, or secrets in product code to make a harness "run green". If a runtime code path requires a credential and the declared `required_env` variable is unset or returns a falsy value, HALT with `BLOCKER: MISSING_CREDENTIALS — <VAR_NAME>` and return to the hub. Do NOT inline `"demo-api-key"`, `"YOUR_KEY"`, `"test-token"`, or any shadow credential. Do NOT add a feature flag that swaps in a fake credential. Do NOT modify `required_env` to demote a `runtime` variable to `unit-test-placeholder`. The engineering hub's Phase 0a gate guarantees every `runtime`-scoped variable was set before you were dispatched — if one is missing at task time, that is a planning or readiness defect, not something you patch over. |
+| **Placeholder credentials only in `unit-test-placeholder` fixtures** | Unit-test fixtures MAY contain obvious non-secret placeholder strings (e.g., `"test-key-for-unit-only"`), but ONLY in files whose `test-mode` header is `stub` or equivalent and only for `required_env` entries whose `scope` explicitly includes `unit-test-placeholder`. Integration-test fixtures MUST read the real variable via `process.env.<NAME>`; they MUST NOT hard-code any value, real or placeholder. A single placeholder leaking into runtime source, integration tests, or validation scripts is a completion-contract violation. |
 
 ## Best Practices
 
@@ -190,6 +192,7 @@ When receiving review feedback: READ the feedback, VERIFY the issue exists in ac
 | **Scope expansion detected** | Stop at boundary, provide in-scope completion, list follow-up scope, return to hub. |
 | **Verification failure** | Do not mark complete. Document failure, attempt fix. If unresolved, return blocked. |
 | **Library/API knowledge gap** | Search context7 for the library's documentation. If context7 lacks coverage, search Tavily for official docs, GitHub issues, or Stack Overflow answers. If both fail, document the gap as a blocker and return to hub. |
+| **Missing credential at runtime** | Return `STATUS: BLOCKED — MISSING_CREDENTIALS: <VAR_NAME>` with the variable name, its declared `purpose`, and the file:line where the code reads it. Do NOT commit any code that references a fabricated value. Do NOT modify `required_env`. The hub routes this to the coordinator, which asks the user to set the variable and re-dispatches. |
 
 ## Completion Contract
 

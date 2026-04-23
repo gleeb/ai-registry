@@ -288,6 +288,12 @@ When composing the implementer dispatch:
 4. **Gotchas as pre-prevention**: Include all Known Gotchas from the stack's reference in the dispatch as "KNOWN GOTCHAS TO PREVENT" — the implementer applies them proactively, not reactively.
 5. **Verification gate explicit**: Tell the implementer to create `scripts/verify.sh` (from the stack reference template), add `verify:full` / `verify:quick` npm scripts, and run `npm run verify:full` (or `bash scripts/verify.sh full` for Python). The script must exit 0 and print `=== ALL GATES PASSED ===` before returning COMPLETE.
 6. **Staging doc path always included**: Every dispatch must include the path `docs/staging/scaffold-task-0.md`.
+7. **Environment scaffolding (MANDATORY)**: Every scaffold dispatch MUST include these AC items regardless of stack:
+   - Create an empty `.env.example` at the repo root committed to source control. Comment header: `# Required environment variables — populated per-story by sdlc-planner-api. Values live in local .env (gitignored).`
+   - Add `.env` to `.gitignore` (never `.env.example`).
+   - Install and wire the stack's canonical dotenv loader so the application reads `process.env` (or equivalent) from `.env` at startup: `dotenv` for Node without a framework, `loadEnv` built-ins for Vite/Next.js/Astro, `pydantic-settings` or `python-dotenv` for Python. Do NOT inject `.env` values into the agent's shell — the application loads them at runtime; the engineering hub's Phase 0a gate separately checks `process.env` presence.
+   - Do NOT create any placeholder credential values during scaffolding. `.env.example` is empty-valued by design; do not fill in sample tokens like `sk-REPLACE_ME` or `demo-api-key`.
+8. **Never fabricate credentials**: The implementer's anti-fabrication rules apply verbatim to scaffolding. If a scaffold template ships with a placeholder API key in a config file or example, strip it to an empty value during scaffolding. Record the stripped line in the staging doc as a compliance note.
 
 ---
 

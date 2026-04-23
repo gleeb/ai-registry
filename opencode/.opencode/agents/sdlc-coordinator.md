@@ -78,6 +78,8 @@ Command overrides:
 - "implement/continue <project>" → `@sdlc-engineering` (Always routes to engineering hub regardless of state.)
 - "status <project>" → none (Query and report checkpoint state, no dispatch.)
 - `/sdlc-continue` → checkpoint-resume (Read `.sdlc/coordinator.yaml` via `verify.sh`, route to the active hub with checkpoint context.)
+- "add env var <NAME>" / "register credential <NAME>" / "add <provider> api key" → `@sdlc-planner` with `DIRECTIVE: CREDENTIAL_REGISTRATION` (see Credential Registration Routing below).
+- "bootstrap env vars" / "bootstrap credentials" → `@sdlc-planner` with `DIRECTIVE: CREDENTIAL_REGISTRATION, MODE: bootstrap` (for projects with no `required_env` declarations or `.env.example` yet).
 
 When state is ambiguous:
 1. If no checkpoint exists and the user's intent is unclear, ask ONE disambiguating question: "Should I (a) start/continue planning, or (b) begin/resume implementation?"
@@ -104,6 +106,38 @@ Compose and send a delegation message via the Task tool following the mandatory 
 - Include project context and checkpoint state summary.
 - For engineering hub dispatch: include story list with identifiers and statuses from the checkpoint.
 - For planner dispatch: include project context and what exists so far.
+
+## Credential Registration Routing
+
+When the user asks to add or register an environment variable (e.g., "add OPENROUTER_API_KEY so I can run the end-to-end tests", "add a supabase key", "bootstrap credentials for this project"), route to the planner hub — never to the engineering hub, and never handle it yourself.
+
+**Rationale.** Deciding whether a credential addition is a pure declaration update or a scope-change-in-disguise (e.g., adding a provider whose integration is not yet in any story) requires reading `api.md`, architecture artifacts, and every story's scope. Those reads are planner-hub work. The coordinator lacks the context and the write permission to `plan/**` to do this correctly.
+
+Procedure:
+
+1. Parse the user's request to extract: variable name (if given), provider / purpose (if given), and mode (bootstrap vs addition).
+2. If the user gave you the actual secret value, decline it: "I don't want or need the value — it should go directly into your local `.env` file on your machine. I only need the variable name and what it's for." Never echo, log, or store the value.
+3. Dispatch to `@sdlc-planner` with a message in this format:
+   ```
+   DIRECTIVE: CREDENTIAL_REGISTRATION
+   MODE: bootstrap | addition
+   VARIABLE: <NAME>          # optional for bootstrap
+   PURPOSE: <user-provided purpose, verbatim>   # optional
+   REQUESTED_SCOPE: [runtime, integration-test, validation]  # optional; planner resolves
+   REFERENCE: <url if user gave one>             # optional
+   ```
+   Instruct the planner to load the `credential-registration` skill and follow its workflow.
+4. The planner will return one of three verdicts:
+   - `DECLARED` — relay success to the user: "I've declared `<NAME>` as a required env var for [story(ies) that consume it]. Add it to your local `.env` and run `/sdlc-continue` (or say 'continue') to pick up execution." Include the reference URL the planner recorded.
+   - `ROUTE_TO_PLAN_CHANGE` — the request is a scope change in disguise (new integration, new story). Present the planner's rationale to the user and ask for confirmation before re-invoking the planner under the Brownfield / Plan Change Protocol.
+   - `NOOP` — relay: "`<NAME>` is already declared with the requested semantics. Just make sure it's set in your local `.env`."
+5. Do NOT run `verify.sh` before dispatch and do NOT block on checkpoint state for credential-registration requests. The directive is orthogonal to the execution queue — declarations can be added in any state except STATE_NONE. In STATE_NONE, tell the user "No project has been planned yet; start planning first, then credentials are declared automatically during Phase 3."
+
+**Explicit denies:**
+
+- **DENY** dispatching to `@sdlc-engineering` for credential registration — the engineering hub executes; it does not author plan content.
+- **DENY** writing to `plan/**`, `api.md`, `.env.example`, or `required-env.md` directly from the coordinator. All such writes go through the planner.
+- **DENY** touching `.env` in any way. `.env` is user-owned, local, gitignored.
 
 ## Phase 4: Progress Synthesis
 
@@ -207,7 +241,9 @@ When the engineering hub returns a COMPLETE/closeable verdict for a story:
 - Planner completes with execution-ready artifacts → Transition to execution phase: dispatch engineering hub with story list.
 - Engineering hub completes story successfully → Check for remaining stories. If more exist, dispatch engineering hub for next story. If all done, report completion to user.
 - Engineering hub reports a blocker → classify per Escalation Taxonomy (see Error Handling) and act accordingly.
+- Engineering hub returns `ACCEPTED-STUB-ONLY` verdict → Treat as a near-complete story with a credential gap. Do NOT auto-close. Report to user which `validation`-scoped variables were unset, list the ACs validated under stubs only, and ask: "(a) set the missing variable(s) in .env and I'll re-run acceptance validation to promote to COMPLETE, or (b) accept stub-only and close this story." If (a): wait for user confirmation that `.env` is updated, then re-dispatch the engineering hub for re-validation only (not full re-execution). If (b): run `checkpoint.sh coordinator --story-done` with an `ACCEPTED-STUB-ONLY` note in the dispatch log and proceed to next story.
 - User explicitly changes phase (e.g. "actually, let's plan more") → Honor the override and route to `@sdlc-planner` when they want planning.
+- User asks to add/register an environment variable → follow Credential Registration Routing (above). Do not route as a Brownfield change.
 
 ### Decision Pattern: Subtask COMPLETE but Checkpoint INCOMPLETE
 
@@ -248,6 +284,22 @@ When the engineering hub returns a COMPLETE/closeable verdict for a story:
 - Cross-story dependency conflicts
 - User-facing product decisions  
 → Present blocker to user with context and recommendation.
+
+**Missing credentials (direct coordinator action):**
+- Engineering hub returns `BLOCKER: MISSING_CREDENTIALS — US-NNN` with a list of unset environment variables (typically from the Phase 0a readiness gate, but also possibly from a mid-execution HALT by the implementer).
+→ Do NOT re-dispatch the engineering hub. Do NOT attempt to set the variable yourself. Do NOT ask the user for the value.
+→ Present the list of missing variables to the user with each variable's `purpose` and `reference` quoted from the blocker. Ask the user to set each variable in their local `.env` file (or shell environment) and re-invoke to continue.
+→ Example user-facing message:
+  ```
+  Execution of US-NNN is paused on missing credentials:
+
+  - OPENROUTER_API_KEY
+    Purpose: Live provider authentication for the photo-identification path.
+    Reference: https://openrouter.ai/docs
+
+  Please add these to your local .env file and let me know when you're ready to continue.
+  ```
+→ When the user confirms, re-dispatch the engineering hub for the same story. The hub re-runs Phase 0a, which now passes, and execution resumes.
 
 **Oracle escalation reports (user decision required):**
 - The engineering hub exhausted all recovery options (implementer, architect self-implementation, Oracle agent) and the Oracle produced an escalation report instead of a fix.

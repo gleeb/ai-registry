@@ -1,23 +1,27 @@
 # SDLC Execution Pipeline — Improvement Proposals
 
-**Origin:** Post-mortem analysis of sessions `ses_278b8ce55ffeKxlkK4NQaSyTHd` (US-001-scaffolding first run), `ses_264266feeffe804Vnge3sKB2DA` (US-001-scaffolding second run after P1–P6), `ses_2639886c2ffeMI2wLZcZ43UJrP` (scaffolding + US-002-local-persistence-foundation run to token exhaustion), and `ses_26105317cffeCAev1W8UP3BtK1` (US-002 + US-003-pwa-shell-baseline run to token exhaustion after P1–P8)
-**Date:** 2026-04-13 (P1–P6) / 2026-04-17 (P7, P8) / 2026-04-18 (P9–P18)
+**Origin:** Post-mortem analysis of sessions `ses_278b8ce55ffeKxlkK4NQaSyTHd` (US-001-scaffolding first run), `ses_264266feeffe804Vnge3sKB2DA` (US-001-scaffolding second run after P1–P6), `ses_2639886c2ffeMI2wLZcZ43UJrP` (scaffolding + US-002-local-persistence-foundation run to token exhaustion), `ses_26105317cffeCAev1W8UP3BtK1` (US-002 + US-003-pwa-shell-baseline run to token exhaustion after P1–P8), and `ses_24a319c81ffelunHGnCfk7KcBT` (US-004-photo-intake-identification finish + user validation revealing external-integration, credential, defect-handling, and plan-change protocol gaps)
+**Date:** 2026-04-13 (P1–P6) / 2026-04-17 (P7, P8) / 2026-04-18 (P9–P18) / 2026-04-22 (P19–P22 + amendments to P14 and P16)
 **Scope:** `opencode/` agents, skills, and execution workflow. All proposals target the OpenCode SDLC system specifically.
 
 ---
 
 ## Active Proposals
 
-Drafted from analysis of `ses_26105317cffeCAev1W8UP3BtK1`. Discussion and prioritization pending.
+Drafted from analysis of `ses_26105317cffeCAev1W8UP3BtK1` (P13–P18) and `ses_24a319c81ffelunHGnCfk7KcBT` (P19–P22 + amendments). Discussion and prioritization pending.
 
 | ID | Title | Theme | Expected Primary Impact |
 |----|-------|-------|-------------------------|
 | [P13](./P13-lib-cache-breadth-incentive.md) | Incentivize Comprehensive `lib-cache` Entries | Context / Cache | Raise cache quality bar; add cross-story cache promotion; cut doc queries 30–40% |
-| [P14](./P14-oracle-escalation-threshold.md) | Budget-Aware Oracle Escalation on Complex Work | Model Routing | Route hard browser / CDP / type-system tasks to Oracle early; avoid 45-query-per-task failures |
+| [P14](./P14-oracle-escalation-threshold.md) | Budget-Aware Oracle Escalation on Complex Work (amended: trigger 5 for defect incidents per P21) | Model Routing | Route hard browser / CDP / type-system tasks to Oracle early; route external-contract defect incidents to Oracle as first-line |
 | [P15](./P15-planner-task-risk-annotations.md) | Planner-Level Task Risk and Complexity Annotations | Planning Signal | Planner annotates task shapes (browser-automation, CDP, service-worker, etc.); feeds P14 proactive routing |
-| [P16](./P16-per-task-ac-traceability.md) | Per-Task Reviewer AC Traceability and Evidence Binding | Review Quality | Bind tasks to ACs; per-task review verifies evidence; shifts catch-work from Phase 3 to Phase 2 |
+| [P16](./P16-per-task-ac-traceability.md) | Per-Task Reviewer AC Traceability and Evidence Binding (amended: `evidence_class: real/stub-only/static-analysis-only` per P20) | Review Quality | Bind tasks to ACs; per-task review verifies evidence; externally-bound ACs require real-provider evidence |
 | [P17](./P17-ceremony-scaling-feature-stories.md) | Ceremony Scaling Beyond Scaffolding — Task-Class Dispatch | Dispatch Efficiency | Three-tier (A/B/C) dispatch policy; skip redundant review on trivial tasks; expand review on high-risk tasks |
 | [P18](./P18-hub-coordinator-reset-boundary.md) | Principled Hub ↔ Coordinator Reset Boundary | Dispatch Contract | End-to-end vs phase-boundary hub dispatch mode driven by P15 annotations; cut within-story round-trips from 4+ to 1–3; cap worst-case sub-session context |
+| [P19](./P19-environment-secrets-protocol.md) | Environment-Variable-Based Secrets Protocol | Credentials / Readiness | **Implemented 2026-04-23.** Planner declares `required_env` covering all external-service variables (API keys, BaaS credentials, DB URLs, storage, webhooks); hub gates Phase 0a on env presence; implementers halt instead of fabricating placeholders; validator downgrades to `ACCEPTED-STUB-ONLY` on missing creds. User-initiated mid-execution credential registration and pre-P19 project retrofit are routed by the coordinator to the planner hub, which loads the new `credential-registration` skill — the planner has the artifact context (`api.md`, architecture, cross-story scope) needed to detect scope-changes-in-disguise and escalate them to P22 rather than writing declarations blindly. Foundational for the P19–P22 cluster. |
+| [P20](./P20-external-integration-contract-verification.md) | External Integration Contract Verification via Real-Traffic E2E | Testing / Evidence | Planner verifies external endpoints via curl at plan time; per-endpoint `test-mode: real` smoke tests at execution; reviewer conformance check; validator requires real-path evidence or emits stub-only verdict |
+| [P21](./P21-user-reported-check-defect-triage.md) | User-Reported Check and Defect Triage Protocol | Coordinator Workflow | Coordinator classifies user reports into A/B/C/D (already implemented / future / defect incident / plan gap); defect-incident lifecycle primitive on engineering hub; Oracle routes via P14 trigger 5 |
+| [P22](./P22-plan-change-protocol.md) | Plan Change Protocol (Within-Execution) | Planner Workflow | Plan-change-triage dispatch; planner produces blast-radius analysis; four classification classes (additive-within-story / new story / multi-story replan / foundational); `.sdlc/plan-changes/` audit trail |
 
 ### Rough Sequencing
 
@@ -29,6 +33,10 @@ Suggested dependency order (see each proposal's §9 for details):
 4. **Dispatch contracts** — P18 (and P17) strictly after P15 is in place. P15 is a prerequisite for P18; without P15 annotations the P18 selection rule has no input and the proposal collapses into "always end-to-end".
 5. **Model-routing cluster** — P14 after P15. P15 produces the signals P14 consumes.
 6. **Efficiency refinements** — P13, P17. Compound with the rest; lower individual urgency.
+7. **Credentials foundation (P19)** — lands before P20/P21/P22 because their verification steps reference P19's env-var mechanism. Zero ongoing cost; unlocks the rest of the 2026-04-22 batch.
+8. **External-integration verification (P20)** — strictly after P19 (real traffic needs credentials). Also depends on P16's amended `evidence_class` clause being in place.
+9. **User-report triage (P21)** — after P19 (for defect reproduction against real endpoints) and after P16 (for AC→story inference during classification). Activates P14's trigger 5 and feeds P22 Category D.
+10. **Plan-change protocol (P22)** — after P21 (consumes P21 Category D) and logically paired with P19/P20 (plan changes that touch integrations go through P19's `required_env` update and P20's `wire_format` re-verification).
 
 ---
 
@@ -61,6 +69,8 @@ A fourth post-mortem covered `ses_26105317cffeCAev1W8UP3BtK1` — a 9h6m session
 
 A fifth post-mortem extended that session with `ses_26105317cffeCAev1W8UP3BtK1-continued` (combined 25h13m, 129 child sessions, US-002 + US-003 + US-005 + US-008 partial). That continuation exposed one additional cluster (P18): the engineering hub and the coordinator round-trip 3–4 times per story because the coordinator's Phase 4 dispatch language asks the hub to "recommend next coordinator action", contradicting the hub's end-to-end completion contract. The hub complies with the dispatch wording rather than its own contract. In the worst case this produced a 7h53m hub sub-session with a nested 7h15m acceptance-validator over-run (the same event motivating P11) — P18 caps how much ambient context such long sub-sessions can inherit by drawing reset boundaries at named phases instead of ad-hoc slices. P18 does not address the long between-turn gaps observed in the transcript; those were user-side token-budget resets, not pipeline stalls.
 
+A sixth post-mortem covered `ses_24a319c81ffelunHGnCfk7KcBT` — the completion of US-004-photo-intake-identification and the user's first end-to-end validation against the shipped product. The story was checkpointed `completed_phases: [0,1,2,3,3b,4,5,6]` but failed on first real use: the `PhotoIntakeHarness` shipped with a hardcoded `demo-api-key` and mocked fetch plumbing, and after that was fixed the app still returned 401 because the planner's `api.md` described an invented internal-proxy envelope that placed the OpenRouter key in the request body instead of an `Authorization: Bearer` header. Every gate — implementer, code-reviewer, QA, story-reviewer, acceptance-validator — validated against the internal (wrong) contract; no test ever touched the real OpenRouter endpoint. The session also surfaced four interacting protocol gaps: (1) no agent has a protocol for user-reported behavior on a completed story, producing ad-hoc hub dispatches with no incident lifecycle; (2) no agent has a protocol for mid-execution plan changes (the user wanted to drop OpenAI and add a free-model selector, with no route for either); (3) no convention for sharing credentials with the pipeline (a key placed in `tests/resources/openrouter-free.key.txt` was masked by security-minded agents rather than consumed); and (4) no mechanism for ACs whose statements reference external-provider behavior to require real-traffic evidence before acceptance. P19–P22 address these four gaps as a single dependency-ordered batch, with amendments to P14 (Oracle handles external-contract defect incidents as first-line) and P16 (`evidence_class` field on AC traceability distinguishes real-traffic from stub-only evidence).
+
 ---
 
 ## Dependency Graph
@@ -85,6 +95,10 @@ flowchart LR
     P16["P16: AC Traceability"]
     P17["P17: Ceremony Scaling v2"]
     P18["P18: Hub-Coordinator Reset Boundary"]
+    P19["P19: Environment Secrets"]
+    P20["P20: External Contract Verification"]
+    P21["P21: User-Report Triage / Defect Incident"]
+    P22["P22: Plan Change Protocol"]
 
     P1 --> P2
     P1 --> P3
@@ -115,6 +129,17 @@ flowchart LR
     P11 --> P18
     P17 --> P18
     P9 --> P18
+
+    P19 --> P20
+    P19 --> P21
+    P19 --> P22
+    P16 --> P20
+    P20 --> P16
+    P20 --> P21
+    P16 --> P21
+    P21 --> P22
+    P21 --> P14
+    P20 --> P14
 ```
 
 - **P1 → P2:** Ceremony scaling requires context management (fewer dispatches means less re-reading, but remaining dispatches need better context).
@@ -144,6 +169,15 @@ flowchart LR
 - **P11 → P18:** P11 bounds the acceptance validator directly; P18 narrows the ambient context that validator inherits by resetting at the Phase 3→4 boundary. Defense in depth.
 - **P17 → P18:** P17 scales task-level ceremony; P18 scales story-level dispatch mode. They share the same planner annotation input and should be designed together.
 - **P9 → P18:** P9 handles the between-story boundary; P18 handles the within-story boundary. Neither subsumes the other; P9 lands first because it's foundational.
+- **P19 → P20:** Real-traffic verification at plan time and at QA time requires a real credential. P19's `required_env` declaration and Phase 0a gate are the mechanisms P20 consumes.
+- **P19 → P21:** Reproducing a Category C defect against an external endpoint requires a real credential; P21's reproduce step routes through P19's `MISSING_CREDENTIALS` escalation when `required_env` is unset.
+- **P19 → P22:** Plan changes that add or swap external providers update the `required_env` declaration and `.env.example` atomically in the PC-NNN artifact; the planner's partial-replan reads P19 state as part of blast-radius analysis.
+- **P16 ↔ P20:** P16 §3.5 (amended) carries the `evidence_class` field that binds to P20's `external_integration_evidence`; P20's reviewer conformance check extends P16's reviewer contract. The two proposals cover different sides of the same real-evidence gate.
+- **P20 → P21:** P21's defect-incident verify step re-runs P20's smoke tests. Incidents that turn out to be `wire_format` defects escalate from code-level fixes back into P20's plan-validation path.
+- **P16 → P21:** P21's classification step (§3.1 step 2) consumes P16's AC→task map to identify candidate stories from a user's behavioral description.
+- **P21 → P22:** P21 Category D (plan gap) hands off to P22's triage. Incidents whose scope grows beyond the one-or-two-AC threshold also escalate from P21 to P22.
+- **P21 → P14:** P21 §3.3 introduces trigger 5 on P14 — defect incidents against external-integration ACs dispatch Oracle as first-line investigator rather than escalation.
+- **P20 → P14:** P14 trigger 5's "external integration" condition is checked against P20's `wire_format` declaration; the two must stay aligned or the trigger misfires.
 
 ---
 

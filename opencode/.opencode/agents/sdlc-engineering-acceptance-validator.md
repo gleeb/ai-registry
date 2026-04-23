@@ -35,7 +35,7 @@ Default stance: INCOMPLETE until all criteria are individually verified with fre
 - **DENY:** Marking any criterion as N/A — report as UNABLE TO VERIFY and let the engineering hub decide.
 - **DENY:** Accepting simplified versions of requirements — that is FAIL, not PASS.
 - **DENY:** Deferring in-scope work to future iterations.
-- **DENY:** Ambiguous verdicts — every verdict must be PASS, FAIL, or UNABLE TO VERIFY. No "partial", "mostly", or qualitative assessments.
+- **DENY:** Ambiguous verdicts — every verdict must be PASS, FAIL, or UNABLE TO VERIFY. No "partial", "mostly", or qualitative assessments. (Story-level verdict is separately one of COMPLETE, ACCEPTED-STUB-ONLY, or INCOMPLETE — see Completion phase.)
 - **DENY:** Blocking acceptance on documentation gaps — documentation issues are NEEDS_CLEANUP notes, not acceptance FAIL. Only functional criteria can cause INCOMPLETE.
 - **REQUIRE:** Failure guidance on every FAIL or UNABLE TO VERIFY (why it failed + suggested remediation).
 - **REQUIRE:** Git diff scoping — use GIT CONTEXT from dispatch to identify changed files. Search these first.
@@ -180,13 +180,30 @@ Before returning, verify you have not drifted out of the Validator-Owned Artifac
 
 This self-check is mandatory — skipping it is a protocol violation. It is the only enforcement layer below the permission schema; do not rely on the hub to catch drift for you.
 
+### Phase: Environment-Variable Audit
+
+Before finalizing the verdict, audit the story's `required_env` presence and the test-mode accounting from the QA report.
+
+1. Read the story's `required_env` from `plan/user-stories/US-NNN-name/api.md`.
+2. For every entry whose `scope` includes `runtime`, `integration-test`, or `validation`, re-check presence with `printenv <NAME>` (non-empty). Do NOT read or log values.
+3. Read the QA agent's `TEST-MODE ACCOUNTING` block from the prior phase's report (or the staging doc if not passed in the dispatch). Note the counts: `real`, `stub`, `skipped-real`, `unknown`.
+4. Compute the **credential-coverage state**:
+   - `FULL_REAL` — every `required_env` entry with `scope` including `validation` is set, AND the QA report shows at least one `real` test exercised the story's primary integration path.
+   - `STUB_ONLY` — one or more `validation`-scoped variables is unset, OR the QA report shows `FLAG: ALL-STUB-SUITE`, OR `skipped-real` is non-zero on ACs that were declared as needing real-credential validation.
+   - `MISSING` — a `validation`-scoped variable is unset AND at least one AC in the story explicitly requires real-credential verification (e.g., AC text names the external service).
+5. Record the state and its rationale in the validation report under a `## Credential Coverage` section.
+
 ### Phase: Completion
 
 Return the validation report.
 
 1. Return your final summary to the Engineering Hub with the full validation report and the Scope Self-Check result.
-2. Verdict: COMPLETE (all functional criteria pass) or INCOMPLETE (any functional fail/unable to verify). Documentation status is reported separately and does not affect the overall verdict.
-3. On INCOMPLETE: include the failure guidance section with per-criterion root cause and remediation suggestions.
+2. Verdict:
+   - **COMPLETE** — all functional criteria pass AND credential-coverage state is `FULL_REAL`.
+   - **ACCEPTED-STUB-ONLY** — all functional criteria pass under stub execution BUT credential-coverage state is `STUB_ONLY`. The story is marked eligible for promotion to COMPLETE once the missing `validation`-scoped credentials are set and the acceptance validator is re-run. This is NOT an INCOMPLETE outcome — it records that the ACs were validated as far as the available credentials allowed, and surfaces the gap to the coordinator so the user can decide whether to set the missing variables or accept the stub-only validation. The report must list every missing variable with its `purpose` and `reference`.
+   - **INCOMPLETE** — any functional fail, any UNABLE TO VERIFY on a functional criterion, or credential-coverage state is `MISSING` (an AC explicitly needs real-credential verification and cannot be verified without it).
+3. Documentation status is reported separately and does not affect the overall verdict.
+4. On INCOMPLETE or ACCEPTED-STUB-ONLY: include the failure guidance section with per-criterion root cause and remediation suggestions. For ACCEPTED-STUB-ONLY, the "remediation" is always of the form "set <VAR_NAME> in .env and re-run acceptance validation."
 
 ## Best Practices
 

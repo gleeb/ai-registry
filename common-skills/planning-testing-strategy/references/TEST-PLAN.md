@@ -138,6 +138,49 @@ Use this format when drafting or refining a Testing Strategy specification. The 
 - [Secrets in test env: how injected, never committed]
 - [Compliance: GDPR, PCI test data requirements]
 
+**Test-Mode Header Convention (mandatory)**
+
+Every test file in the project MUST declare a `test-mode` header at the top of the file. This header drives the QA agent's test-mode accounting (`real`, `stub`, `skipped-real`) and the acceptance validator's COMPLETE vs ACCEPTED-STUB-ONLY verdict logic.
+
+**Values:**
+
+- `test-mode: real` — the test reads one or more credentials from `process.env.<NAME>` and exercises a real external service. If the variable is unset at run time, the test MUST skip with a visible `SKIPPED — missing <NAME>` message (not silently pass, not fall back to a stub).
+- `test-mode: stub` — the test uses mocks, fixtures, or obviously-non-secret placeholder strings. Never contacts a real external service. Permitted to hardcode placeholder values ONLY when the corresponding story `required_env` entry includes `unit-test-placeholder` in its `scope`.
+
+**Format (per test framework):**
+
+```ts
+// test-mode: real
+// requires: OPENROUTER_API_KEY
+// story: US-004-photo-intake-identification
+import { describe, test, expect } from 'vitest';
+// ...
+```
+
+```python
+# test-mode: stub
+# story: US-002-local-persistence-foundation
+import pytest
+# ...
+```
+
+```ts
+// test-mode: real
+// requires: SUPABASE_URL, SUPABASE_ANON_KEY
+// story: US-007-bulk-photo-review
+import { test } from '@playwright/test';
+// ...
+```
+
+**Rules:**
+
+- The header appears in the first 10 lines of every test file, in the language's native comment syntax.
+- `test-mode: real` files MUST list every required env var on a `requires:` line. The QA agent cross-references this list against the story's `required_env` at run time.
+- Missing header = Important gap in QA review (every test file must declare a mode).
+- Mode must match behavior: a file declared `test-mode: stub` that actually reads `process.env.OPENROUTER_API_KEY` is a Critical violation. A file declared `test-mode: real` that silently falls back to a fake value when the env var is unset is also a Critical violation.
+
+**Section X in the story's testing requirements MUST list expected `test-mode` distribution** (e.g., "US-004 requires 3 `test-mode: stub` unit tests and 1 `test-mode: real` integration test"). The acceptance validator uses this to detect "all-stub suite" outcomes.
+
 ---
 
 ### 6) Test Environment Requirements

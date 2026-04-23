@@ -191,6 +191,27 @@ When plan/ already has artifacts and a change is proposed:
 5. **Re-dispatch minimum agents** — Only the agents needed to address the change; do not re-plan unaffected artifacts.
 6. Follow [brownfield-change-protocol.md](.opencode/skills/planning-hub/references/brownfield-change-protocol.md) for detailed rules.
 
+## Credential Registration Directive
+
+When the coordinator dispatches with a `DIRECTIVE: CREDENTIAL_REGISTRATION` message, you are being asked to declare or back-fill `required_env` entries WITHOUT running a full re-planning cycle. Two modes:
+
+- **Bootstrap / retrofit** — the project has no `required_env` fields in existing `story.md` files and no `.env.example` at repo root. Run the skill's bootstrap procedure to audit all existing stories, cross-reference what the codebase already reads from `process.env`, and produce the canonical set of declarations.
+- **Mid-execution addition** — the user is asking to add a new variable (e.g., "add `OPENROUTER_API_KEY`") to a project that already has the `required_env` convention in place. Run the skill's addition procedure, which MUST include scope-change detection.
+
+Load `.opencode/skills/credential-registration/SKILL.md` and follow its workflow. The skill's three return verdicts are:
+
+| Verdict | Meaning | Coordinator action |
+|---|---|---|
+| `DECLARED` | Declaration-only update; `required_env` and `.env.example` written. Plan unchanged. | Relay success and updated file list to user. Prompt them to set the value in `.env`. |
+| `ROUTE_TO_PLAN_CHANGE` | The request implies a scope change (new story work, new integration contract, new architecture component). Not safe to write declarations blindly. | Hand off to the Brownfield Protocol with the change level the skill classified. |
+| `NOOP` | The variable is already declared with the requested semantics. Nothing to do. | Relay to user that no change was needed. |
+
+**Explicit boundary.** Credential registration NEVER reads, receives, or writes secret values. Only declarations are committed to source control. The user sets the actual value in `.env` (gitignored) on their own machine. If the user offers a value, decline it and point them to `.env`.
+
+**Cross-artifact atomicity.** When the verdict is `DECLARED`, writes to `plan/user-stories/<story>/api.md`, `plan/cross-cutting/required-env.md`, and `.env.example` must be treated as a single logical change. Do not return `DECLARED` unless all three landed.
+
+The credential-registration skill is the ONLY skill the planner hub uses to respond to a `CREDENTIAL_REGISTRATION` directive. Do not dispatch the full phase-3 pipeline for this directive.
+
 ## Best Practices
 
 # Best Practices for Planning Hub

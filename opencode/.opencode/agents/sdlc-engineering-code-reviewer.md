@@ -49,6 +49,23 @@ Follow the **code-review** skill (`skills/code-review/`) for the review framewor
 - Happy-path-only test suite across all ACs = **Important**.
 - When reviewing test assertions, apply `skills/test-driven-development/testing-anti-patterns.md` Anti-Pattern 0: flag tests that assert file contents, exported constants, or config keys as **Important** unless they match the listed exceptions (schemas/specs as product, security content, codegen output).
 
+**Hardcoded placeholder credential review (Critical gate):**
+
+Any hardcoded secret-shaped literal in runtime source or integration-test code is a **Critical** finding. This class exists because placeholder credentials like `"demo-api-key"` shadow real credential paths and get accepted by tests asserting against the same literal, producing green gates while the real integration is broken.
+
+Flag as **Critical** when the diff introduces any of the following:
+
+- A string literal in `src/**` (or equivalent runtime path) that matches the shape of an API key, token, or shared secret:
+  - Obvious placeholders: `demo-api-key`, `test-key`, `YOUR_KEY_HERE`, `REPLACE_ME`, `sk-xxxx`, `dummy-token`, `fake-secret`, `placeholder`.
+  - Realistic-looking literals: any hex/base64 string of length ≥ 16 with no documented origin, any string beginning with a known provider prefix (`sk-`, `pk_`, `AKIA`, `ghp_`, `xoxb-`, `eyJ` for JWT), any UUID-formatted value used as a credential.
+- A string-equality comparison in runtime or integration-test code against such a literal (e.g., `if (apiKey === "demo-api-key")`) — this is how placeholder shadowing historically hid missing env-var plumbing.
+- A conditional that silently substitutes a placeholder when an environment variable is unset (e.g., `process.env.OPENROUTER_API_KEY ?? "demo-api-key"`). The correct pattern is to throw or halt; falling back to a placeholder is a violation of the never-fabricate-credentials rule.
+- An integration-test fixture that hard-codes a credential value rather than reading it from `process.env.<NAME>`. Integration tests must consume the real variable at test time.
+
+**Exempt from Critical (but still noted as Suggestion):** Unit-test fixtures in files whose `test-mode: stub` header is declared AND whose corresponding `required_env` entry has `scope` including `unit-test-placeholder`. Unit placeholders must be short, obviously non-secret strings (e.g., `"test-key-unit-only"`) and must never leak out of the test-mode-stub file.
+
+For every Critical finding of this class, the recommended fix is: read the variable via `process.env.<NAME>` (or the stack's equivalent) and throw or halt if unset. The variable must appear in the story's `required_env`; if it does not, also flag as a planning gap (`required_env` missing for a runtime credential consumed in code) — route to coordinator as a CREDENTIAL_REGISTRATION need.
+
 **Run automated checks:** Run `npm run verify:quick` (JS/TS) or `bash scripts/verify.sh quick` (Python). This is silent on success — `=== ALL GATES PASSED ===` is sufficient evidence. If it fails, include the gate output as a Critical finding. Do not run lint, typecheck, or test as separate commands.
 
 **Documentation verification:** Cross-reference implementer's claimed staging doc updates (from `implementer_summary` in dispatch — inline text, not a file) against actual staging doc content. Flag discrepancies as Important issues.
