@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# test-verify.sh — Smoke test for verify.sh staging-doc drift detection (P12)
+# test-verify.sh — Smoke test for verify.sh staging-doc drift detection
 #
 # Runs verify.sh against each fixture and asserts the staging-doc drift line
 # matches the expected pattern.

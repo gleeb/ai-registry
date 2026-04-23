@@ -929,7 +929,7 @@ cmd_init() {
   cmd_coordinator --hub "${hub:-planning}" ${current_story:+--story "$current_story"}
 
   # Sync stories_remaining from plan/user-stories/ into coordinator.yaml.
-  # This replaces the legacy sync-coordinator.sh lookup (P9).
+  # This replaces the legacy sync-coordinator.sh lookup.
   if [ -d "plan/user-stories" ]; then
     cmd_coordinator --sync
   fi

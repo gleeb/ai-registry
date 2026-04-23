@@ -1,8 +1,7 @@
 # verify.sh fixtures
 
 These fixture pairs (`execution.yaml` + `staging.md`) exercise the
-`verify_execution` drift-detection logic for the staging-doc parser introduced
-by proposal P12.
+`verify_execution` drift-detection logic in the staging-doc parser.
 
 Each fixture directory contains:
 

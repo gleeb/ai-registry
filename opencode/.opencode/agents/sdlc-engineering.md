@@ -236,7 +236,7 @@ The scaffolder is the story executor — not a pre-step. Do NOT enter Phase 1, 1
 
 **Library cache pre-population (after lib-cache file is created, before Phase 2):**
 
-This is the single entry point for populating the cache with story-scope library surface area. The curator runs once per story, on the cheapest available model, offloading doc-fetch-and-summarize output-token cost from the hub and implementer. See P13 for rationale.
+This is the single entry point for populating the cache with story-scope library surface area. The curator runs once per story, on the cheapest available model, offloading doc-fetch-and-summarize output-token cost from the hub and implementer.
 
 - Build the curator dispatch inputs:
   - **CACHE FILE:** `docs/staging/US-NNN-name.lib-cache.md`

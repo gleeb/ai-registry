@@ -39,7 +39,7 @@ The hub's dispatch message will include:
 - **CACHE FILE:** `docs/staging/<story-id>.lib-cache.md` — the file you write to.
 - **LIBRARIES:** A list of library names with pinned versions from the manifest (e.g., `dexie@4.0`, `vite-plugin-pwa@0.20`). Libraries without a manifest entry are flagged `version unknown — unspecified`.
 - **STORY SCOPE:** A short excerpt (story goal + acceptance criteria summary + HLD design-unit excerpts that mention each library) describing what the story uses each library for. This scopes your surface-area coverage.
-- **TASK USAGE HINTS:** A per-library note of which task(s) use the library (for the "used in N tasks" threshold in change 1 of P13). Libraries used in 1 task may stay lean; libraries used in 2+ tasks must be comprehensive.
+- **TASK USAGE HINTS:** A per-library note of which task(s) use the library (drives the "used in N tasks" threshold). Libraries used in 1 task may stay lean; libraries used in 2+ tasks must be comprehensive.
 
 ## Workflow
 

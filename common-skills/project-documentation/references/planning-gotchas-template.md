@@ -7,7 +7,7 @@ Use this template when the engineering hub creates the planning-gotchas sibling 
 
 **Purpose:** Append-only log of systemic planning misses discovered during this story's execution — cases where the Phase 3 story-review iteration cap (3) triggered escalation because the plan artifacts (PRD / HLD / API / Security / Testing / Story AC) did not anticipate an issue. Post-run, the human reviews this file alongside the run transcript and any promotion of the lesson into planning agents or planning skills is a deliberate manual action.
 
-**Who writes it:** The engineering hub appends entries on iteration-cap escalation during Phase 3 story review (see P10). Subagents do NOT write to this file directly.
+**Who writes it:** The engineering hub appends entries on iteration-cap escalation during Phase 3 story review. Subagents do NOT write to this file directly.
 **Who reads it:** The human, post-run, in a separate evaluation pass. NOT read, rolled up, or propagated by any agent during the story run or during subsequent planning runs.
 **Who must NOT promote from it:** Any agent during a story run or a planning run. Promotion into planner agents, planner skills, or plan-artifact templates is a human post-run action only.
 
