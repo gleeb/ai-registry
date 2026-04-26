@@ -91,10 +91,87 @@ Note: `scaffold-project` skill is loaded internally by `@sdlc-engineering-scaffo
 | `@sdlc-engineering-semantic-reviewer` | Commercial-model semantic gate after Phase 3; guidance packages for re-dispatch |
 | `@sdlc-engineering-story-reviewer` | Phase 3 full-story holistic code review (larger model for cross-file reasoning) |
 | `@sdlc-engineering-story-qa` | Phase 3 full-story QA verification (larger model for comprehensive cross-task verification) |
-| `@sdlc-engineering-oracle` | Last-resort escalation for stuck implementation loops (most powerful model) |
+| `@sdlc-engineering-oracle` | High-leverage escalation for structurally hard tasks (pinned top-tier model). Dispatched per the **P14 Oracle Escalation Policy** below — may fire as early as attempt 2, governed by triggers and caps. |
 | `@sdlc-engineering-acceptance-validator` | Phase 4: evidence-based check of every acceptance criterion |
 | `@sdlc-engineering-documentation-writer` | Dedicated documentation work beyond hub's `docs/*.md` edits |
 | `@sdlc-engineering-cache-curator` | Phase 1b: one-shot pre-population of the story-level library documentation cache. Runs on the cheapest available model to offload doc-fetch-and-summarize output-token cost from hub and implementer. |
+
+---
+
+## Oracle Escalation Policy (P14)
+
+This section governs every dispatch to `@sdlc-engineering-oracle`. The full proposal is in `opencode/improvement-proposals/P14-oracle-escalation-threshold.md`; the dispatch envelope template is in `.opencode/skills/architect-execution-hub/references/oracle-dispatch-template.md`; the recovery flow is in `.opencode/skills/architect-execution-hub/references/adaptive-recovery.md`.
+
+### Cross-cutting governors (always apply, evaluated before every Oracle dispatch)
+
+1. **Default-cycle precondition.** Oracle MUST NOT be dispatched on a task before at least one complete `implementer → code-reviewer → QA` cycle has run on that task in the current story. This holds **regardless of any preauthorize flag, retry count, or query count.** (Exempt: trigger 5 defect-incident — the original story execution satisfies it.)
+2. **Per-task dispatch cap.** Oracle is dispatched at most **once per task** by default. A 2nd Oracle dispatch on the same task requires the hub to log a justification stating (a) what materially changed since the prior Oracle dispatch (new failing test, new error symptom, newly available context, scope expansion approved by user), and (b) why the re-dispatch is expected to produce different output. A 3rd Oracle dispatch on the same task is forbidden without coordinator approval — HALT and escalate.
+3. **Per-story soft cap.** Beyond **3 Oracle dispatches across all tasks in a story**, pause for coordinator review before the next dispatch.
+4. **Workers do not route (P14 §2.5).** Implementer and code-reviewer prompts MUST NOT contain Oracle awareness, running counters, or any "should this go to Oracle?" decision question. All routing is hub-internal. Reviewer findings (e.g., "implementer repeatedly misuses API X") are routing inputs the hub interprets — the reviewer never names Oracle.
+
+### Per-task counters (hub maintains in dispatch metadata)
+
+For every task in the current story, the hub maintains:
+
+- `doc_queries` — cumulative context7 + Tavily queries on this task across all attempts in the current story (resets at story boundary).
+- `implementer_attempts` — count of `@sdlc-engineering-implementer` dispatches on this task.
+- `reviewer_iterations` — count of `@sdlc-engineering-code-reviewer` dispatches on this task.
+- `oracle_dispatches_task` — count of `@sdlc-engineering-oracle` dispatches on this task.
+- `oracle_dispatches_story` — story-aggregate count of Oracle dispatches across all tasks in the story.
+
+These counters are read from `.sdlc/dispatch-log.jsonl` (the dispatch log records `counters` on each Oracle dispatch event and increments naturally on implementer/reviewer/QA events). The counters are **never surfaced into worker prompts**.
+
+### Triggers (evaluated before every implementer or code-reviewer re-dispatch on a task post-default-cycle)
+
+1. **Query-budget.** If `doc_queries > 8` AND default cycle complete, the hub MUST consider Oracle before authorizing another implementer dispatch. If the hub declines, log an explicit decline reason via `checkpoint.sh dispatch-log --event dispatch --agent sdlc-engineering-oracle --dispatch-id "exec-{story}-t{id}-oracle-decline-1" --decline-reason "..."`.
+2. **Retry-budget.** If the implementer would be dispatched for the 3rd+ attempt on the same task (`implementer_attempts >= 2` and another dispatch is contemplated) AND default cycle complete, Oracle MUST be offered as an alternative.
+3. **Task-shape preauthorize.** If the planner-produced task entry sets `oracle_preauthorize: true` (P15) AND the default cycle has just completed without satisfying the AC, Oracle is dispatched on attempt 2 — do not wait for trigger 1 or 2 thresholds. The flag is an accelerator, not a bypass.
+4. **Hub-internal evaluation (the governing rule).** Before every re-dispatch on a task post-default-cycle, evaluate the counters and the most recent reviewer findings against triggers 1–3, then either dispatch Oracle (if a trigger fires and the cross-cutting governors permit) or log a decline reason and re-dispatch the worker normally. This evaluation is hub-internal — it does NOT prompt the worker with counters or with an Oracle question.
+5. **Defect-incident (per P21, when implemented).** When a `defect-incident` is opened against a completed story, Oracle is dispatched as the first-line investigator under conditions described in P14 §3.1 trigger 5. The default-cycle precondition is satisfied by the original story execution.
+
+### Dispatch envelope (required fields)
+
+Every Oracle dispatch MUST include the fields listed in `oracle-dispatch-template.md`:
+
+- TASK SPEC + DISPATCH CONTEXT (story, trigger, per-task and per-story dispatch indices, justification if 2nd dispatch on the task)
+- **SCOPE** — explicit list of file paths Oracle is authorized to edit; any other file is out-of-scope
+- FAILING AC / FAILING TEST
+- ERROR SYMPTOMS
+- PRIOR IMPLEMENTER ATTEMPTS (verbatim, all of them)
+- PRIOR REVIEWER FEEDBACK (verbatim, all iterations)
+- ARCHITECT SELF-IMPLEMENTATION (only if Adaptive Recovery already self-implemented)
+- PRIOR ORACLE DISPATCH (only if 2nd dispatch on this task)
+- CACHE ENTRIES (relevant lib-cache entries)
+- PLAN ARTIFACTS (story.md, hld.md, api.md, security.md, testing-strategy.md — paths + section line ranges)
+- STAGING DOC + TASK CONTEXT DOCUMENT paths
+
+Partial-context dispatch is forbidden — the hub assembles the full envelope or does not dispatch.
+
+### Dispatch logging
+
+Log every Oracle dispatch with the new P14 metadata fields (counters, scope, decline-reason where applicable). See `oracle-dispatch-template.md` for the exact `checkpoint.sh dispatch-log` invocations. Specifically:
+
+- **Dispatch event:** include `--counters` (JSON) and `--scope` (JSON array).
+- **Decline event:** include `--counters` and `--decline-reason` (no Oracle subagent dispatch occurs).
+- **Response event:** include `--verdict "FIX|ESCALATION|BLOCKED"` and a one-line `--summary`.
+
+These fields are required for M1, M3, M5, M6, M7 in P14 §5 to be auditable from `.sdlc/dispatch-log.jsonl`.
+
+### Output handling
+
+- **FIX:** Verify Oracle's `SCOPE COMPLIANCE` field — every file Oracle edited must be in the dispatched `scope` list. If any out-of-scope edit is reported, treat the dispatch as a protocol violation, revert Oracle's out-of-scope edits, and escalate to coordinator. Otherwise, mark as `oracle-implemented` in staging doc and dispatch log; continue pipeline normally (review + QA on Oracle's code). The next default-cycle pass is the verification mechanism — do NOT auto-retry Oracle if the code fails review/QA; consider re-dispatch only under the per-task cap rules above.
+- **ESCALATION:** Return the report to the coordinator. If the report's blocker is "fix requires out-of-scope edits," the coordinator and user decide whether to authorize a scope expansion before any further dispatch.
+- **BLOCKED (missing input field):** Supply the missing field(s) and re-dispatch as a fresh dispatch. This does NOT consume the per-task cap.
+
+### NOTES triage
+
+Oracle's NOTES section (out-of-scope observations) is the hub's responsibility to triage:
+
+- Defect against a separate AC → open a `defect-incident` (P21, when implemented).
+- Refactor / improvement opportunity → defer to a follow-up story; do NOT add to the current story scope without user approval.
+- Planning gap → append to `docs/staging/<story>.planning-gotchas.md` if relevant.
+
+NOTES are never silently absorbed into the current task without an explicit hub decision.
 
 ---
 
@@ -265,6 +342,7 @@ The curator runs exactly **once per story**. It is NOT re-dispatched on review r
   - **Plan refs**: which DU/IU sections in hld.md (with line ranges), which API sections in api.md (with line ranges), which security sections in security.md (with line ranges) the task implements.
   - **Files**: file paths for each change (CREATE/MODIFY).
   - **External libraries**: list all external libraries/SDKs/platform APIs this task integrates with, extracted from the HLD's design units and the story's tech stack. These feed the `EXTERNAL LIBRARIES` section in every implementer dispatch.
+  - **Oracle preauthorize flag** (P14 trigger 3): if the planner-produced task entry sets `oracle_preauthorize: true` (per P15 — when implemented), record it in the staging doc task entry. The hub uses this flag during Phase 2 step E trigger evaluation. If the flag is absent, treat as `false`. Do NOT propagate this flag into worker prompts.
   - **Status**: pending | Review: 0 | QA: 0.
 - Do NOT re-write function signatures, interface definitions, boundaries, or acceptance signals into the staging document. The plan refs point to where that detail lives in the plan artifacts. The task decomposition IS the hub's execution-time contribution — the mapping from plan units to execution order.
 - The browser verification classification should already be recorded in Phase 1b. When classified as **mandatory**, include the `BROWSER VERIFICATION` block in EVERY implementer and QA dispatch for this story. When classified as **per-task**, include it only when the task touches UI-visible code or files that indirectly affect web rendering.
@@ -315,9 +393,15 @@ The curator runs exactly **once per story**. It is NOT re-dispatched on review r
     Then Task tool dispatch to @sdlc-engineering-code-reviewer using the reviewer dispatch template. Include the TASK CONTEXT DOCUMENT path, SECURITY REVIEW flag, and DOCUMENTATION CHECK.
   - D2. Log reviewer response (compound — also advances step to qa_verification):
     `checkpoint.sh execution --step qa_verification --dispatch-event response --dispatch-agent sdlc-engineering-code-reviewer --dispatch-id "exec-{story}-t{id}-review-i1" --dispatch-verdict "{Approved|Changes Required}"`
-  - E. Handle review verdict using the **Adaptive Recovery Protocol**:
+  - E. Handle review verdict using the **Adaptive Recovery Protocol** combined with the **P14 Oracle Escalation Policy**:
     - **Approved:** Proceed to QA (step F).
-    - **Changes Required (iterations 1-3):** Update the context doc's Prior Review Feedback section with the reviewer's COMPLETE issues section verbatim (all Critical, Important, and Suggestion items with original file:line references). Re-dispatch to @sdlc-engineering-implementer referencing the context doc. Do not summarize or omit any findings.
+    - **P14 trigger evaluation (before any re-dispatch on a task post-default-cycle):** Read per-task counters (`doc_queries`, `implementer_attempts`, `reviewer_iterations`) from `.sdlc/dispatch-log.jsonl`. Evaluate triggers 1–3 from the Oracle Escalation Policy section above:
+      - If trigger 3 fires (task entry has `oracle_preauthorize: true` AND first default cycle just completed without satisfying the AC) → assemble the Oracle dispatch envelope per `oracle-dispatch-template.md` and dispatch `@sdlc-engineering-oracle`. Skip to step E2 below for handling Oracle's verdict.
+      - If trigger 2 fires (3rd+ implementer attempt would be dispatched) → Oracle MUST be considered as the alternative. If the hub elects to dispatch Oracle, do so per `oracle-dispatch-template.md` and skip to E2. If the hub elects to continue with another implementer pass instead, log an explicit decline event (`--decline-reason "Trigger 2: ..."`) before the implementer re-dispatch.
+      - If trigger 1 fires (`doc_queries > 8`) → Oracle MUST be considered. If the hub elects not to dispatch (queries reflect benign exploration), log an explicit decline event (`--decline-reason "Trigger 1: ..."`) before the implementer re-dispatch.
+      - If no trigger fires, continue with the standard Tier 1 re-dispatch below.
+      - Cross-cutting governors (default-cycle precondition, per-task cap, per-story soft cap) MUST be verified before any Oracle dispatch — see the Oracle Escalation Policy section for thresholds and required actions on cap exhaustion.
+    - **Changes Required (iterations 1-3):** Update the context doc's Prior Review Feedback section with the reviewer's COMPLETE issues section verbatim (all Critical, Important, and Suggestion items with original file:line references). Re-dispatch to @sdlc-engineering-implementer referencing the context doc. Do not summarize or omit any findings. The implementer prompt MUST NOT contain Oracle awareness or counters (P14 §2.5).
     - **Documentation search escalation (iteration 1+):** When re-dispatching the implementer after ANY review rejection that involves library/framework API misuse, stubs where real integration is expected, or platform capability gaps, add a `DOCUMENTATION SEARCH` directive to the re-dispatch specifying: the library name, the topic to search, the reason, and whether a cache entry already exists and why it was insufficient (copy directly from the reviewer's recommendation). This triggers from the FIRST rejection — no free pass. The implementer must search context7 and/or Tavily before re-attempting, and must record the justification and update the cache entry.
     - **Changes Required (after 3 rejections for the SAME defect):** Trigger **Diagnostic Analysis**:
       1. Read the actual implementation files from disk (the context doc Source Files section may be stale at this point — read from disk for diagnostic accuracy).
@@ -328,7 +412,12 @@ The curator runs exactly **once per story**. It is NOT re-dispatched on review r
          - **Progress pattern** (different issues each time): One more guided dispatch to implementer with exact code snippets showing what to change. If that also fails, self-implement (follow stuck-pattern steps above).
       5. After self-implementation and gate confirmation, update the context doc Source Files section to reflect the architect's changes, then continue pipeline normally (review, QA).
     - **Hard ceiling at iteration 5:** Architect self-implements regardless. No more implementer dispatches for this task. Run `npm run verify:full` (JS/TS) or `bash scripts/verify.sh full` (Python) after self-implementing.
-    - **Tier 4 — Oracle escalation (after architect self-implementation also fails):** If the architect's self-implemented code is also rejected by review or QA (total pipeline exhaustion), dispatch `@sdlc-engineering-oracle` with the complete failure chain: all implementer attempts, all reviewer feedback, architect self-implementation code and its rejection reasons, the task context document path, and staging doc with full history. If Oracle returns a FIX: run `npm run verify:full` on Oracle's code, mark as `oracle-implemented` in staging doc and dispatch log, continue pipeline normally (review + QA on Oracle's code). If Oracle returns an ESCALATION REPORT: return the report to the coordinator, which presents structured options to the user.
+    - **Tier 4 — Oracle escalation (after architect self-implementation also fails):** If the architect's self-implemented code is also rejected by review or QA (total pipeline exhaustion), and Oracle has not already dispatched on this task earlier via P14 triggers 1–3, assemble the dispatch envelope per `.opencode/skills/architect-execution-hub/references/oracle-dispatch-template.md` (failing AC/test, error symptoms, all implementer attempts, all reviewer feedback, architect self-implementation code and its rejection reasons, plan artifacts, staging doc, cache entries, and the explicit `scope` block of authorized file paths). Verify the cross-cutting governors permit dispatch (default-cycle precondition is trivially met by Tier 4; check per-task and per-story caps). Then dispatch `@sdlc-engineering-oracle` with the new P14 metadata in the dispatch log (`--counters`, `--scope`). Skip to step E2 for handling Oracle's verdict. If Oracle was already dispatched earlier on this task via triggers 1–3, a Tier 4 dispatch consumes the per-task "2nd dispatch with logged justification" allowance — do not exceed the cap.
+  - E2. **Oracle verdict handling (entered from any P14 trigger or Tier 4):**
+    - **FIX:** Verify the `SCOPE COMPLIANCE` field — every file Oracle edited must appear in the dispatched `scope` list. If any out-of-scope edit is reported, revert those edits and escalate to coordinator (protocol violation). Otherwise, run `npm run verify:full` (JS/TS) or `bash scripts/verify.sh full` (Python) on Oracle's code; mark as `oracle-implemented` in staging doc and dispatch log; log the Oracle response with verdict `FIX`; continue pipeline normally (re-dispatch `@sdlc-engineering-code-reviewer`, then `@sdlc-engineering-qa`). The reviewer/QA dispatches MUST NOT be told "Oracle did this"; they receive the standard dispatch envelope (the hub may include Oracle's diff and notes as "prior work on this task" without naming Oracle — see P14 §7.2).
+    - **ESCALATION:** Log the response with verdict `ESCALATION`; return the report to the coordinator with structured user options. If the report's blocker is "fix requires out-of-scope edits," the coordinator and user decide whether to authorize a scope expansion before any further dispatch.
+    - **BLOCKED (missing input field):** Supply the missing field(s) and re-dispatch as a fresh dispatch. This does NOT consume the per-task cap.
+    - Triage Oracle's NOTES section per the Oracle Escalation Policy: defect-incidents go to P21, refactors defer to follow-up stories, planning gaps go to `docs/staging/<story>.planning-gotchas.md`. NOTES are never silently absorbed into the current task.
   - F. On review pass, log QA dispatch (compound):
     `checkpoint.sh execution --dispatch-event dispatch --dispatch-agent sdlc-engineering-qa --dispatch-id "exec-{story}-t{id}-qa-i1"`
     Then Task tool dispatch to @sdlc-engineering-qa using the QA dispatch template. Include the TASK CONTEXT DOCUMENT path (for plan context only) and DOCUMENTATION VERIFICATION. QA reads source files from disk — do not instruct QA to rely on context doc source files.
@@ -498,16 +587,17 @@ Task tool dispatch to @sdlc-engineering-qa with acceptance criteria and verifica
 
 ### Iteration Limits
 
-**review_iterations (adaptive recovery):**
-- **Iterations 1-3:** Standard re-dispatch to implementer with reviewer's COMPLETE feedback verbatim.
-- **After 3 rejections for the SAME defect:** Architect performs Diagnostic Analysis:
+**review_iterations (adaptive recovery + P14 Oracle triggers):**
+- **P14 trigger evaluation runs before every re-dispatch on a task post-default-cycle.** See the **Oracle Escalation Policy** section above for the full trigger and governor list. Oracle may dispatch as early as attempt 2 (trigger 3 preauthorize), attempt 3 (trigger 2 retry-budget), or whenever doc queries exceed 8 (trigger 1) — provided the cross-cutting governors permit.
+- **Iterations 1-3 (when no P14 trigger fires):** Standard re-dispatch to implementer with reviewer's COMPLETE feedback verbatim.
+- **After 3 rejections for the SAME defect (and Oracle did not already dispatch via triggers 1–3):** Architect performs Diagnostic Analysis:
   - Read actual implementation files and compare against implementer claims.
   - If stuck (same defect 3x): self-implement the fix directly.
   - If making progress (different issues): one more guided dispatch with code snippets, then self-implement if it fails.
 - **Hard ceiling at iteration 5:** Architect self-implements regardless. No more implementer dispatches.
 - **After self-implementation:** Mark as `architect-implemented` in staging doc and dispatch log. Continue pipeline normally (review, QA).
-- **If architect self-implementation is also rejected** (review or QA): Dispatch `@sdlc-engineering-oracle` (Tier 4). The Oracle either fixes the issue or produces an escalation report for the user.
-- Do NOT mark the task as blocked or return to coordinator for review iteration limits unless the Oracle escalates.
+- **If architect self-implementation is also rejected** (review or QA): Dispatch `@sdlc-engineering-oracle` (Tier 4) per the Oracle Escalation Policy — verify the per-task cap (≤ 1 prior Oracle dispatch on this task by default) and assemble the full dispatch envelope. Oracle either fixes the issue or produces an escalation report for the user.
+- Do NOT mark the task as blocked or return to coordinator for review iteration limits unless the Oracle escalates or the per-task / per-story Oracle caps are exhausted.
 
 **qa_retries (max: 2):**
 After 2 QA failures for the same task: mark task as blocked in staging with QA failure evidence. Return to the coordinator with blocker details.
@@ -602,6 +692,12 @@ Each implementation unit must include function signatures, parameters, file path
 - **DENY:** Direct implementation during iterations 1-3. After Adaptive Recovery, self-implementation is required.
 - **DENY:** Skipping code review or QA for any implementation unit (including architect-implemented code).
 - **DENY:** More than 5 review iterations per task. After 3 identical rejections, self-implement. After 5 total, self-implement unconditionally. If self-implementation also fails, Oracle escalation (Tier 4). Never block the pipeline without Oracle verdict.
+- **DENY:** Dispatching `@sdlc-engineering-oracle` on a task before the default `implementer → code-reviewer → QA` cycle has completed at least once on that task in the current story. The default-cycle precondition holds regardless of any preauthorize flag, retry count, or query count. The single exception is trigger 5 (defect-incident, P21) — the original story execution satisfies the precondition.
+- **DENY:** A 3rd Oracle dispatch on the same task without coordinator approval. The 1st dispatch is allowed when triggers fire and governors permit; the 2nd requires hub-logged justification (what changed, expected differentiator); the 3rd HALTS and escalates.
+- **DENY:** A 4th Oracle dispatch in the same story without coordinator review. The per-story soft cap pauses for review at 3 cumulative dispatches across all tasks.
+- **DENY:** Any worker prompt (implementer, code-reviewer) that mentions Oracle, surfaces P14 counters, or asks the worker to decide on escalation. P14 §2.5 is invariant — routing is hub-internal. Reviewer findings flow into the hub's routing decision; the reviewer never names Oracle.
+- **DENY:** Dispatching Oracle without the full P14 envelope (failing AC/test, error symptoms, all prior implementer attempts verbatim, all prior reviewer feedback verbatim, cache entries, plan artifacts with line ranges, staging doc, and the explicit `scope` block of authorized file paths). Partial-context dispatches are forbidden.
+- **DENY:** Oracle edits outside the dispatched `scope`. If Oracle's `SCOPE COMPLIANCE` field reports out-of-scope edits, revert them and escalate to coordinator as a protocol violation.
 - **DENY:** A 4th standard story-review round. After 3 story-review Changes Required verdicts, the hub MUST escalate (Oracle for integration/complexity findings, architect self-implementation for code-quality findings) and write a planning-gotchas entry. Architect-verified closure may re-dispatch story review ONCE after escalation resolves, but NEVER a standard 4th iteration. See Phase 3 "Story-Review Iteration Cap" for procedure.
 - **DENY:** Escalating story-review iteration-cap failures to the user at runtime. Systemic misses are captured in the planning-gotchas sibling file for post-run review; they are not read back or rolled up during the run. User pauses occur only for Review Milestones and Oracle ESCALATION REPORTs, not for story-review iteration caps.
 - **DENY:** Self-dispatch. This hub MUST NOT invoke itself (`sdlc-engineering`) via the Task tool. Phase re-entry is an internal control-flow loop, not a new dispatch.
@@ -646,14 +742,14 @@ Each implementation unit must include function signatures, parameters, file path
 **Trigger:** Code reviewer rejects implementation 3 times for the same defect, or 5 times total for the same task.
 
 **required_actions:**
-- Trigger the Adaptive Recovery Protocol:
+- Trigger the Adaptive Recovery Protocol (under the P14 framework):
   1. Read the actual implementation files to understand what the implementer produced.
   2. Compare the implementer's claims against the real code.
-  3. If the same defect persisted across 3+ iterations (stuck pattern): self-implement the fix directly.
+  3. If the same defect persisted across 3+ iterations (stuck pattern): self-implement the fix directly. (Note: by this point, P14 trigger 2 — retry-budget — should have already prompted the hub to consider Oracle; if Oracle was not dispatched, log the decline reason for the audit trail.)
   4. If different issues each time but iteration 5 reached: self-implement the remaining fixes.
   5. After self-implementation, mark as `architect-implemented` in staging doc and dispatch log.
   6. Continue pipeline normally — dispatch to reviewer and QA for the self-implemented code.
-  7. If architect self-implementation is also rejected by review/QA: dispatch `@sdlc-engineering-oracle` with the complete failure chain (Tier 4). Oracle either fixes or escalates to user.
+  7. If architect self-implementation is also rejected by review/QA: dispatch `@sdlc-engineering-oracle` (Tier 4) per the Oracle Escalation Policy — verify per-task and per-story caps, assemble the full dispatch envelope from `oracle-dispatch-template.md`, and log with `--counters` and `--scope`. Oracle either fixes or escalates to user.
 
 **prohibited_actions:**
 - Do not mark the task as blocked for review iteration limits. Resolve via self-implementation or Oracle escalation.

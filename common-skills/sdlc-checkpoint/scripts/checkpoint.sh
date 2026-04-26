@@ -555,6 +555,8 @@ cmd_execution() {
   local task_done="" staging_doc="" status=""
   # Compound dispatch-log flags (optional — writes dispatch-log.jsonl entry alongside state)
   local d_event="" d_agent="" d_dispatch_id="" d_model="" d_verdict="" d_duration="" d_summary=""
+  # P14 (Oracle escalation) compound dispatch-log fields
+  local d_counters="" d_scope="" d_decline=""
   # Compound commit flag (optional — stages + commits after state update)
   local do_commit_flag=""
 
@@ -576,10 +578,23 @@ cmd_execution() {
       --dispatch-verdict) d_verdict="$2"; shift 2 ;;
       --dispatch-duration) d_duration="$2"; shift 2 ;;
       --dispatch-summary) d_summary="$2"; shift 2 ;;
+      --dispatch-counters)        d_counters="$2"; shift 2 ;;
+      --dispatch-scope)           d_scope="$2"; shift 2 ;;
+      --dispatch-decline-reason)  d_decline="$2"; shift 2 ;;
       --commit) do_commit_flag="true"; shift ;;
       *) echo "Unknown execution flag: $1" >&2; exit 1 ;;
     esac
   done
+
+  # P14 validation: --dispatch-counters must be a JSON object, --dispatch-scope must be a JSON array.
+  if [ -n "$d_counters" ] && [ "${d_counters:0:1}" != "{" ]; then
+    echo "execution --dispatch-counters must be a JSON object (e.g. '{\"doc_queries\":9}')" >&2
+    exit 1
+  fi
+  if [ -n "$d_scope" ] && [ "${d_scope:0:1}" != "[" ]; then
+    echo "execution --dispatch-scope must be a JSON array (e.g. '[\"src/foo.ts\"]')" >&2
+    exit 1
+  fi
 
   # Read existing values
   local cur_story cur_phase cur_tasks_total cur_tasks_completed
@@ -674,7 +689,8 @@ EOF
   if [ -n "$d_event" ]; then
     build_and_append_dispatch_json "$d_event" "$d_agent" "$d_dispatch_id" \
       "${cur_story:-}" "execution" "${cur_phase:-}" "${task:-}" \
-      "$d_model" "${iteration:-}" "$d_verdict" "$d_duration" "$d_summary"
+      "$d_model" "${iteration:-}" "$d_verdict" "$d_duration" "$d_summary" \
+      "$d_counters" "$d_scope" "$d_decline"
   fi
 
   # --- Compound commit (optional) ---
@@ -1218,12 +1234,22 @@ json_escape() {
 # ---------------------------------------------------------------------------
 
 # Build a dispatch-log JSON entry and append to dispatch-log.jsonl.
-# Args: event agent dispatch_id [story hub phase task model_profile iteration verdict duration summary]
+# Args: event agent dispatch_id [story hub phase task model_profile iteration verdict duration summary
+#                                counters_json scope_json decline_reason]
+#
+# P14 (Oracle escalation) extension:
+# - counters_json: raw JSON object string (e.g. '{"doc_queries":9,"implementer_attempts":2,"reviewer_iterations":3}').
+#   Embedded as "counters":<raw>. Must start with '{' or it is silently ignored.
+# - scope_json: raw JSON array string (e.g. '["src/foo.ts","src/bar.ts"]').
+#   Embedded as "scope":<raw>. Must start with '[' or it is silently ignored.
+# - decline_reason: regular string. Embedded as "decline_reason":"<escaped>".
+#   Used when a P14 trigger fired but the hub elected NOT to dispatch Oracle (no subagent run occurs).
 build_and_append_dispatch_json() {
   local d_event="$1" d_agent="$2" d_dispatch_id="$3"
   local d_story="${4:-}" d_hub="${5:-}" d_phase="${6:-}" d_task="${7:-}"
   local d_model="${8:-}" d_iteration="${9:-}" d_verdict="${10:-}"
   local d_duration="${11:-}" d_summary="${12:-}"
+  local d_counters="${13:-}" d_scope="${14:-}" d_decline="${15:-}"
 
   local json="{"
   json="$json\"timestamp\":\"${TIMESTAMP}\""
@@ -1239,6 +1265,17 @@ build_and_append_dispatch_json() {
     [ -n "$d_task" ]   && json="$json,\"task\":\"$(json_escape "$d_task")\""
     [ -n "$d_model" ]  && json="$json,\"model_profile\":\"$(json_escape "$d_model")\""
     [ -n "$d_iteration" ] && json="$json,\"iteration\":${d_iteration}"
+
+    # P14: Oracle-related dispatch metadata. Embedded raw (caller is responsible for valid JSON).
+    if [ -n "$d_counters" ] && [ "${d_counters:0:1}" = "{" ]; then
+      json="$json,\"counters\":${d_counters}"
+    fi
+    if [ -n "$d_scope" ] && [ "${d_scope:0:1}" = "[" ]; then
+      json="$json,\"scope\":${d_scope}"
+    fi
+    if [ -n "$d_decline" ]; then
+      json="$json,\"decline_reason\":\"$(json_escape "$d_decline")\""
+    fi
   fi
 
   if [ "$d_event" = "response" ]; then
@@ -1302,6 +1339,8 @@ cmd_dispatch_log() {
 
   local event="" story="" hub="" phase="" task="" agent="" model_profile=""
   local dispatch_id="" iteration="" verdict="" duration="" summary=""
+  # P14 (Oracle escalation) fields
+  local counters="" scope="" decline_reason=""
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -1317,6 +1356,9 @@ cmd_dispatch_log() {
       --verdict)       verdict="$2"; shift 2 ;;
       --duration)      duration="$2"; shift 2 ;;
       --summary)       summary="$2"; shift 2 ;;
+      --counters)        counters="$2"; shift 2 ;;
+      --scope)           scope="$2"; shift 2 ;;
+      --decline-reason)  decline_reason="$2"; shift 2 ;;
       *) echo "Unknown dispatch-log flag: $1" >&2; exit 1 ;;
     esac
   done
@@ -1326,9 +1368,20 @@ cmd_dispatch_log() {
     exit 1
   fi
 
+  # P14 validation: --counters must be a JSON object, --scope must be a JSON array.
+  if [ -n "$counters" ] && [ "${counters:0:1}" != "{" ]; then
+    echo "dispatch-log --counters must be a JSON object (e.g. '{\"doc_queries\":9}')" >&2
+    exit 1
+  fi
+  if [ -n "$scope" ] && [ "${scope:0:1}" != "[" ]; then
+    echo "dispatch-log --scope must be a JSON array (e.g. '[\"src/foo.ts\"]')" >&2
+    exit 1
+  fi
+
   build_and_append_dispatch_json "$event" "$agent" "$dispatch_id" \
     "$story" "$hub" "$phase" "$task" "$model_profile" "$iteration" \
-    "$verdict" "$duration" "$summary"
+    "$verdict" "$duration" "$summary" \
+    "$counters" "$scope" "$decline_reason"
 }
 
 # ---------------------------------------------------------------------------
