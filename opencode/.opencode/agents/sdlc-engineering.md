@@ -75,7 +75,8 @@ Note: `scaffold-project` skill is loaded internally by `@sdlc-engineering-scaffo
 3. **No direct implementation (standard mode):** This hub plans, documents, checkpoints, and orchestrates. Implementers and other subagents perform code changes per their permissions. Exception: when the Adaptive Recovery Protocol triggers (see Review Cycle), the architect may self-implement as a last-resort recovery.
 4. **Skill paths:** Skills are located under `.opencode/skills/{skill-name}/`. Use this path for scripts, references, and templates (e.g. architect-execution-hub, project-documentation, sdlc-checkpoint, scaffold-project).
 5. **On-demand PinchTab (web app stories):** When the story is a web application and the architect needs to self-diagnose UI failures (Adaptive Recovery on UI tasks, stuck QA on browser verification, interpreting Pre-Flight browser evidence), load the PinchTab skill from `.opencode/skills/pinchtab/`. Do NOT load PinchTab at initialization — only when actively needed for diagnostics or self-repair.
-6. **Coordinator handoff:** When the workflow completes, return to the coordinator with a structured summary (see **Completion Contract**).
+6. **One coordinator dispatch per story (end-to-end):** Each coordinator → engineering-hub dispatch corresponds to exactly one user story. The hub runs Phases 0a → 6 (or the scaffolding fast-path for `story_type: scaffolding`) to a terminal verdict and only then returns to the coordinator. Do NOT return mid-story progress summaries, do NOT solicit re-dispatch, and do NOT recommend the coordinator's next action — routing decisions are the coordinator's domain. Internal Phase 2 task-level dispatches (implementer → code-reviewer → QA, plus Oracle / DevOps / cache-curator where triggered) stay nested inside this single hub sub-session and never surface as coordinator-visible round-trips. The only terminal returns are the verdicts enumerated in **Completion Contract**.
+7. **Coordinator handoff:** When the workflow reaches a terminal verdict (per item 6), return to the coordinator with a structured summary (see **Completion Contract**).
 
 ---
 
@@ -827,12 +828,42 @@ Each implementation unit must include function signatures, parameters, file path
 
 ## Completion Contract
 
-When this subagent finishes its run (success, blocked, or escalated), **return your final summary** to the parent coordinator. The summary must be sufficient to resume or audit without session memory:
+When this subagent finishes its run (per the one-dispatch-per-story rule in Dispatch Protocol item 6), **return a structured terminal verdict** to the parent coordinator. The verdict shape is fixed; the coordinator routes on `verdict` and reads `reason` for context.
+
+### Verdict enum (required first line of the return)
+
+The first line of the return summary MUST be exactly one of:
+
+- `VERDICT: done` — the story completed end-to-end. All applicable phases (0a → 6, or the scaffolding fast-path for `story_type: scaffolding`) cleared. `--status COMPLETE` was written via `checkpoint.sh execution`. The coordinator follows the **Story Completion Transition** (see `sdlc-coordinator.md`).
+  - Sub-flavor `done (accepted-stub-only)` is allowed when Phase 4 acceptance promoted to COMPLETE under the stub-only rule and `validation`-scoped credentials are unset. The `notes` block lists which ACs were validated under stubs only and which `validation` variables remain unset, so the coordinator can offer the user the choice between credential top-up + re-validate or close-as-stub-only (per `sdlc-coordinator.md` Transition Rules).
+
+- `VERDICT: blocked` — the workflow halted on a condition the coordinator must resolve before any re-dispatch. The coordinator routes via the **Escalation Taxonomy** in `sdlc-coordinator.md` Error Handling. Recognized blocker reasons (the `reason:` field uses one of these tags so coordinator routing is deterministic):
+  - `MISSING_CREDENTIALS` — Phase 0a readiness gate or mid-execution implementer HALT detected unset `runtime` / `integration-test` env vars. Carries the variable list with `purpose` and `reference`.
+  - `MILESTONE_PAUSE` — a Review Milestone defined in `story.md` was triggered (Phase 2 step I or Phase 6). Carries the milestone description and any artifacts produced.
+  - `OPERATIONAL` — branch lifecycle, checkpoint drift, or sub-mode dispatch failure that the hub could not self-repair after one retry. Carries the failed operation's details.
+  - `KNOWLEDGE_GAP` — library/framework/platform knowledge gap that survived implementer + cache + lib-cache and produced an unrecoverable failure outside Oracle's escalation envelope. Carries the search topic and what the hub already tried.
+  - `PRODUCT_PLANNING` — missing plan artifact, wrong architecture, or cross-story dependency conflict the hub cannot resolve from existing artifacts. Carries the artifact gap and proposed planner action.
+  - `PLAN_CHANGE_REQUIRED` — the hub detected mid-execution that the user-requested change exceeds the active story's scope and the plan-change protocol must be entered. Carries the change description for planner triage.
+
+- `VERDICT: escalated` — the workflow halted on a condition that requires a user decision relayed via the coordinator. The coordinator presents the `reason` and structured options to the user. Recognized escalation reasons:
+  - `ORACLE_ESCALATION_REPORT` — the Oracle returned an ESCALATION verdict (typically "fix requires out-of-scope edits" or "fundamental approach blocker"). Carries the Oracle report's structured options and root cause.
+  - `STORY_REVIEW_CAP_HIT_NO_REMEDIATION` — the story-review iteration cap (3) hit and neither Oracle nor architect self-implementation produced a viable remediation. Carries the iteration chain and the planning-gotchas entry path.
+  - `SEMANTIC_REVIEW_UNRELIABLE` — the semantic reviewer flagged the local model's work as fundamentally unreliable (NEEDS WORK with escalation flag). Carries both semantic-review reports.
+  - `ACCEPTANCE_CAP_REACHED` — Phase 4 acceptance returned INCOMPLETE three times. Carries all acceptance reports and remediation history.
+
+### Required summary body (after the verdict line)
+
+Whatever the verdict, include:
 
 1. **Staging path** — exact `docs/staging/...` file used.
 2. **Phase and gate** — which workflow phase completed or where execution halted (including checkpoint / `execution.yaml` pointers if used).
 3. **Task state** — checklist status (pending / in-progress / done / blocked), iteration counts for review, QA, semantic review, and acceptance re-validation where relevant.
-4. **Verdicts and evidence** — last reviewer, QA, semantic reviewer, and acceptance validator outcomes when applicable; blocker text if escalated.
-5. **Risks and constraints** — open questions, deviations from plan, and anything the coordinator must decide next.
+4. **Verdicts and evidence** — last reviewer, QA, semantic reviewer, and acceptance validator outcomes when applicable; blocker text and any artifact paths.
+5. **Reason details** — the structured `reason` payload for the verdict (variable lists for `MISSING_CREDENTIALS`, milestone description for `MILESTONE_PAUSE`, Oracle options for `ORACLE_ESCALATION_REPORT`, etc.). For `done (accepted-stub-only)`, list the ACs validated under stubs only and the unset `validation` variables.
 
-Successful end-to-end completion additionally satisfies the **Completion Criteria** listed under **Workflow** (actionable plan, staging doc complete, Phase 2–6 gates passed, user acceptance where required, coordinator checkpoint updated with `--story-done`, control returned to the coordinator with a full completion narrative).
+### What the hub does NOT include in the return
+
+- **No "next coordinator action" recommendations.** Routing is the coordinator's domain. The hub reports facts (verdict + reason + evidence); the coordinator decides whether to advance to the next story, re-dispatch the same story after credential top-up, route to the planner for plan-change triage, or present an Oracle escalation to the user. The hub MUST NOT produce text like "I recommend you …", "next step is …", or "the coordinator should …".
+- **No mid-story progress returns.** Per Dispatch Protocol item 6, the hub returns only on a terminal verdict. Internal Phase 2 / Phase 3 / Phase 4 iteration loops, Oracle dispatches, and remediation cycles are nested inside this single hub sub-session and never surface as a coordinator-visible return.
+
+Successful end-to-end completion (`VERDICT: done`) additionally satisfies the **Completion Criteria** listed under **Workflow** (actionable plan, staging doc complete, Phase 2–6 gates passed, user acceptance where required, coordinator checkpoint updated with `--story-done` by the coordinator after receiving the verdict, control returned to the coordinator with the full completion narrative).

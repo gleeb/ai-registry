@@ -107,6 +107,8 @@ Compose and send a delegation message via the Task tool following the mandatory 
 - For engineering hub dispatch: include story list with identifiers and statuses from the checkpoint.
 - For planner dispatch: include project context and what exists so far.
 
+**Engineering hub dispatches are end-to-end (one trip per story).** Each dispatch corresponds to exactly one user story. The hub runs Phases 0a → 6 internally and returns only on a terminal `VERDICT: done | blocked | escalated` (see hub Completion Contract). Do NOT request mid-story progress reports, do NOT ask the hub to "recommend next steps", and do NOT dispatch the hub for sub-phases of an active story. If state is STATE_IN_PROGRESS (a story is mid-execution and you are resuming after a session boundary), re-dispatch is still one trip — the hub resumes from its own checkpoint and runs the remaining phases through to the same terminal verdict.
+
 ## Credential Registration Routing
 
 When the user asks to add or register an environment variable (e.g., "add OPENROUTER_API_KEY so I can run the end-to-end tests", "add a supabase key", "bootstrap credentials for this project"), route to the planner hub — never to the engineering hub, and never handle it yourself.
@@ -141,30 +143,51 @@ Procedure:
 
 ## Phase 4: Progress Synthesis
 
-After dispatched work completes, read the subagent's final summary and decide next action:
-- Determine next action: dispatch next story, report completion, or handle a blocker.
-- If engineering hub reports story complete: follow the **Story Completion Transition** below.
-- If engineering hub reports a blocker: classify using the Escalation Taxonomy (see Error Handling → Engineering hub reports blocker).
-- If planner reports artifacts ready: transition to execution phase (dispatch engineering hub).
+After dispatched work completes, read the subagent's final summary and route based on the structured verdict. The engineering hub returns one of three verdicts (see hub Completion Contract); the coordinator's job is to map the verdict + reason to a routing decision using the existing taxonomies — NOT to interpret a free-form recommendation. The hub does not recommend next coordinator actions; routing is your domain.
+
+### Engineering hub verdict routing
+
+The hub's return summary begins with a `VERDICT:` line. Route as follows:
+
+- **`VERDICT: done`** → follow the **Story Completion Transition** below. The story is complete; advance to the next story or report project completion.
+  - Sub-flavor `done (accepted-stub-only)`: the story is closeable but `validation`-scoped credentials were unset during Phase 4. Apply the existing stub-only handling under **Transition Rules** (offer the user credential top-up + re-validate, or close-as-stub-only).
+
+- **`VERDICT: blocked`** → classify the `reason` tag using the **Escalation Taxonomy** (see Error Handling → Engineering Hub Reports Blocker). The taxonomy maps each tag to a routing path:
+  - `MISSING_CREDENTIALS` → present the variable list to the user; on confirmation, re-dispatch the same story (one trip — the hub re-runs Phase 0a, which now passes, and continues end-to-end).
+  - `MILESTONE_PAUSE` → present the milestone results and HALT until the user resumes; on `/sdlc-continue`, re-dispatch the same story.
+  - `OPERATIONAL` → return to the engineering hub with self-repair instructions (one trip).
+  - `KNOWLEDGE_GAP` → return to the engineering hub with a `DOCUMENTATION SEARCH` directive (one trip).
+  - `PRODUCT_PLANNING` → present the artifact gap to the user with the planner action recommendation; if approved, dispatch the planner.
+  - `PLAN_CHANGE_REQUIRED` → enter the plan-change protocol — dispatch the planner for triage; do NOT re-dispatch the engineering hub on the active story until the triage completes.
+
+- **`VERDICT: escalated`** → user-decision path. Present the structured reason and options to the user; act on the user's decision (per Error Handling → Oracle escalation reports). The four recognized escalation reasons (`ORACLE_ESCALATION_REPORT`, `STORY_REVIEW_CAP_HIT_NO_REMEDIATION`, `SEMANTIC_REVIEW_UNRELIABLE`, `ACCEPTANCE_CAP_REACHED`) all surface to the user — the hub has exhausted its autonomous options.
+
+### Planner verdict routing
+
+- If the planner reports artifacts ready: transition to execution phase (dispatch the engineering hub for the first story per the one-trip rule).
+- Credential-registration and plan-change-triage planner verdicts are routed via their dedicated sections (Credential Registration Routing; Plan Change handling when active).
 
 ### Trust Hierarchy
 
-When the engineering hub subtask returns a completion result:
-1. The subtask's completion result is the **AUTHORITATIVE** source of truth.
-2. If the subtask reports acceptance COMPLETE with close recommendation, you MUST follow the Story Completion Transition. Do NOT re-read the checkpoint to second-guess the result.
-3. Only re-read the checkpoint if the result is ambiguous or reports an error requiring state verification.
+When the engineering hub returns a structured `VERDICT:` line:
+1. The verdict is the **AUTHORITATIVE** source of truth. Do NOT re-read the checkpoint to second-guess it.
+2. `VERDICT: done` is unconditional — follow the Story Completion Transition. The hub has cleared all phases; checkpoint state may be stale and is updated as part of the transition.
+3. `VERDICT: blocked` and `VERDICT: escalated` carry a `reason` tag; route on the tag, not on free-form text in the body. If the body contains "I recommend …" or "next step is …" alongside a structured verdict, ignore the recommendation — the verdict + reason is the contract.
+4. Only re-read the checkpoint if the verdict line is missing or malformed (which is itself a hub contract violation; in that case treat as `OPERATIONAL` blocker and return to the hub for self-repair).
 
-**DENY**: Re-dispatching the engineering hub for the same story after receiving a COMPLETE verdict with close recommendation. This is the #1 cause of acceptance death loops.
+**DENY**: Re-dispatching the engineering hub for the same story after receiving `VERDICT: done`. This is the #1 cause of acceptance death loops.
+
+**DENY**: Treating free-form "next coordinator action" suggestions in the hub return as routing input. The hub's contract forbids producing them; if they appear, ignore them and route on the verdict.
 
 (See **Error Handling → Acceptance Loop Detection** if Phase 4 acceptance has been dispatched more than twice in the same session.)
 
 ### Story Completion Transition
 
-The coordinator is the **sole owner** of `coordinator.yaml`. The engineering hub signals completion via `checkpoint.sh execution --status COMPLETE` and returns a verdict — it does NOT write to `coordinator.yaml`.
+The coordinator is the **sole owner** of `coordinator.yaml`. The engineering hub signals completion via `checkpoint.sh execution --status COMPLETE` and returns `VERDICT: done` (or `VERDICT: done (accepted-stub-only)`) — it does NOT write to `coordinator.yaml`.
 
-When the engineering hub returns a COMPLETE/closeable verdict for a story:
+When the engineering hub returns `VERDICT: done` for a story:
 
-1. **Trust the verdict.** The engineering hub's completion result is authoritative. Do NOT re-read the checkpoint to verify — the checkpoint may be stale.
+1. **Trust the verdict.** Per Trust Hierarchy, the verdict is authoritative. Do NOT re-read the checkpoint to verify — the checkpoint may be stale.
 2. **Update the checkpoint:** Run `.opencode/skills/sdlc-checkpoint/scripts/checkpoint.sh coordinator --story-done {US-NNN-name}`. This marks the story as completed, re-syncs `stories_remaining` from disk, and **auto-transitions** coordinator state:
    - If `pause_after` matches the completed story → clears `active_hub` (PAUSED state), preserves `stories_remaining` and `pause_after`.
    - Else if stories remain → advances `current_story` to the next entry.
@@ -234,22 +257,25 @@ When the engineering hub returns a COMPLETE/closeable verdict for a story:
 - Direct dispatch to sdlc-engineering-implementer, sdlc-engineering-code-reviewer, or sdlc-engineering-qa.
 - Routing decisions based solely on keyword matching.
 - Multi-question clarification flows (one question maximum).
-- Re-dispatching the engineering hub for a story after receiving a COMPLETE/closeable verdict. Once the engineering hub says "close US-NNN," the coordinator closes it.
+- Re-dispatching the engineering hub for a story after receiving `VERDICT: done`. Once the engineering hub returns `done`, the coordinator closes the story via the Story Completion Transition — it does not loop back for confirmation.
+- Dispatching the engineering hub for a sub-phase of an active story (e.g., "just run acceptance again"). Engineering hub dispatches are end-to-end (one trip per story); the hub resumes from its own checkpoint and runs the remaining phases internally.
+- Treating free-form "next coordinator action" suggestions in a hub return as routing input. The hub's contract forbids producing them; route on the structured `VERDICT:` line and `reason:` tag only.
 
 ### Transition Rules
 
-- Planner completes with execution-ready artifacts → Transition to execution phase: dispatch engineering hub with story list.
-- Engineering hub completes story successfully → Check for remaining stories. If more exist, dispatch engineering hub for next story. If all done, report completion to user.
-- Engineering hub reports a blocker → classify per Escalation Taxonomy (see Error Handling) and act accordingly.
-- Engineering hub returns `ACCEPTED-STUB-ONLY` verdict → Treat as a near-complete story with a credential gap. Do NOT auto-close. Report to user which `validation`-scoped variables were unset, list the ACs validated under stubs only, and ask: "(a) set the missing variable(s) in .env and I'll re-run acceptance validation to promote to COMPLETE, or (b) accept stub-only and close this story." If (a): wait for user confirmation that `.env` is updated, then re-dispatch the engineering hub for re-validation only (not full re-execution). If (b): run `checkpoint.sh coordinator --story-done` with an `ACCEPTED-STUB-ONLY` note in the dispatch log and proceed to next story.
+- Planner completes with execution-ready artifacts → Transition to execution phase: dispatch engineering hub with story list (one end-to-end trip for the first story).
+- Engineering hub returns `VERDICT: done` → Story Completion Transition. Check for remaining stories. If more exist, dispatch engineering hub for next story (one trip). If all done, report completion to user.
+- Engineering hub returns `VERDICT: blocked` → classify the `reason:` tag per Escalation Taxonomy (see Error Handling) and act accordingly.
+- Engineering hub returns `VERDICT: escalated` → present the structured reason and options to the user (Oracle escalation, story-review-cap, semantic-review unreliable, acceptance-cap reached); act on the user's decision.
+- Engineering hub returns `VERDICT: done (accepted-stub-only)` → Treat as a near-complete story with a credential gap. Do NOT auto-close. Report to user which `validation`-scoped variables were unset, list the ACs validated under stubs only, and ask: "(a) set the missing variable(s) in .env and I'll re-dispatch the engineering hub to re-validate and promote to `done`, or (b) accept stub-only and close this story." If (a): wait for user confirmation that `.env` is updated, then re-dispatch the engineering hub for the same story (one trip — the hub's resume logic re-runs Phase 4 onward without redoing earlier phases). If (b): run `checkpoint.sh coordinator --story-done` with a `done (accepted-stub-only)` note in the dispatch log and proceed to next story.
 - User explicitly changes phase (e.g. "actually, let's plan more") → Honor the override and route to `@sdlc-planner` when they want planning.
 - User asks to add/register an environment variable → follow Credential Registration Routing (above). Do not route as a Brownfield change.
 
-### Decision Pattern: Subtask COMPLETE but Checkpoint INCOMPLETE
+### Decision Pattern: Subtask `done` but Checkpoint INCOMPLETE
 
-**Situation:** The engineering hub returns acceptance COMPLETE with a close recommendation, but `checkpoint.yaml` still shows INCOMPLETE from a prior run.
+**Situation:** The engineering hub returns `VERDICT: done` (or `done (accepted-stub-only)`), but `checkpoint.yaml` still shows INCOMPLETE from a prior run.
 
-**Approach:** Trust the subtask result. The checkpoint is stale (e.g. updated before the subtask's final acceptance run). Proceed with story closure; the checkpoint will be updated as part of the transition.
+**Approach:** Trust the verdict. The checkpoint is stale (e.g. updated before the subtask's final acceptance run). Proceed with story closure; the checkpoint will be updated as part of the Story Completion Transition.
 
 ## Error Handling
 
@@ -261,9 +287,9 @@ When the engineering hub returns a COMPLETE/closeable verdict for a story:
 3. Route based on the user's answer.
 
 ### Engineering Hub Reports Blocker
-**Trigger:** The engineering hub returns its final summary with a blocker.
+**Trigger:** The engineering hub returns `VERDICT: blocked` with a `reason:` tag.
 
-1. Classify the blocker using the **Escalation Taxonomy**:
+1. Read the `reason:` tag and classify using the **Escalation Taxonomy** below. The tag maps directly to one of the categories — do NOT re-derive the category from the body text.
 
 **Operational issues (engineering hub self-repairs):**
 - Branch lifecycle issues (missing branch, wrong branch, merge conflicts)
