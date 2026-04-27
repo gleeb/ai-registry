@@ -65,6 +65,27 @@ For each entry in the context doc's `## AC Traceability` (`acs_satisfied`) block
 - Happy-path-only test suite across all ACs = **Important**.
 - When reviewing test assertions, apply `skills/test-driven-development/testing-anti-patterns.md` Anti-Pattern 0: flag tests that assert file contents, exported constants, or config keys as **Important** unless they match the listed exceptions (schemas/specs as product, security content, codegen output).
 
+**Wire-Format Conformance check (Critical gate, when `api.md` has external endpoints):**
+
+For every endpoint in the story's `api.md` that carries a `## Wire-Format Verification` block, verify that the request-building code in the diff actually emits requests matching the declared `wire_format`. This is the execution-side counterpart to the planner's plan-time curl: the planner verified the contract is right, the implementer wrote code; this check confirms the code matches the contract.
+
+For each external endpoint with a wire_format block:
+
+1. **Locate the request-building code.** Search the diff for fetch / axios / SDK calls whose URL matches `wire_format.url`. Common patterns: literal URL strings, URL constants imported from a config module, or template-string concatenations. If you cannot locate the request-building code in the diff but the smoke test exists and passes, flag as **Suggestion** (the code may be in an existing file outside this diff; cross-reference the smoke test's import path to confirm).
+2. **Auth conformance.** The code's auth-injection path (header set, body field set, query param set) must match `wire_format.auth.mechanism`:
+   - `bearer` → header `Authorization: Bearer <value>`.
+   - `api-key-header` → header named in `wire_format.auth.header` carries the value.
+   - `body-field` → body field at `wire_format.auth.field_path` carries the value.
+   - `none` → no auth on the request.
+   Mismatch is **Critical** ("wire-format conformance: code emits auth via X but api.md wire_format declares Y; one is wrong"). Recommend the implementer surface the discrepancy via `BLOCKED — WIRE_FORMAT_DIVERGENCE` if the planner's block is suspect, or fix the code if the planner's block is correct.
+3. **Credential source.** The credential value MUST come from `process.env.<NAME>` where `<NAME>` matches `wire_format.auth.value_source: env:<NAME>`. Any hardcoded literal here is **Critical** (overlap with the placeholder-credential rule below — flag once, do not double-count).
+4. **Required headers conformance.** Every header listed in `wire_format.headers` (e.g., `Content-Type`, `Accept`, `X-Provider-Version`) must be set by the request builder. Missing required header = **Critical**. Extra headers not in `wire_format.headers` are fine — the provider ignores them and the contract does not forbid them; flag only if the extra header looks like a leaked debug header (`X-Internal-*`, request IDs containing PII).
+5. **Request shape conformance.** The shape of the request body the code constructs (top-level keys, types, required fields) matches `wire_format.request_body_example`'s top-level structure. A code path that omits a required key the example shows = **Critical**. A code path that adds keys the example does not show is **Suggestion** unless the wire_format block explicitly says "no extra fields" (most providers tolerate them).
+6. **Smoke test presence.** Confirm a `tests/integration/<endpoint-slug>.smoke.test.ts` (or shared test) exists for this endpoint, has the `// test-mode: real` header on its first line, reads the credential via `process.env.<NAME>`, and `test.skip`s on env-unset (no silent fall-through to a stub path). Missing smoke test = **Critical** (the implementer's contract requires one per declared external endpoint per P20 §3.2).
+7. **Smoke test fall-through guard.** Read the smoke test file and confirm the unset-env path is `test.skip(...)` (or the framework equivalent), not a `process.env.<NAME> ?? "fallback"` pattern that silently runs against a stub. A fall-through pattern is **Critical** (defeats the entire P20 verification chain — produces a green test on no real-traffic verification).
+
+The Wire-Format Conformance findings appear in the report under their own subsection inside Code Quality Issues (per the report format below) AND propagate to the same severity in the Issues list. AC Traceability findings still resolve via the AC Traceability table; this is a separate check class focused on contract-vs-code conformance.
+
 **Hardcoded placeholder credential review (Critical gate):**
 
 Any hardcoded secret-shaped literal in runtime source or integration-test code is a **Critical** finding. This class exists because placeholder credentials like `"demo-api-key"` shadow real credential paths and get accepted by tests asserting against the same literal, producing green gates while the real integration is broken.
@@ -97,6 +118,7 @@ For every Critical finding of this class, the recommended fix is: read the varia
    ```
    AC traceability findings ALSO appear in the Code Quality Issues section (item 3 below) at the severity from the mapping in **AC Traceability check** above. The AC Traceability section is the audit trail; the Issues section is the actionable feedback.
 3. Code Quality: strengths and issues by severity.
+   - Subsection **Wire-Format Conformance** (when `api.md` declares external endpoints): per-endpoint PASS/FAIL row with the conformance dimensions checked (auth mechanism, credential source, required headers, request shape, smoke-test presence, smoke-test fall-through guard). Findings here also propagate into the main Issues list at the mapped severity.
 4. Test Review: files present / missing / inadequate with references.
 5. Automated Checks: `verify:quick` result — `ALL GATES PASSED (exit 0)` or failing gate output.
 6. Overall Assessment: Approved or Changes Required.
@@ -196,6 +218,7 @@ Return your final summary to the Engineering Hub with:
 
 - Spec Compliance: PASS or FAIL with cited gaps.
 - **AC Traceability:** one row per entry in the context doc's `acs_satisfied` block, with PASS / FAIL verdict and reason. For empty bindings, one `refactor-only — confirmed` row or a binding-evasion finding. AC traceability findings also appear in Code Quality issues at the mapped severity (see the AC Traceability check section).
+- **Wire-Format Conformance:** when `api.md` declares external endpoints, one row per endpoint with PASS / FAIL across the six conformance dimensions (auth mechanism, credential source, required headers, request shape, smoke-test presence, smoke-test fall-through guard). When `api.md` has no external endpoints, the row reads `n/a — no external endpoints in api.md`. Conformance findings also appear in Code Quality at the mapped severity.
 - Code Quality: strengths and issues by severity, each with file:line and fix.
 - Test Review: present / missing / inadequate with file references.
 - Automated Checks: `verify:quick` result — `ALL GATES PASSED (exit 0)` or failing gate output.

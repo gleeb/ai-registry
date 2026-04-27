@@ -72,6 +72,50 @@ Procedure:
 
 **All-stub flagging.** If every test file covering a story's acceptance criteria is `test-mode: stub` — i.e., there is not a single `real` test actually exercised this run — annotate the QA report with `FLAG: ALL-STUB-SUITE`. The downstream acceptance validator uses this flag to downgrade the verdict to `ACCEPTED-STUB-ONLY` rather than COMPLETE. This is not a QA failure on its own — it is an informational signal that the plan's `required_env` declarations may be too narrow, or that integration tests were never wired up.
 
+### Phase 2c: External-Integration Evidence
+
+For every endpoint declared in the story's `api.md` `## Wire-Format Verification` blocks (one block per external endpoint), produce a per-endpoint `external_integration_evidence` entry. This block is the primary evidence for P16's AC-traceability check on externally-bound ACs and the input the acceptance validator reads in §3.5 to decide between `ACCEPTED`, `ACCEPTED-STUB-ONLY`, and `CHANGES_REQUIRED`.
+
+Procedure:
+
+1. **Locate the smoke test.** From `api.md`'s wire_format block (specifically `wire_format.url` and `wire_format.method`), find the corresponding smoke test under `tests/integration/` (the implementer follows the path conventions in P20 §3.2). If no smoke test exists for a declared endpoint, that is a **Critical** test-adequacy failure (the implementer should have written it; flag and FAIL).
+2. **Run the smoke test in isolation** so the exit code and stdout cleanly attach to this endpoint:
+   - JS/TS: `npx vitest run tests/integration/<smoke-file>.test.ts --reporter=default`
+   - Python: equivalent runner invocation.
+   Capture the exit code, the test's PASS/SKIPPED/FAIL status, and any logged headers/response shape.
+3. **Determine the execution status:**
+   - `ran-200` — the test ran (real env present), issued a real request, received the expected status (typically 200; 201/204 also count when the wire_format block declares them), and the response shape matched `wire_format.response_shape_example`.
+   - `ran-non-200` — the test ran and the provider returned a non-success status. Distinguish two sub-cases:
+     - **Expected non-200** (negative test asserting auth-rejection on a fake key, rate-limit on a stress request, etc.) — record `ran-non-200 (expected: <reason>)`. This still counts as real-traffic verification.
+     - **Unexpected non-200** (the wire_format claims 200 but the provider returned 401/403/422) — record `ran-non-200 (unexpected: <status> <provider-error-snippet>)`. This is a contract failure; the validator routes to `CHANGES_REQUIRED`.
+   - `skipped-no-env` — the test's `test-mode: real` header was honored and the test `test.skip`ped because the env var was unset. Record the unset variable name.
+4. **Capture the outgoing request headers** (with secret VALUES redacted, NAMES intact) so the reviewer can verify the auth mechanism matches `wire_format.auth.mechanism`. The smoke test should log this via a request interceptor or a debug-mode flag; if it does not, flag the test as **Important** (instrumentation gap) and record header names from static inspection of the request-builder code.
+5. **Capture a response shape summary** — the JSON's top-level keys plus any nested keys named in `wire_format.response_shape_example`. Do NOT capture full response bodies (they may contain PII or tokens); a key-list is sufficient for shape verification.
+6. **Emit the block** to the QA return message under a dedicated section, one entry per endpoint:
+
+```yaml
+external_integration_evidence:
+  - endpoint: POST https://openrouter.ai/api/v1/chat/completions
+    smoke_test: tests/integration/openrouter-chat-completions.smoke.test.ts
+    status: ran-200 | ran-non-200 (expected: ...) | ran-non-200 (unexpected: 401 invalid_api_key) | skipped-no-env
+    env_var_at_qa_time: OPENROUTER_API_KEY (set | unset)
+    request_headers_sent:
+      - Authorization: Bearer <REDACTED>
+      - Content-Type: application/json
+    response_status: 200
+    response_shape_summary: [id, choices[0].message.content, choices[0].finish_reason]
+    captured_at: 2026-04-22T15:14:02Z
+    notes: |
+      Optional. If status is ran-non-200 (unexpected), include the provider's error message snippet and an explicit "wire_format mismatch" note. If skipped-no-env, name the unset variable.
+```
+
+7. **Cross-checks before emitting:**
+   - `request_headers_sent` auth mechanism (e.g., `Authorization: Bearer ...`) matches `wire_format.auth.mechanism` from `api.md`. Mismatch (e.g., wire_format says `bearer` but the test sent `X-API-Key`) is a **Critical** finding (the request-builder code disagrees with the contract; even though the test passed, the contract is wrong somewhere).
+   - `response_shape_summary` covers every key path in `wire_format.response_shape_example`. Missing keys is **Important** (the contract claims a shape the provider isn't returning; either api.md is stale or the test's shape capture is wrong).
+   - When `status: ran-non-200 (unexpected: ...)`, append `FLAG: WIRE_FORMAT_FAILURE` to the QA report header. The acceptance validator routes the story to `CHANGES_REQUIRED` automatically on this flag.
+
+8. **Stories with no external endpoints.** If `api.md` has no `wire_format` blocks (no external integrations), emit `external_integration_evidence: []` with a one-line reason ("no external endpoints declared"). Empty-by-omission is forbidden — the section must be present.
+
 ### Phase 3: Fresh Execution
 
 Run the unified quality gate: `npm run verify:full` (JS/TS) or `bash scripts/verify.sh full` (Python). The script is silent on success — `=== ALL GATES PASSED ===` is sufficient evidence for the gate suite. If it fails, the output names the failing gate; include that output in your findings. Do not run lint, typecheck, test, or build as separate commands.
@@ -143,6 +187,7 @@ Return your final summary to the Engineering Hub with:
 - Coverage Report: lines %, branches %, functions % for new/modified files. Files below threshold listed individually.
 - **AC EVIDENCE SUMMARY** (required when context doc has non-empty `acs_satisfied`): one `### AC-N` block per binding entry under a top-level `## AC EVIDENCE SUMMARY` section, per Phase 5 above. For empty bindings, one `### refactor-only` block confirming refactor-only status (or a binding-evasion finding).
 - TEST-MODE ACCOUNTING block (per Phase 2b above).
+- **EXTERNAL_INTEGRATION_EVIDENCE block** (required — emit `external_integration_evidence: []` with a one-line reason when no external endpoints exist; otherwise one entry per endpoint per Phase 2c above). When any entry has `status: ran-non-200 (unexpected: ...)`, prefix the entry with `FLAG: WIRE_FORMAT_FAILURE` so the acceptance validator routes the story to `CHANGES_REQUIRED`.
 - Browser Verification Evidence (if applicable): PinchTab health, per-route results, console errors.
 - Per-criterion breakdown: criterion text, command, output excerpt, exit code, PASS/FAIL.
 - Regression notes if unrelated tests failed.

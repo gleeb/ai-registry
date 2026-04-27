@@ -140,6 +140,25 @@ Do NOT search context7/Tavily for: code style issues, missing test coverage, arc
 
 Follow the `test-driven-development` skill (`skills/test-driven-development/`). Cover each AC with meaningful tests including negative/boundary paths. Meet coverage thresholds from dispatch. Reference `nodejs-backend-patterns` skill for API/integration test patterns when applicable.
 
+#### External-Endpoint Smoke Tests (mandatory when api.md declares external endpoints)
+
+For every endpoint in this story's `api.md` that has a `## Wire-Format Verification` block (i.e., every external/out-of-project endpoint), write **one** integration smoke test that exercises the real provider. The smoke test is the execution-time counterpart to the planner's plan-time curl: it proves at QA time that the integration physically works against the live endpoint. The test:
+
+- Lives at `tests/integration/<endpoint-slug>.smoke.test.ts` (per-story endpoints) or `tests/integration/_shared/<provider>-<endpoint-slug>.smoke.test.ts` (endpoints already covered by an earlier story — reuse, do not duplicate).
+- Carries a `// test-mode: real` header on the first line of the file (P19 §3.5 convention). The test runner discovers this header for QA's TEST-MODE ACCOUNTING.
+- Reads the credential via `process.env.<NAME>` where `<NAME>` is the variable from `wire_format.auth.value_source: env:<NAME>`. **Never inline a value, never substitute a placeholder if unset.**
+- `test.skip`s with a visible log line (`console.warn("[smoke] skipping — <NAME> unset")`) when the variable is unset. The skip-log is what QA records as `skipped-no-env` in `external_integration_evidence`.
+- Issues ONE minimal request matching `wire_format.request_body_example` (model name, path, method).
+- Asserts on the response shape matching `wire_format.response_shape_example` — assert that the documented top-level keys are present (e.g., `expect(body).toHaveProperty('choices.0.message.content')`). **Do NOT assert on AC-level correctness** (the model's reasoning, the photo's content, etc.) — that belongs in deeper tests. The smoke test's job is "the wire works."
+- On 401 / 403 / structural mismatch, the test FAILS with a message that explicitly distinguishes contract failure from feature failure: `expect(res.status).toBe(200) // Wire-format mismatch: provider rejected our request shape. The api.md wire_format is wrong, not the feature implementation.`
+- Does NOT use mocked fetch. The whole point is to hit real wire.
+
+**One smoke test per endpoint, by default.** Do not enumerate complex scenarios up front. The default contract is "the integration physically works (auth + shape)." If during implementation or after running the existing smoke test you encounter a scenario where (a) the provider's docs are ambiguous about behavior, OR (b) a mocked test passes but you are uncertain the real provider would behave the same way, OR (c) the AC explicitly specifies a non-trivial provider response handling that a mocked test cannot verify — add an **additional** `test-mode: real` test scoped to that specific ambiguity. Record the rationale in the test file's docstring (one sentence: what the ambiguity was). Do NOT proactively add real tests for hypothetical scenarios.
+
+**Endpoint reuse across stories.** If an earlier story already produced a smoke test for the same `(provider, method, path)` under `tests/integration/_shared/`, do not duplicate it. Reference the existing test in your CHANGES APPLIED section as `REUSED tests/integration/_shared/<file>` and confirm it covers your story's wire_format block (matching auth mechanism, request shape, response shape). If your story's wire_format diverges from the shared one, that is a planning defect — HALT with `BLOCKED — WIRE_FORMAT_DIVERGENCE: <provider>:<method>:<path>` and let the hub route back to the planner for reconciliation.
+
+**Out-of-scope for the default smoke test:** complex multi-step business scenarios, provider-side rate-limit handling, paginated response traversal, concurrent-request behavior. Add additional real tests on demand per the rule above; do not pre-enumerate.
+
 **Test failure escalation protocol — inline stop rule:**
 
 When a test approach fails twice for the same assertion:
@@ -195,6 +214,8 @@ TERMINAL PHASE — compose return message and STOP.
 | **Placeholder credentials only in `unit-test-placeholder` fixtures** | Unit-test fixtures MAY contain obvious non-secret placeholder strings (e.g., `"test-key-for-unit-only"`), but ONLY in files whose `test-mode` header is `stub` or equivalent and only for `required_env` entries whose `scope` explicitly includes `unit-test-placeholder`. Integration-test fixtures MUST read the real variable via `process.env.<NAME>`; they MUST NOT hard-code any value, real or placeholder. A single placeholder leaking into runtime source, integration tests, or validation scripts is a completion-contract violation. |
 | **Never edit `acs_satisfied`** | The context doc's `## AC Traceability` section is a hub-authored input contract. Editing it from the implementer — adding ACs to claim credit, removing ACs to dodge evidence work, replacing the bound AC with a different one to fit what you happened to build — is a completion-contract violation. The only valid response to a binding mismatch is the HALT protocol above (`STATUS: BLOCKED — BINDING_MISMATCH`). The hub owns the binding; you own the implementation against it. |
 | **Never invent `evidence_class: real` evidence** | Marking an AC as `evidence_class: real` requires that at least one `test-mode: real` test in the suite actually exercised the real provider during this run (or skip-logged with env-unset under the test-mode protocol) AND that QA's TEST-MODE ACCOUNTING records the corresponding `real` count. Claiming `real` while only stub tests exist for the AC is a misrepresentation finding (Critical at code review). If you cannot produce real-provider evidence for an externally-bound AC and the binding requires `real`, HALT with the BINDING_MISMATCH protocol — propose `evidence_class: stub-only` or `static-analysis-only` with the reason. |
+| **Smoke test per external endpoint is mandatory** | If `api.md` declares one or more `wire_format` blocks (external endpoints), each one must have a corresponding `tests/integration/<endpoint-slug>.smoke.test.ts` (or a reused `tests/integration/_shared/...`). The completion summary's CHANGES APPLIED block must list the smoke test file as CREATED or REUSED, naming the endpoint(s) it covers. Missing smoke test for a declared external endpoint = completion-contract violation. The smoke test's `test-mode: real` header MUST be present on the first line; absent header makes QA's accounting unable to count the test and is also a violation. |
+| **Smoke tests must not silently fall back to stubs** | A `test-mode: real` test that, when its env var is unset, switches to a mocked path instead of `test.skip` is a violation — it produces a green test on no real-traffic verification. The only acceptable pattern is `test.skip` with a visible `console.warn` log line. The reviewer flags this as Critical (P19 §3.5 + P20 §3.2). |
 
 ## Best Practices
 
@@ -221,6 +242,7 @@ When receiving review feedback: READ the feedback, VERIFY the issue exists in ac
 | **Verification failure** | Do not mark complete. Document failure, attempt fix. If unresolved, return blocked. |
 | **Library/API knowledge gap** | Search context7 for the library's documentation. If context7 lacks coverage, search Tavily for official docs, GitHub issues, or Stack Overflow answers. If both fail, document the gap as a blocker and return to hub. |
 | **Missing credential at runtime** | Return `STATUS: BLOCKED — MISSING_CREDENTIALS: <VAR_NAME>` with the variable name, its declared `purpose`, and the file:line where the code reads it. Do NOT commit any code that references a fabricated value. Do NOT modify `required_env`. The hub routes this to the coordinator, which asks the user to set the variable and re-dispatches. |
+| **Wire-format divergence between this story and a prior story** | When `api.md`'s `wire_format` for `(provider, method, path)` disagrees with the existing `tests/integration/_shared/<file>` covering the same endpoint (different auth mechanism, different field path, different content-type), do NOT modify the shared smoke test to match this story's block — the divergence may indicate that this story's planner block is wrong, or that the provider changed and other stories need updating too. HALT with `STATUS: BLOCKED — WIRE_FORMAT_DIVERGENCE: <provider>:<method>:<path>`, including a side-by-side excerpt of (a) this story's `api.md` wire_format, (b) the shared smoke test's request shape, and (c) the canonical block in `plan/cross-cutting/external-contracts/<provider>.md` if it exists. The hub routes to the planner. |
 
 ## Completion Contract
 
@@ -231,9 +253,11 @@ STATUS: COMPLETE
 STATUS: PARTIAL — [list ACs not yet addressed]
 STATUS: BLOCKED — [blocker description]
 STATUS: BLOCKED — BINDING_MISMATCH: [one-line diagnosis]
+STATUS: BLOCKED — MISSING_CREDENTIALS: [VAR_NAME]
+STATUS: BLOCKED — WIRE_FORMAT_DIVERGENCE: [provider]:[method]:[path]
 ```
 
-The hub uses this field to decide whether to proceed to code review. Only `STATUS: COMPLETE` triggers code review dispatch. `PARTIAL` and `BLOCKED` trigger re-dispatch or escalation without wasting a review cycle. `BLOCKED — BINDING_MISMATCH` is a contract-correction HALT — the hub revises the `acs_satisfied` binding and re-dispatches; the re-dispatch does NOT count as a review iteration. When returning BINDING_MISMATCH, follow the protocol in the **Binding-Mismatch HALT Protocol** section: include `Bound:`, `Observed:`, and `Suggested revision:` blocks below the STATUS line.
+The hub uses this field to decide whether to proceed to code review. Only `STATUS: COMPLETE` triggers code review dispatch. `PARTIAL` and `BLOCKED` trigger re-dispatch or escalation without wasting a review cycle. `BLOCKED — BINDING_MISMATCH` is a contract-correction HALT — the hub revises the `acs_satisfied` binding and re-dispatches; the re-dispatch does NOT count as a review iteration. When returning BINDING_MISMATCH, follow the protocol in the **Binding-Mismatch HALT Protocol** section: include `Bound:`, `Observed:`, and `Suggested revision:` blocks below the STATUS line. `BLOCKED — MISSING_CREDENTIALS` and `BLOCKED — WIRE_FORMAT_DIVERGENCE` route to the coordinator and the planner respectively, also without consuming a review iteration.
 
 Following the STATUS line, include:
 

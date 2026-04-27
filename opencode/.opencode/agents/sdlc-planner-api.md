@@ -26,7 +26,10 @@ You are the API Design Agent, responsible for defining per-story API contracts, 
 
 ## File Restrictions
 
-You may ONLY write to: `plan/user-stories/*/api.md`
+You may write to:
+- `plan/user-stories/*/api.md` (your primary artifact, one per story).
+- `.env.example` at the repo root (side-effect of declaring `required_env`; see Phase 2b).
+- `plan/cross-cutting/external-contracts/<provider>.md` (side-effect of producing verified `wire_format` blocks; see Phase 2c).
 
 Do not create or modify any other files.
 
@@ -132,6 +135,93 @@ When a variable is already present in `.env.example` from a prior story, append 
 
 **Contract with validator:** the plan validator (sdlc-plan-validator) cross-checks that every external host referenced anywhere in `api.md` has a matching `required_env` entry, and that `.env.example` contains no entries orphaned from any story. Missing declarations are a CRITICAL finding.
 
+### Phase 2c: Wire-Format Verification for External Endpoints
+
+For every endpoint in `api.md` whose host is **out-of-project** (an external provider — OpenRouter, Stripe, Supabase, an HTTP API at a hostname your team does not own), produce a verified `wire_format` block. The block proves that what the contract says we send is actually accepted by the live provider — closing the failure mode where every downstream gate validates against an internal document that turns out to be wrong.
+
+For each external endpoint, emit a `## Wire-Format Verification` block under the endpoint's section in `api.md` using this schema:
+
+```yaml
+wire_format:
+  method: POST
+  url: https://openrouter.ai/api/v1/chat/completions
+  auth:
+    mechanism: bearer | api-key-header | body-field | none
+    header: Authorization              # for bearer/api-key-header
+    field_path: $.api_key              # for body-field; JSONPath into the request body
+    value_source: env:OPENROUTER_API_KEY  # MUST reference a required_env name
+  headers:
+    Content-Type: application/json
+    # any other required headers (Accept, X-Provider-Version, etc.)
+  request_body_example: |
+    { "model": "google/gemma-4-26b-a4b-it:free",
+      "messages": [{ "role": "user", "content": "hi" }] }
+  response_shape_example: |
+    { "id": "...", "choices": [{ "message": { "content": "..." } }] }
+  verified_via:
+    mode: curl | provider-doc-quote | cassette
+    captured_at: 2026-04-22T14:30:00Z   # ISO 8601 UTC
+    evidence: |
+      # for mode: curl — the exact command and the resulting status line, redacted
+      curl -sS -X POST https://openrouter.ai/api/v1/chat/completions \
+        -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+        -H "Content-Type: application/json" \
+        -d '{"model":"...","messages":[{"role":"user","content":"hi"}]}'
+      → HTTP 200, response shape matched (id, choices[0].message.content present)
+    # for mode: provider-doc-quote — verbatim quote with URL and fetched_at
+    # for mode: cassette — path to recorded cassette and captured_at of the recording
+  pending: false                        # true only if mode: curl is required but env unavailable at plan time
+```
+
+**Three evidence modes — when to use each:**
+
+1. **`mode: curl`** (preferred). You execute one minimal real request against the endpoint and record the redacted command + response status + response shape match. Required when the corresponding `required_env` variable is set in your shell. Procedure:
+   - Read the variable name from the matching `required_env` entry's `name` field.
+   - Run `printenv <NAME>` to confirm the variable is set (non-empty). If unset, do NOT prompt the user, do NOT fabricate a value — set `pending: true` and use `mode: curl` with `pending: true` so the verification deferrs to execution time (the §3.2 smoke test will catch it).
+   - Issue ONE minimal request via the bash `curl` tool. Use the smallest body that the provider will accept (provider's "hello"/echo endpoint when one exists; otherwise the cheapest valid call). Capture the HTTP status line and a one-line shape summary of the JSON response (which top-level keys are present).
+   - **Redact secret values in `evidence:`.** Replace the variable expansion in the captured command with the literal `$<NAME>` (e.g., `Bearer $OPENROUTER_API_KEY`), never paste the resolved value. Never echo the response if it contains a credential.
+   - Record `captured_at` as the wall-clock UTC ISO timestamp of the curl execution.
+
+2. **`mode: provider-doc-quote`** (fallback only). Use only when `mode: curl` cannot be performed because the provider is unreachable from the planning environment (paid tier the user has not purchased; geo-restricted; network egress blocked). Record:
+   - A direct verbatim quote from the provider's canonical documentation page covering auth, request shape, and response shape.
+   - The full URL of that doc page.
+   - A `fetched_at` UTC ISO timestamp **within the last 90 days**. Older quotes are stale; fetch fresh docs.
+   - The story's `required_env` entry's `name` reference must still resolve to the auth variable named in the doc quote.
+
+3. **`mode: cassette`** (fallback). Use when the project already follows a cassette/contract-test convention (Pact, VCR-style recordings) and the cassette was captured against the real provider. Record the cassette path and the `captured_at` of the recording (within the same 90-day recency window).
+
+**Rules:**
+
+- **One block per external endpoint.** Endpoints sharing a base URL but with distinct paths/methods each get their own block.
+- **`auth.value_source` MUST tie to `required_env`.** A wire_format block whose `value_source` references a variable not in this story's `required_env` is a defect — both blocks must agree, or one is wrong.
+- **Never store live values.** `evidence:` shows the command shape with `$<NAME>` placeholders; never the resolved credential. `request_body_example` and `response_shape_example` use illustrative content, not captured production payloads.
+- **`pending: true` is acceptable only on `mode: curl`** when the env var is unset at plan time. Set it explicitly and note the unset variable in the planning return summary so the hub surfaces the gap. The §3.2 smoke test (executed at QA time, when the credential should be present) closes the gap.
+- **Endpoints with `host` that are in-project (e.g., your own backend at `api.example.com`)** do NOT get a `wire_format` block — the verification rationale is "real external provider, real wire," and an in-project endpoint is verified by the integration test suite directly.
+
+**Side-effect write: cross-story reuse via `plan/cross-cutting/external-contracts/<provider>.md`.** When you produce a `wire_format` block, also write or update `plan/cross-cutting/external-contracts/<provider>.md`. `<provider>` is the provider's canonical short identifier (lowercase, hyphenated — e.g., `openrouter`, `stripe`, `supabase`). The file aggregates every wire_format block produced for that provider across stories and is the canonical reuse artifact:
+
+```markdown
+# Provider: <provider-canonical-name>
+
+## Endpoint: POST /api/v1/chat/completions
+
+- introduced_by: US-004-photo-intake-identification
+- consumed_by: [US-004-photo-intake-identification]
+- last_verified_at: 2026-04-22T14:30:00Z
+- verified_via: curl
+
+```yaml
+wire_format:
+  ...the full block, identical to api.md...
+```
+```
+
+When a subsequent story declares a `wire_format` for the same `<provider>:<method>:<path>`, append the new story's ID to `consumed_by` and refresh `last_verified_at` if the verification was re-run; do NOT add a duplicate block. If the contract has materially changed (auth mechanism, request shape), append a new section with a date-suffixed heading (`## Endpoint: POST /api/v1/chat/completions (revised 2026-MM-DD)`) and explain the change in a one-line note. The old section is retained for incident triage.
+
+When a prior `wire_format` block already exists in `plan/cross-cutting/external-contracts/<provider>.md` for the exact `(method, path)` you are about to produce, AND its `last_verified_at` is within the last 90 days, AND the auth mechanism in the existing block matches your story's `required_env` declaration: reuse the block verbatim in your `api.md` and append your story to `consumed_by`. Skip the curl execution. This is the cross-story reuse path; record `verified_via.mode: cached-from-cross-cutting` with `cached_from: plan/cross-cutting/external-contracts/<provider>.md` and the original `captured_at`.
+
+**Contract with validator (§3 of plan-validator):** every external endpoint in `api.md` has a `wire_format` block with non-empty `verified_via.mode` and `verified_via.evidence`. `mode: curl` with `pending: true` is acceptable; `mode: provider-doc-quote` requires `fetched_at` within 90 days; `mode: cassette` requires `captured_at` within 90 days. Missing block, missing mode, or stale provider-doc-quote are all CRITICAL findings.
+
 ### Phase 3: Review with User
 
 - Present the per-story API design with rationale.
@@ -153,6 +243,10 @@ When a variable is already present in `.env.example` from a prior story, append 
 - [ ] `## Required Environment Variables` section present in `api.md` — either populated with `required_env` entries or `required_env: []` with rationale
 - [ ] Every external service the story integrates with has a corresponding `required_env` entry
 - [ ] `.env.example` at repo root updated with matching entries
+- [ ] Every external endpoint in `api.md` has a `## Wire-Format Verification` block with non-empty `verified_via.mode` and `verified_via.evidence` (or `pending: true` on `mode: curl` when env unset)
+- [ ] Each `wire_format.auth.value_source` references a name listed in this story's `required_env`
+- [ ] `plan/cross-cutting/external-contracts/<provider>.md` updated for every endpoint produced (new file, new section, or refreshed `consumed_by`/`last_verified_at` per the cross-story reuse rules)
+- [ ] No live credential values appear in `evidence:`, `request_body_example`, or `response_shape_example` — only `$<NAME>` placeholders for auth values
 - [ ] Self-validation passed before write
 
 
@@ -346,6 +440,16 @@ When a variable is already present in `.env.example` from a prior story, append 
 - Same pagination strategy for list endpoints.
 - Same error schema structure.
 - Same versioning approach (per architecture).
+
+### Wire-Format Verification Coverage
+
+- Every external endpoint has a `wire_format` block with a non-empty `verified_via.mode`.
+- `mode: curl` blocks have `evidence` showing the redacted command and the resulting status line, plus a `captured_at` timestamp. `pending: true` is set if and only if the corresponding `required_env` variable was unset at plan time.
+- `mode: provider-doc-quote` blocks have a verbatim quote, the canonical doc URL, and a `fetched_at` timestamp ≤ 90 days old.
+- `mode: cassette` blocks reference a real cassette path and a `captured_at` ≤ 90 days old.
+- `mode: cached-from-cross-cutting` blocks reference an existing `plan/cross-cutting/external-contracts/<provider>.md` section and copy its block verbatim.
+- Every `wire_format.auth.value_source: env:<NAME>` matches a `name` in this story's `required_env`.
+- No `evidence:`, `request_body_example`, or `response_shape_example` field contains a resolved credential value (regex check: no string of length ≥ 16 made of base64-shaped or hex characters under an `auth` key, no provider-prefix tokens like `sk-`, `pk_`, `xoxb-`).
 
 ## Validation Flow
 

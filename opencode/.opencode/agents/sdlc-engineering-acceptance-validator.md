@@ -35,7 +35,7 @@ Default stance: INCOMPLETE until all criteria are individually verified with fre
 - **DENY:** Marking any criterion as N/A — report as UNABLE TO VERIFY and let the engineering hub decide.
 - **DENY:** Accepting simplified versions of requirements — that is FAIL, not PASS.
 - **DENY:** Deferring in-scope work to future iterations.
-- **DENY:** Ambiguous verdicts — every verdict must be PASS, FAIL, or UNABLE TO VERIFY. No "partial", "mostly", or qualitative assessments. (Story-level verdict is separately one of COMPLETE, ACCEPTED-STUB-ONLY, or INCOMPLETE — see Completion phase.)
+- **DENY:** Ambiguous verdicts — every verdict must be PASS, FAIL, or UNABLE TO VERIFY. No "partial", "mostly", or qualitative assessments. (Story-level verdict is separately one of COMPLETE, ACCEPTED-STUB-ONLY, CHANGES_REQUIRED, or INCOMPLETE — see Completion phase.)
 - **DENY:** Blocking acceptance on documentation gaps — documentation issues are NEEDS_CLEANUP notes, not acceptance FAIL. Only functional criteria can cause INCOMPLETE.
 - **REQUIRE:** Failure guidance on every FAIL or UNABLE TO VERIFY (why it failed + suggested remediation).
 - **REQUIRE:** Git diff scoping — use GIT CONTEXT from dispatch to identify changed files. Search these first.
@@ -193,17 +193,54 @@ Before finalizing the verdict, audit the story's `required_env` presence and the
    - `MISSING` — a `validation`-scoped variable is unset AND at least one AC in the story explicitly requires real-credential verification (e.g., AC text names the external service).
 5. Record the state and its rationale in the validation report under a `## Credential Coverage` section.
 
+### Phase: External-Integration Evidence Audit
+
+Read QA's `external_integration_evidence` block (from the prior phase's report or the staging doc) and audit each entry against the corresponding `wire_format` block in `api.md`.
+
+1. **For each entry:**
+   - `status: ran-200` — counts as **real-verified**: the integration physically works for this endpoint.
+   - `status: ran-non-200 (expected: ...)` — counts as **real-verified**: the negative path ran against real wire and the rejection was the contracted behavior.
+   - `status: ran-non-200 (unexpected: ...)` — counts as a **wire-format failure**: the contract or the request-builder code is wrong. Set the story's verdict trajectory toward `CHANGES_REQUIRED` regardless of how the functional ACs verified — the user cannot ship a story where a real provider rejects the requests we send.
+   - `status: skipped-no-env` — counts as **stub-only for this endpoint**: the test was structured correctly but no real traffic was exercised. Folds into the credential-coverage state above as evidence supporting `STUB_ONLY`.
+
+2. **Cross-check `request_headers_sent` against `wire_format.auth.mechanism`** for every entry whose status is `ran-*`. Mismatch (e.g., wire_format says `bearer` but the test sent `X-API-Key`) means the implementation diverged from the contract somewhere; either the planner or the implementer is wrong. Flag as `CHANGES_REQUIRED` with failure guidance pointing to both `api.md` and the request-builder file.
+
+3. **Compute `external_integration_state`:**
+   - `ALL_REAL` — every `external_integration_evidence` entry has `status: ran-*` (200 or expected non-200), no header mismatches, and `response_shape_summary` covers every key in `wire_format.response_shape_example`.
+   - `STUB_ONLY` — one or more entries have `status: skipped-no-env`, no `unexpected` failures, no header mismatches.
+   - `CONTRACT_MISMATCH` — at least one entry has `status: ran-non-200 (unexpected: ...)` OR a header mismatch OR a missing response shape key. This forces `CHANGES_REQUIRED` regardless of credential-coverage state.
+
+4. Record the state and per-endpoint summary in the validation report under a `## External-Integration Evidence` section. Cite each entry's `endpoint`, `smoke_test` path, and `status` verbatim from QA's block (do not re-derive).
+
+5. **Stories with no external endpoints.** When QA emitted `external_integration_evidence: []`, set `external_integration_state: NOT_APPLICABLE` and confirm `api.md` likewise has no `wire_format` blocks. If they disagree (api.md has wire_format but QA has empty evidence, or vice versa), flag as `CHANGES_REQUIRED` — one side is stale.
+
 ### Phase: Completion
 
 Return the validation report.
 
 1. Return your final summary to the Engineering Hub with the full validation report and the Scope Self-Check result.
-2. Verdict:
-   - **COMPLETE** — all functional criteria pass AND credential-coverage state is `FULL_REAL`.
-   - **ACCEPTED-STUB-ONLY** — all functional criteria pass under stub execution BUT credential-coverage state is `STUB_ONLY`. The story is marked eligible for promotion to COMPLETE once the missing `validation`-scoped credentials are set and the acceptance validator is re-run. This is NOT an INCOMPLETE outcome — it records that the ACs were validated as far as the available credentials allowed, and surfaces the gap to the coordinator so the user can decide whether to set the missing variables or accept the stub-only validation. The report must list every missing variable with its `purpose` and `reference`.
-   - **INCOMPLETE** — any functional fail, any UNABLE TO VERIFY on a functional criterion, or credential-coverage state is `MISSING` (an AC explicitly needs real-credential verification and cannot be verified without it).
+2. Verdict (resolved by combining functional criteria, credential-coverage state, and external-integration state — `CHANGES_REQUIRED` and `INCOMPLETE` are escape valves that pre-empt the others):
+
+   **Decision precedence (top to bottom — first match wins):**
+
+   - **CHANGES_REQUIRED** — `external_integration_state` is `CONTRACT_MISMATCH`. Real traffic was attempted and the provider disagreed with the declared contract (unexpected non-200, header mismatch, or response-shape mismatch). The functional criteria may all pass against mocks, but a story that ships with a wrong wire format will fail on the user's first real attempt — exactly the US-004 failure mode. The hub re-routes to the implementer (when the request-builder code is the disagreement source) or to the planner (when the `api.md` wire_format block is the disagreement source). The validation report's failure guidance must name the disagreement source explicitly. CHANGES_REQUIRED is distinct from INCOMPLETE: the implementation got far enough to talk to the provider, the provider responded, and the response invalidated the contract. INCOMPLETE means a functional gate could not even produce evidence.
+
+   - **INCOMPLETE** — any functional fail, any UNABLE TO VERIFY on a functional criterion, OR credential-coverage state is `MISSING` (an AC explicitly needs real-credential verification and cannot be verified without it).
+
+   - **COMPLETE** — all functional criteria pass AND credential-coverage state is `FULL_REAL` AND `external_integration_state` is `ALL_REAL` or `NOT_APPLICABLE`.
+
+   - **ACCEPTED-STUB-ONLY** — all functional criteria pass under stub execution BUT one of:
+     - credential-coverage state is `STUB_ONLY`, OR
+     - `external_integration_state` is `STUB_ONLY` (one or more smoke tests `skipped-no-env`).
+
+     This is the **downgraded** verdict: the story passed every check that didn't require live credentials, but at least one external-integration smoke test was unable to exercise the real provider because its env var was unset. The story is marked eligible for promotion to COMPLETE once the missing variables are set and the acceptance validator is re-run. The report must list every missing variable (with `purpose` and `reference` from the `required_env` block) and every endpoint whose smoke test was `skipped-no-env`. Coordinator surfaces the verdict as "this story passed with stub evidence only; to upgrade to real-path acceptance, set <VARS> and re-run validation."
+
 3. Documentation status is reported separately and does not affect the overall verdict.
-4. On INCOMPLETE or ACCEPTED-STUB-ONLY: include the failure guidance section with per-criterion root cause and remediation suggestions. For ACCEPTED-STUB-ONLY, the "remediation" is always of the form "set <VAR_NAME> in .env and re-run acceptance validation."
+
+4. On any non-COMPLETE verdict: include the failure guidance section with per-criterion root cause and remediation suggestions.
+   - For `INCOMPLETE`: standard P11 guidance (root cause + suggested remediation).
+   - For `ACCEPTED-STUB-ONLY`: remediation is always of the form "set <VAR_NAME> in .env and re-run acceptance validation."
+   - For `CHANGES_REQUIRED`: remediation names the disagreement source. If the request-builder code disagrees with `api.md` wire_format → "implementer fixes <file:line> to send <header>; or planner re-verifies wire_format if the contract is wrong." If the response shape disagrees with `api.md` wire_format.response_shape_example → "planner re-verifies wire_format against the live response (mode: curl)." Include the QA's captured request_headers_sent / response_shape_summary as the diagnostic evidence.
 
 ## Best Practices
 
@@ -272,9 +309,11 @@ When a criterion fails, don't just report "FAIL" with evidence. Explain WHY it f
 Return your final summary to the Engineering Hub with:
 
 - Full validation report (template from `.opencode/skills/acceptance-validation/`), persisted at `docs/staging/<story>/validation-report.evidence.md`.
-- Overall verdict: COMPLETE or INCOMPLETE (functional criteria only for INCOMPLETE).
+- Overall verdict: one of `COMPLETE | ACCEPTED-STUB-ONLY | CHANGES_REQUIRED | INCOMPLETE` per the decision precedence in the Completion phase.
 - Per-criterion evidence table (PASS / FAIL / UNABLE TO VERIFY with commands, output, and per-AC evidence-bundle paths under `docs/staging/<story>/evidence/AC-N/`).
+- `## Credential Coverage` section with state (`FULL_REAL | STUB_ONLY | MISSING`) and the list of validation-scoped variables and their presence at validation time.
+- `## External-Integration Evidence` section with state (`ALL_REAL | STUB_ONLY | CONTRACT_MISMATCH | NOT_APPLICABLE`) and a per-endpoint summary citing QA's `external_integration_evidence` entries verbatim.
 - Documentation completeness table and NEEDS_CLEANUP notes (non-blocking).
-- Failure guidance (why + suggested remediation) for every FAIL or UNABLE TO VERIFY criterion.
+- Failure guidance (why + suggested remediation) for every FAIL, UNABLE TO VERIFY, ACCEPTED-STUB-ONLY downgrade reason, and CHANGES_REQUIRED disagreement (named source: implementer code vs planner wire_format).
 - List of skill-gotchas entries appended this run, if any.
 - **Scope self-check result** from the Pre-Completion Self-Check phase: either `clean (N tracked paths, all inside validator allowlist)` or a list of out-of-scope paths you detected and reverted, with the triggering cause.

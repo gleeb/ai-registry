@@ -519,8 +519,13 @@ Before Task tool dispatch to @sdlc-engineering-semantic-reviewer, read the QA ag
 **Steps:**
 - Task tool dispatch to @sdlc-engineering-acceptance-validator using the acceptance validation dispatch template. Populate GIT CONTEXT using `branch_name` and `base_commit` from `execution.yaml`.
 - Read the validation report.
-- If COMPLETE → proceed to Phase 5.
-- If INCOMPLETE → identify failing criteria and loop back to Phase 2 internally (do NOT dispatch `@sdlc-engineering`) with targeted fix dispatches to `@sdlc-engineering-implementer`. After remediation, commit the fixes: `checkpoint.sh git --commit --story {US-NNN-name} --message "Fix failing acceptance criteria" --phase 4`. Max 2 acceptance re-validations before escalating.
+- Route on the validator's verdict (one of `COMPLETE | ACCEPTED-STUB-ONLY | CHANGES_REQUIRED | INCOMPLETE`):
+  - **COMPLETE** → proceed to Phase 5.
+  - **ACCEPTED-STUB-ONLY** → proceed to Phase 5; the terminal hub return surfaces `done (accepted-stub-only)` with the list of unset `validation` variables and skipped-no-env smoke-test endpoints.
+  - **CHANGES_REQUIRED** → real traffic was attempted and the provider disagreed with the declared contract (P20 §3.5). Read the validator's failure-guidance "disagreement source" field:
+    - If the source is the **request-builder code** (the test sent `X-API-Key` but `wire_format.auth.mechanism: bearer`) → loop back to Phase 2 internally with a targeted implementer re-dispatch to fix the request builder. Counts as one acceptance re-validation.
+    - If the source is the **planner's `wire_format` block** (the live provider returned an unexpected status or a different response shape than `wire_format.response_shape_example`) → this is a plan defect that exceeds Phase 4 remediation scope. HALT and return `VERDICT: blocked` with `reason: PLAN_CHANGE_REQUIRED` (the existing P22 routing tag), carrying the validator's diagnostic (QA's `external_integration_evidence` entry, the disagreement summary, and the affected story+endpoint). The coordinator routes to the planner for `wire_format` re-verification; do NOT consume an acceptance re-validation slot for a plan defect.
+  - **INCOMPLETE** → identify failing criteria and loop back to Phase 2 internally (do NOT dispatch `@sdlc-engineering`) with targeted fix dispatches to `@sdlc-engineering-implementer`. After remediation, commit the fixes: `checkpoint.sh git --commit --story {US-NNN-name} --message "Fix failing acceptance criteria" --phase 4`. Max 2 acceptance re-validations before escalating.
 
 ### Phase 5: Documentation Integration
 
@@ -843,13 +848,13 @@ The first line of the return summary MUST be exactly one of:
   - `OPERATIONAL` — branch lifecycle, checkpoint drift, or sub-mode dispatch failure that the hub could not self-repair after one retry. Carries the failed operation's details.
   - `KNOWLEDGE_GAP` — library/framework/platform knowledge gap that survived implementer + cache + lib-cache and produced an unrecoverable failure outside Oracle's escalation envelope. Carries the search topic and what the hub already tried.
   - `PRODUCT_PLANNING` — missing plan artifact, wrong architecture, or cross-story dependency conflict the hub cannot resolve from existing artifacts. Carries the artifact gap and proposed planner action.
-  - `PLAN_CHANGE_REQUIRED` — the hub detected mid-execution that the user-requested change exceeds the active story's scope and the plan-change protocol must be entered. Carries the change description for planner triage.
+  - `PLAN_CHANGE_REQUIRED` — the hub detected mid-execution that the user-requested change exceeds the active story's scope and the plan-change protocol must be entered. Carries the change description for planner triage. Also issued when Phase 4 acceptance returns `CHANGES_REQUIRED` with disagreement source = planner's `wire_format` block (live provider returned a status or shape that contradicts `api.md`); carries QA's `external_integration_evidence` entry verbatim so the planner can re-verify the contract via curl.
 
 - `VERDICT: escalated` — the workflow halted on a condition that requires a user decision relayed via the coordinator. The coordinator presents the `reason` and structured options to the user. Recognized escalation reasons:
   - `ORACLE_ESCALATION_REPORT` — the Oracle returned an ESCALATION verdict (typically "fix requires out-of-scope edits" or "fundamental approach blocker"). Carries the Oracle report's structured options and root cause.
   - `STORY_REVIEW_CAP_HIT_NO_REMEDIATION` — the story-review iteration cap (3) hit and neither Oracle nor architect self-implementation produced a viable remediation. Carries the iteration chain and the planning-gotchas entry path.
   - `SEMANTIC_REVIEW_UNRELIABLE` — the semantic reviewer flagged the local model's work as fundamentally unreliable (NEEDS WORK with escalation flag). Carries both semantic-review reports.
-  - `ACCEPTANCE_CAP_REACHED` — Phase 4 acceptance returned INCOMPLETE three times. Carries all acceptance reports and remediation history.
+  - `ACCEPTANCE_CAP_REACHED` — Phase 4 acceptance returned INCOMPLETE or code-side `CHANGES_REQUIRED` three times. Carries all acceptance reports and remediation history. (Plan-side `CHANGES_REQUIRED` does not consume an acceptance slot — it routes via `PLAN_CHANGE_REQUIRED` instead.)
 
 ### Required summary body (after the verdict line)
 

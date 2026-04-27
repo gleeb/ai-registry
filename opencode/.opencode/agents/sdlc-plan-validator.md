@@ -145,6 +145,19 @@ The Plan Validator is a cross-plan validation agent with a Reality Checker philo
      - No `name` field uses a placeholder like `YOUR_KEY_HERE` or `TBD` — must be the real variable name. Placeholder = **CRITICAL**.
      - `purpose` does not quote, echo, or hint at any secret value. Value leakage = **CRITICAL**.
      - Every entry with `sensitivity: secret` has `scope` that does NOT include `unit-test-placeholder` alone (secrets cannot be purely placeholder-scoped — they must have real runtime or integration-test consumers). Secret with only `unit-test-placeholder` scope = **Important** (usually indicates a scope error).
+   - **Wire-Format Verification Completeness** (for `api.md` external endpoints):
+     - For every endpoint in `api.md` whose host is **out-of-project** (an external provider hostname), a `## Wire-Format Verification` block exists with non-empty `wire_format.verified_via.mode` AND non-empty `wire_format.verified_via.evidence`. Missing block on an external endpoint = **CRITICAL**.
+     - `verified_via.mode` is one of `curl | provider-doc-quote | cassette | cached-from-cross-cutting`. Any other value = **CRITICAL**.
+     - For `mode: curl` — `evidence` shows a redacted command (auth values rendered as `$<NAME>` placeholders, never resolved values) followed by a status line and a one-line shape summary, AND `captured_at` is a valid ISO 8601 UTC timestamp. Resolved credential value detected anywhere in the block (regex: provider-prefix tokens like `sk-`, `pk_`, `xoxb-`, `eyJ`; or any base64/hex string of length ≥ 16 under an `auth` key) = **CRITICAL** (secret leakage).
+     - For `mode: curl` with `pending: true` — `pending: true` is acceptable ONLY if the corresponding `required_env` variable's `name` is also unset at validation time (`printenv <NAME>` returns empty). If the variable IS set at validation time but `pending: true` was recorded, the planner skipped the verification it was supposed to do — flag as **Important** (re-run curl).
+     - For `mode: provider-doc-quote` — verbatim doc text is present, canonical URL is recorded, `fetched_at` is ISO 8601 UTC and ≤ 90 days from validation time. Stale quote = **CRITICAL** (re-fetch). Missing URL = **CRITICAL**.
+     - For `mode: cassette` — cassette path resolves to a file in the repo, `captured_at` is ISO 8601 UTC and ≤ 90 days from validation time. Missing path or stale recording = **CRITICAL**.
+     - For `mode: cached-from-cross-cutting` — `cached_from` references a path under `plan/cross-cutting/external-contracts/`, the referenced file exists and contains a section matching the endpoint's `(method, path)`, and the cached `captured_at` is ≤ 90 days. Missing file, missing section, or stale = **CRITICAL** (re-verify).
+     - `wire_format.auth.value_source: env:<NAME>` references a name that appears in this story's `required_env` block. Mismatch = **CRITICAL** (the wire format declares an auth variable the story has not declared as required).
+     - In-project endpoints (host owned by this project) are exempt — confirm they do not carry a `wire_format` block (a `wire_format` block on an in-project endpoint indicates the planner misclassified the host).
+   - **External-Contracts Cross-Cutting Side-Effect** (cross-checked here in per-story mode for the story's own contributions; full cross-story aggregation runs in Mode 3):
+     - For every `wire_format` block in this story's `api.md`, `plan/cross-cutting/external-contracts/<provider>.md` exists and contains a section matching the endpoint's `(method, path)` with this story's ID listed in `consumed_by`. Missing file or missing entry = **CRITICAL**.
+     - The cross-cutting block matches the `api.md` block byte-for-byte (modulo the `consumed_by`/`last_verified_at` metadata). Drift = **Important**.
 5. **Each check defaults to FAIL** — prove PASS with explicit evidence.
 6. On NEEDS WORK: produce a **guidance package** (see `references/planning-guidance-format.md`):
    - Reasoned corrections for each failing check (what the better artifact looks like and why)
@@ -189,6 +202,12 @@ The Plan Validator is a cross-plan validation agent with a Reality Checker philo
      - If `.env.example` exists, cross-check that every canonical entry has a matching entry in `.env.example` (with empty RHS). Missing or orphaned entries = **CRITICAL** — either `.env.example` is stale or a story declares a variable that will never be populated.
      - A variable declared by multiple stories must have identical `sensitivity` across all declarations. Disagreement (one story says `secret`, another says `config`) = **CRITICAL**.
      - A variable's `scope` is the union of all declaring stories' scopes; flag any aggregated scope that includes both `secret` sensitivity AND `unit-test-placeholder` as a scope conflict (**Important**) — the variable must be split into distinct variable names if a placeholder is genuinely needed for unit tests.
+   - **External-Contracts Cross-Story Consistency**:
+     - Aggregate every `wire_format` block across all `api.md` files keyed by `(provider, method, path)`.
+     - For each unique key, the `auth.mechanism`, `auth.header`/`auth.field_path`, and `auth.value_source` must match across all declaring stories. Disagreement = **CRITICAL** (one story is wrong about how the provider authenticates; the divergent block must be re-verified).
+     - For each unique key, `plan/cross-cutting/external-contracts/<provider>.md` has exactly one canonical section (or one canonical + dated revision sections). The canonical section's `consumed_by` lists every story that declares the same `(method, path)`. Missing story in `consumed_by` = **Important** (cross-cutting file is stale).
+     - Orphan `plan/cross-cutting/external-contracts/<provider>.md` entries (no story declares the endpoint) = **Important** — either retire the entry or the story that consumed it has been removed.
+     - The canonical section's `last_verified_at` is ≤ 90 days from validation time; older means cross-story reuse via `mode: cached-from-cross-cutting` cannot be granted. Stale canonical = **Important** (re-verify on next planning pass for any story touching this provider).
 5. For each check: document evidence and findings.
 6. On NEEDS WORK: produce a guidance package with systemic pattern analysis.
 7. Write report to `plan/validation/cross-validation-report.md`.
