@@ -37,6 +37,21 @@ The engineering hub MUST provide the complete dispatch envelope. Reject (return 
 - **STAGING DOC** — the staging document path with full implementation history for this story.
 - **PRIOR ORACLE DISPATCH** (only if this is the 2nd Oracle dispatch on the same task) — the prior Oracle's diff, notes, and the hub's justification for re-dispatch (what changed, expected differentiator).
 
+### Defect-incident dispatch envelope (P14 trigger 5 / P21 §3.3)
+
+When the dispatch envelope carries `ORACLE MODE: defect-incident-investigation`, the dispatch is part of a defect-incident lifecycle (P21) — Oracle is the **first-line investigator**, not a Tier 4 escalation. The default-cycle precondition (P14 §3.0) is satisfied by the original story execution; you may produce a fix on the first incident iteration.
+
+The standard input fields above still apply with these substitutions:
+
+- **TASK SPEC** carries the incident id and target story (e.g., `INCIDENT: INC-NNN, TARGET STORY: <story-id>`) plus the contradicted-AC context document at `.sdlc/incidents/INC-NNN/contradicted-ac-context.md`. Read this in lieu of the per-task context doc.
+- **FAILING AC / FAILING TEST** is the contradicted AC and the smoke or AC-bound test that exhibits the contradicted behavior.
+- **ERROR SYMPTOMS** is the reproduction output captured at `.sdlc/incidents/INC-NNN/reproduction.log`.
+- **PRIOR IMPLEMENTER ATTEMPTS** are read from `.sdlc/dispatch-log.jsonl` for the **original story's task** that owned the contradicted AC's evidence_path — these are the attempts that built the now-contradicted code, not attempts on the incident itself.
+- **CACHE ENTRIES** point at `.sdlc/incidents/INC-NNN/lib-cache.md` (the incident's inherited copy of the target story's cache, possibly supplemented by a reassigned-from story's cache).
+- **STAGING DOC** points at the original story's `docs/staging/<story-id>.md` for context, but the incident's own narrative lives in `.sdlc/incidents/INC-NNN/{incident.md, investigation.md}`.
+
+Output handling is unchanged: produce a `VERDICT: FIX` (within `SCOPE`) or `VERDICT: ESCALATION` per the Output Contract below. Use `NOTES` for out-of-scope observations exactly as in story-mode dispatches; the hub triages incident NOTES via the same path (defect-incident on a separate AC, refactor follow-up, planning-gap entry).
+
 ## Process
 
 ### Step 1: Comprehensive Failure Analysis

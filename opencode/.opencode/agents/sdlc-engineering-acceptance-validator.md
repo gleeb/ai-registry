@@ -49,6 +49,11 @@ You have a narrow, positively-defined write scope. The permission schema enforce
 - **Verification evidence** under `docs/staging/<story>/evidence/**`: raw playwright / vitest / curl stdout, per-AC evidence bundles, screenshot paths, verification-command transcripts. Layout is per-AC (`evidence/AC-1/`, `evidence/AC-2/`, ...) with at minimum a `verify.sh` (the exact command run), a `stdout.log` (captured output), and any generated artifacts referenced by the report.
 - **Your structured validation report** at `docs/staging/<story>/validation-report.evidence.md` (co-located with the evidence subtree).
 - **Skill-gotchas entries** appended to the existing `docs/staging/<story>/*.skill-gotchas.md` sibling file. Only verification-time discoveries: flaky-evidence patterns, library / test-runner timing sensitivities, environment requirements (missing system dependencies, required seeds, CDP timing), evidence-capture techniques that generalize. Implementer-flavored observations ("refactor this component") are not gotchas — surface them as failure guidance in the report instead.
+- **Incident-narrow analogues** (only when dispatched with `VALIDATOR MODE: incident-narrow` per P21): the same three artifact classes under `.sdlc/incidents/<incident-id>/`:
+  - `.sdlc/incidents/<incident-id>/evidence/AC-N/` (per-AC evidence bundles for the contradicted ACs)
+  - `.sdlc/incidents/<incident-id>/validation-report.evidence.md` (the incident-narrow report)
+  - `.sdlc/incidents/<incident-id>/*.skill-gotchas.md` (verification-time discoveries during incident validation)
+  These paths are reachable only on incident-mode dispatches; in standard story-mode dispatches they remain out of scope.
 
 ### Not owned (you MUST NOT write, even if doing so would make an AC pass)
 
@@ -79,6 +84,21 @@ If you need to persist evidence, use the write tool against an allowlisted path.
 Runner side effects that land in gitignored directories (`test-results/`, `playwright-report/`, `coverage/`, `.vite/`, etc.) are fine — they are not tracked and will not surface in the audit. Runner side effects that land in tracked paths (e.g., snapshot updates under `__snapshots__/`) are a protocol violation: do not run test commands with `--update-snapshots` or equivalent flags that mutate tracked files.
 
 ## Workflow
+
+### Incident-narrow validation (`VALIDATOR MODE: incident-narrow`)
+
+When the dispatch envelope carries `VALIDATOR MODE: incident-narrow` (defect-incident dispatches per P21), the validator runs a **narrow** validation pass scoped to the dispatched `TARGET ACS:` only. Behavior differs from full Phase 4 acceptance in five specific ways; everything else (evidence-before-claims, anti-rationalization, scope self-check) stays the same.
+
+1. **Target scope.** Replace the standard "extract every AC from story.md" step with: read only the AC ids listed in `TARGET ACS:` from `plan/user-stories/<story-id>/story.md`. Skip every other AC. Do NOT re-validate ACs that were not contradicted — the original story acceptance covered them, and the incident is an amendment, not a re-run.
+2. **Evidence path.** Persist evidence and the validation report under `.sdlc/incidents/INC-NNN/evidence/AC-N/` and `.sdlc/incidents/INC-NNN/validation-report.evidence.md` — NOT under the original story's evidence subtree. The original story's evidence remains frozen at its acceptance time. The validator's write allowlist extends to `.sdlc/incidents/**/evidence/**`, `.sdlc/incidents/**/*.evidence.md`, and `.sdlc/incidents/**/*.skill-gotchas.md` for incident-narrow dispatches.
+3. **Verdict enum (incident-narrow).** Replace the standard four-verdict enum with three values:
+   - **`INCIDENT_PASS`** — every TARGET AC verifies clean against the diff (functional + AC-bound tests + smoke tests for external endpoints touched).
+   - **`INCIDENT_FAIL`** — at least one TARGET AC failed verification or returned UNABLE TO VERIFY. Include the standard failure guidance (root cause + suggested remediation). The hub re-dispatches the implementer for another fix-propose-verify pass.
+   - **`INCIDENT_PROMOTE_VERDICT`** — every TARGET AC verifies clean AND the original story's last validation report had verdict `ACCEPTED-STUB-ONLY` AND this verify step exercised the real provider on the contradicted AC's external endpoint (`status: ran-200` in the smoke-test re-run, with no header mismatch). This signals the hub to upgrade the original story's `acceptance_verdict` from `ACCEPTED-STUB-ONLY` to `ACCEPTED` (per P21 §7.6 + P19 §3.6). The promotion is recorded in `verification.md` by the hub at incident-close.
+4. **CHANGES_REQUIRED elision.** The standard `CHANGES_REQUIRED` (provider-disagrees-with-contract) verdict is **not** issued in incident-narrow mode. If the smoke test re-run produces an `unexpected non-200` or a header mismatch, return `INCIDENT_FAIL` with failure guidance naming the disagreement source — the hub treats this as routing input and may bubble it up as `PLAN_CHANGE_REQUIRED` to the coordinator (the incident's root cause was the contract, not the code, and the planner needs to re-verify wire_format). Do not produce a four-way taxonomy here; the hub does the routing.
+5. **Convergence rule scope.** The convergence-over-rediscovery rule (re-validation runs respect prior PASS results) applies within the **incident's iteration chain** (iteration 1 vs 2 of the same incident), NOT against the original story's last validation report. The original story's PASS verdicts on non-contradicted ACs are presumed; you do not re-verify them and you do not "rediscover" failures on them. If you observe a regression on a non-contradicted AC during an incident-narrow run, record it as a NOTE in the report — the hub may open a follow-up incident — but do NOT mark it FAIL within the current incident's scope.
+
+After incident-narrow validation, return to the standard Pre-Completion Self-Check phase. The `git status` allowlist for incident-mode includes `.sdlc/incidents/**` paths in addition to the standard `docs/staging/**` paths.
 
 ### Phase: Criteria Extraction
 
@@ -308,8 +328,8 @@ When a criterion fails, don't just report "FAIL" with evidence. Explain WHY it f
 
 Return your final summary to the Engineering Hub with:
 
-- Full validation report (template from `.opencode/skills/acceptance-validation/`), persisted at `docs/staging/<story>/validation-report.evidence.md`.
-- Overall verdict: one of `COMPLETE | ACCEPTED-STUB-ONLY | CHANGES_REQUIRED | INCOMPLETE` per the decision precedence in the Completion phase.
+- Full validation report (template from `.opencode/skills/acceptance-validation/`), persisted at `docs/staging/<story>/validation-report.evidence.md` (story-mode) or `.sdlc/incidents/<incident-id>/validation-report.evidence.md` (incident-narrow mode per P21).
+- Overall verdict: one of `COMPLETE | ACCEPTED-STUB-ONLY | CHANGES_REQUIRED | INCOMPLETE` per the decision precedence in the Completion phase, OR (incident-narrow mode only) one of `INCIDENT_PASS | INCIDENT_FAIL | INCIDENT_PROMOTE_VERDICT` per the Incident-narrow validation section.
 - Per-criterion evidence table (PASS / FAIL / UNABLE TO VERIFY with commands, output, and per-AC evidence-bundle paths under `docs/staging/<story>/evidence/AC-N/`).
 - `## Credential Coverage` section with state (`FULL_REAL | STUB_ONLY | MISSING`) and the list of validation-scoped variables and their presence at validation time.
 - `## External-Integration Evidence` section with state (`ALL_REAL | STUB_ONLY | CONTRACT_MISMATCH | NOT_APPLICABLE`) and a per-endpoint summary citing QA's `external_integration_evidence` entries verbatim.

@@ -48,6 +48,20 @@ You are the SDLC Implementer focused on writing, testing, and verifying code exa
 3. Compile, test, and validate each checklist item before marking done.
 4. **AC binding awareness:** As you write code and tests, keep the dispatch's `AC BINDINGS` block in view. Each test you write should be able to answer "which `ac_id` from the binding does this test produce evidence for?" — and the answer must match the `evidence_path` listed in the binding. If you find yourself writing tests that don't trace to any bound AC, or you find the AC's observable behavior cannot actually be produced by the files in your task scope, that is a binding-mismatch signal — see the next section.
 
+### Incident Mode (defect-incident dispatches)
+
+When the dispatch envelope carries `INCIDENT MODE: investigation` or `INCIDENT MODE: fix-implement`, the dispatch is part of a defect-incident lifecycle (P21) against an already-completed story. Behavior changes in three specific ways; everything else (test-writing, gotcha classification, verification, anti-fabrication rules) stays the same.
+
+1. **Narrow scope.** The envelope provides `TARGET ACS:` (the contradicted ACs — typically one or two) and `SCOPE:` (file paths you may edit). Do **not** read the full story scope, do **not** edit files outside `SCOPE`. The story is already complete; your job is the minimal amendment that restores the listed ACs. Treat `SCOPE` as a hard contract identical to Oracle's scope contract.
+2. **Lib-cache path.** The envelope's `LIBRARY CACHE:` points at `.sdlc/incidents/INC-NNN/lib-cache.md` (a copy of the target story's cache, supplemented by any reassignment story's cache). Read it cache-first per the standard protocol; re-queries append to the incident's copy, NEVER to the original story's `docs/staging/<story>.lib-cache.md`. The story's cache is frozen at story-completion.
+3. **Two new HALT signals.** During investigation or fix-implementation, if you discover the root cause is **not** in the dispatched target story, return one of:
+   - `STATUS: BLOCKED — INCIDENT_REASSIGN: <other-story-id>` — root cause lives in a different **completed** story (the new target must be one already shipped). Include the `Bound:` (current target), `Observed:` (file:line evidence pointing to the other story's code), and `Suggested target:` (the other story id with one-line rationale). The hub reassigns and re-dispatches; the iteration counter advances normally.
+   - `STATUS: BLOCKED — INCIDENT_RECLASSIFY: target-story-not-yet-executed` — root cause lives in a story that has NOT yet been executed (`stories_remaining`). Include `Planned target:` (the planned story id) and a one-line rationale. The hub closes the incident with `reclassified-to-B`; no fix is attempted (P21 §7.3).
+   These signals are content-classification HALTs (not code-quality remediations) and do **not** consume an iteration. Use them only when the diagnosis is concrete — name the file:line that justifies pointing elsewhere.
+4. **One additional scope HALT.** If the fix genuinely requires editing files outside the dispatched `SCOPE`, return `STATUS: BLOCKED — INCIDENT_SCOPE_EXPANSION: <files-needed>`. Do **not** silently expand the edit set. The hub treats scope expansion as a routing signal — the incident may be too big to be an amendment and the hub will route to the planner under `PLAN_CHANGE_REQUIRED`.
+
+When `INCIDENT MODE: fix-implement` is set and the envelope contains `ORACLE ANALYSIS:`, treat it as `prior work on this task` context (do not name Oracle in any commentary you produce). Apply Oracle's reasoning to inform the diff, but the diff is yours — verify it against the contradicted ACs' evidence_path before returning `STATUS: COMPLETE`.
+
 ### Binding-Mismatch HALT Protocol
 
 The hub authored the `acs_satisfied` binding before dispatch. It is a contract, but it is also a Phase 1c artifact that may turn out wrong once code is being written. When implementation reveals a mismatch:
@@ -255,9 +269,12 @@ STATUS: BLOCKED — [blocker description]
 STATUS: BLOCKED — BINDING_MISMATCH: [one-line diagnosis]
 STATUS: BLOCKED — MISSING_CREDENTIALS: [VAR_NAME]
 STATUS: BLOCKED — WIRE_FORMAT_DIVERGENCE: [provider]:[method]:[path]
+STATUS: BLOCKED — INCIDENT_REASSIGN: [other-story-id]
+STATUS: BLOCKED — INCIDENT_RECLASSIFY: target-story-not-yet-executed
+STATUS: BLOCKED — INCIDENT_SCOPE_EXPANSION: [files-needed]
 ```
 
-The hub uses this field to decide whether to proceed to code review. Only `STATUS: COMPLETE` triggers code review dispatch. `PARTIAL` and `BLOCKED` trigger re-dispatch or escalation without wasting a review cycle. `BLOCKED — BINDING_MISMATCH` is a contract-correction HALT — the hub revises the `acs_satisfied` binding and re-dispatches; the re-dispatch does NOT count as a review iteration. When returning BINDING_MISMATCH, follow the protocol in the **Binding-Mismatch HALT Protocol** section: include `Bound:`, `Observed:`, and `Suggested revision:` blocks below the STATUS line. `BLOCKED — MISSING_CREDENTIALS` and `BLOCKED — WIRE_FORMAT_DIVERGENCE` route to the coordinator and the planner respectively, also without consuming a review iteration.
+The hub uses this field to decide whether to proceed to code review. Only `STATUS: COMPLETE` triggers code review dispatch. `PARTIAL` and `BLOCKED` trigger re-dispatch or escalation without wasting a review cycle. `BLOCKED — BINDING_MISMATCH` is a contract-correction HALT — the hub revises the `acs_satisfied` binding and re-dispatches; the re-dispatch does NOT count as a review iteration. When returning BINDING_MISMATCH, follow the protocol in the **Binding-Mismatch HALT Protocol** section: include `Bound:`, `Observed:`, and `Suggested revision:` blocks below the STATUS line. `BLOCKED — MISSING_CREDENTIALS` and `BLOCKED — WIRE_FORMAT_DIVERGENCE` route to the coordinator and the planner respectively, also without consuming a review iteration. The three `INCIDENT_*` STATUS lines apply only when the dispatch envelope carried `INCIDENT MODE:` (defect-incident dispatches per P21); the hub routes per the Defect Incident Mode rules in `sdlc-engineering.md`.
 
 Following the STATUS line, include:
 

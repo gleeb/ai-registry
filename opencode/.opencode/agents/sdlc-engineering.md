@@ -76,6 +76,10 @@ Note: `scaffold-project` skill is loaded internally by `@sdlc-engineering-scaffo
 4. **Skill paths:** Skills are located under `.opencode/skills/{skill-name}/`. Use this path for scripts, references, and templates (e.g. architect-execution-hub, project-documentation, sdlc-checkpoint, scaffold-project).
 5. **On-demand PinchTab (web app stories):** When the story is a web application and the architect needs to self-diagnose UI failures (Adaptive Recovery on UI tasks, stuck QA on browser verification, interpreting Pre-Flight browser evidence), load the PinchTab skill from `.opencode/skills/pinchtab/`. Do NOT load PinchTab at initialization — only when actively needed for diagnostics or self-repair.
 6. **One coordinator dispatch per story (end-to-end):** Each coordinator → engineering-hub dispatch corresponds to exactly one user story. The hub runs Phases 0a → 6 (or the scaffolding fast-path for `story_type: scaffolding`) to a terminal verdict and only then returns to the coordinator. Do NOT return mid-story progress summaries, do NOT solicit re-dispatch, and do NOT recommend the coordinator's next action — routing decisions are the coordinator's domain. Internal Phase 2 task-level dispatches (implementer → code-reviewer → QA, plus Oracle / DevOps / cache-curator where triggered) stay nested inside this single hub sub-session and never surface as coordinator-visible round-trips. The only terminal returns are the verdicts enumerated in **Completion Contract**.
+6a. **Dispatch modes (story | defect-incident | explanation-only):** Each coordinator dispatch carries a `DISPATCH MODE` directive. The default and dominant mode is `story` (Phases 0a → 6 as above). The other two modes are reset boundaries with their own lifecycles:
+   - `DISPATCH MODE: defect-incident` — runs the **Defect Incident Mode** lifecycle (see section below). One trip per incident, terminates on `incident-resolved`, `incident-reclassified-to-B`, `incident-reassigned`, `blocked`, or `escalated`.
+   - `DISPATCH MODE: explanation-only` — read-only dispatch for Category A how-to. Read the story.md and AC, compose a 2–6 sentence explanation, return as text. Do NOT touch source code, do NOT open an incident, do NOT update any checkpoint. The only terminal verdict is `VERDICT: explanation-delivered`.
+   The three modes are mutually exclusive within a single hub sub-session. Mode is determined at dispatch entry and does not change mid-session.
 7. **Coordinator handoff:** When the workflow reaches a terminal verdict (per item 6), return to the coordinator with a structured summary (see **Completion Contract**).
 
 ---
@@ -582,6 +586,162 @@ Before Task tool dispatch to @sdlc-engineering-semantic-reviewer, read the QA ag
 
 ---
 
+## Defect Incident Mode
+
+Activated when the coordinator's dispatch envelope contains `DISPATCH MODE: defect-incident`. This mode is a focused, time-bounded amendment against an already-completed story; it is **not** a story re-run and **not** a new story. The story's `completed_phases` is never modified; the incident is recorded as an annotation, not a re-completion.
+
+### Activation envelope (required from coordinator)
+
+```
+DISPATCH MODE: defect-incident
+INCIDENT: INC-NNN
+TARGET STORY: <story-id>
+REPORTED BEHAVIOR: <user message verbatim>
+CONTRADICTED ACS: <AC id(s) — typically one or two>
+CLASSIFICATION EVIDENCE: <one-line justification used in the coordinator's TRIAGE preamble>
+```
+
+If any field is missing, return `VERDICT: blocked` with `reason: OPERATIONAL` and the missing field listed. Do not infer fields from elsewhere — the coordinator owns the dispatch envelope.
+
+### Lifecycle (5 steps, iteration-counted)
+
+The lifecycle runs as a **single iteration** of investigate-propose-verify. The iteration cap is **3** (mirrors the per-task review cap and the Phase 3 story-review cap). Hitting the cap routes per the Escalation Routing rules below.
+
+**Step 0 — Initialize incident state.** Run `checkpoint.sh execution --incident-init --id INC-NNN --story <story-id>`. The script:
+- Creates `.sdlc/incidents/INC-NNN/` with empty `incident.md`, `investigation.md`, `fix-plan.md`, `verification.md`, and `incident.yaml` (status: `open`, iterations: 0, oracle_consulted: false).
+- Reads the **target story's lib-cache** (`docs/staging/<story-id>.lib-cache.md`) and copies it to `.sdlc/incidents/INC-NNN/lib-cache.md` as the incident's starting cache (per P21 §7.4 — incidents inherit, never cold-start). Subsequent re-queries during investigation append to the incident's copy, not the story's.
+- Reads the target story's `acs_satisfied` bindings from each per-task context doc and writes a compact `contradicted-ac-context.md` with the contradicted AC's full text, evidence_path (implementation + test files), and evidence_class.
+
+Populate `incident.md` from the dispatch envelope (reporter, date = `opened_at`, reported behavior, classification evidence, contradicted ACs, target story).
+
+**Step 1 — Reproduce.** Run `checkpoint.sh execution --incident-update --id INC-NNN --status investigating`.
+
+Reproduce the reported behavior against real code. Three sub-cases by integration shape:
+
+1. **Local logic / UI bug** (no `wire_format` block on the contradicted AC's evidence_path): run the AC's existing tests and any Phase 2 smoke commands. If the bug reproduces in tests, capture the failing-test output as `.sdlc/incidents/INC-NNN/reproduction.log`. If the bug only reproduces in the running app, capture the manual reproduction steps (with browser console output via PinchTab if available) into the same file.
+2. **External-integration bug** (the contradicted AC's evidence_path imports a request-builder targeting an `api.md` external host): re-run the story's `tests/integration/<endpoint-slug>.smoke.test.ts` against the live provider per P20. Required env vars come from the target story's `wire_format.auth.value_source: env:<NAME>`. If any are unset, return `VERDICT: blocked` with `reason: MISSING_CREDENTIALS` (same as Phase 0a) — do **NOT** reproduce against a stub (P21 §3.2 step 1 + P19).
+3. **Cannot reproduce.** If the behavior cannot be reproduced after good-faith attempts (the AC's tests pass, the smoke test passes, manual reproduction does not exhibit the reported behavior), set `incidents[INC-NNN].status: not_reproduced`. Return `VERDICT: blocked` with `reason: PRODUCT_PLANNING` and a body listing what was tried — the coordinator decides whether to ask the user for clarification (e.g., browser console screenshot, exact reproduction steps) and re-dispatch with augmented detail.
+
+Append the reproduction findings to `investigation.md` under `## Reproduction`.
+
+**Step 2 — Investigate.** Increment iteration: `checkpoint.sh execution --incident-update --id INC-NNN --iterations N`.
+
+Decide between Oracle (first-line, conditional per **P14 trigger 5**) and the implementer:
+
+- **Oracle as first-line investigator** when ANY of:
+  - The contradicted AC involves an external integration (the target story's `api.md` declares a `wire_format` block on the affected endpoint).
+  - The reproduced behavior indicates a cross-cutting contract mismatch (wrong auth mechanism, wrong envelope, wrong serialization).
+  - The original story execution consumed ≥ 8 doc queries on this AC's task or ≥ 3 implementer retries (read from `.sdlc/dispatch-log.jsonl` for the original story).
+
+  When any condition is true, dispatch `@sdlc-engineering-oracle` per the standard Oracle envelope (`oracle-dispatch-template.md`) with the additions: `ORACLE MODE: defect-incident-investigation`, `INCIDENT: INC-NNN`, the **contradicted AC's full text and evidence_path**, **all prior implementer attempts on the original task** (read from the dispatch log), and the **incident's lib-cache** as `CACHE ENTRIES`. Set `oracle_consulted: true` in `incident.yaml`. The default-cycle precondition (P14 §3.0) is **satisfied by the original story execution**; Oracle may dispatch on iteration 1.
+
+- **Implementer first** for all other defect shapes (local logic bugs, UI regressions, simple state-machine bugs). Standard implementer dispatch with the **incident dispatch envelope** added:
+  ```
+  INCIDENT MODE: investigation
+  INCIDENT: INC-NNN
+  TARGET STORY: <story-id>
+  CONTRADICTED ACS: <ac-id(s)>
+  TARGET ACS: <ac-id(s)>      # narrow scope — only these ACs in play
+  REPRODUCTION LOG: .sdlc/incidents/INC-NNN/reproduction.log
+  CONTRADICTED AC CONTEXT: .sdlc/incidents/INC-NNN/contradicted-ac-context.md
+  LIBRARY CACHE: .sdlc/incidents/INC-NNN/lib-cache.md
+  ```
+  The implementer reads only the contradicted AC's evidence_path files (not the full story scope), produces a focused diagnosis + diff plan, and writes notes to `investigation.md` via the hub (the implementer returns the notes inline in its completion message; the hub appends).
+
+Append working notes to `investigation.md` under `## Investigation iteration N` (Oracle's analysis or implementer's diagnosis).
+
+**Step 2.5 — Reassignment / reclassification check** (per P21 §7.3). Read the implementer/Oracle return for two structured signals:
+
+- **`INCIDENT REASSIGN: <other-story-id>`** — investigation found the root cause lives in a **different completed story**. Pre-conditions: the other story is in `coordinator.yaml`'s `stories_done`. Action:
+  1. Run `checkpoint.sh execution --incident-update --id INC-NNN --target-story <other-story-id> --reassigned-from <original-target>`. The script `git mv`s the artifact directory metadata if needed and records the originating story for traceability.
+  2. Append to `incident.md`: `## Reassignment — root cause in <other-story-id> (originated from observation against <original-target>)`.
+  3. Read `<other-story-id>`'s lib-cache (`docs/staging/<other-story-id>.lib-cache.md`) and append it to `.sdlc/incidents/INC-NNN/lib-cache.md` (per P21 §7.4 — supplement, do not replace).
+  4. Re-run Step 2 (Investigation) once with the new target. The iteration counter advances normally — reassignment does not reset it (P21 §7.5).
+
+- **`INCIDENT RECLASSIFY: target-story-not-yet-executed`** — investigation found the behavior depends on a story in `stories_remaining`, not in `stories_done`. The implementer/Oracle return MUST include the target story id and a one-line rationale. Action:
+  1. Run `checkpoint.sh execution --incident-update --id INC-NNN --status reclassified-to-B --verdict reclassified-to-B`.
+  2. Append to `incident.md`: `## Reclassification — depends on <planned-story-id>; not a defect against <original-target>`.
+  3. **Do NOT proceed to Step 3 (Propose fix).** No fix is attempted — issuing a defect-fix against unbuilt code is meaningless (P21 §7.3).
+  4. Return `VERDICT: incident-reclassified-to-B` with `reason: <planned-story-id>`. The coordinator delivers the Category B response to the user.
+
+Neither signal is required output. If neither appears, proceed to Step 3.
+
+**Step 3 — Propose fix.** Implementer (the same one from Step 2 if the implementer was first-line, or a fresh dispatch after Oracle's analysis) writes the minimal diff to restore the contradicted ACs. Standard implementer dispatch with `INCIDENT MODE: fix-implement` and the same envelope as Step 2 plus:
+```
+ORACLE ANALYSIS: <Oracle's ROOT CAUSE + EXPLANATION sections, verbatim, if Oracle ran in Step 2>
+SCOPE: <comma-separated file paths the implementer is authorized to edit; defaults to the contradicted AC's evidence_path + any test files thereon>
+```
+
+Append the diff plan and rationale to `fix-plan.md`. The fix MUST be minimal: only files within `SCOPE` may be edited. If the implementer determines the fix requires out-of-scope edits, it returns `STATUS: BLOCKED — INCIDENT_SCOPE_EXPANSION: <files>`; the hub treats this as the **scope-growth signal** described in step 5 below.
+
+After implementer return, run code review on the diff narrowed to the contradicted ACs:
+
+- Dispatch `@sdlc-engineering-code-reviewer` with the standard envelope + `INCIDENT MODE: narrow-review`, `CONTRADICTED ACS: <ac-id(s)>`, and `INCIDENT: INC-NNN`. The reviewer evaluates ONLY the contradicted ACs' AC Traceability and the diff's alignment with them — not the whole story. Iteration handling mirrors per-task review (re-dispatch implementer on Changes Required, max 3 iterations on the same defect before triggering the standard Adaptive Recovery / Oracle escalation paths under the per-task cap rules already in §**Oracle Escalation Policy**).
+
+If the diff is approved, proceed to Step 4. If iteration count for the incident exceeds **3** without an approved diff, escalate per **Escalation Routing** below.
+
+**Step 4 — Verify.** The verify step replaces full Phase 4 acceptance with a narrow pass scoped to the contradicted ACs.
+
+1. Re-run the AC-bound tests for the contradicted ACs. Read each AC's `evidence_path` from the contradicted-ac-context.md and run the matching test files (`vitest run <path>` / equivalent). Capture stdout to `.sdlc/incidents/INC-NNN/verification.md` under `## AC test re-run`.
+2. **External-integration verify (when applicable).** If any contradicted AC has `evidence_class: real` or the AC's evidence_path imports a request-builder targeting an external host, re-run the story's `tests/integration/<endpoint-slug>.smoke.test.ts` against the live provider (P20 §3.2). Append the smoke-test stdout to `verification.md` under `## Real-traffic smoke test`.
+3. Dispatch `@sdlc-engineering-acceptance-validator` with the **incident dispatch envelope**:
+   ```
+   VALIDATOR MODE: incident-narrow
+   INCIDENT: INC-NNN
+   TARGET ACS: <contradicted-ac-id(s)>
+   PRIOR STORY VERDICT: <COMPLETE | ACCEPTED-STUB-ONLY | … from the target story's last validation report>
+   ```
+   The validator validates ONLY the listed ACs and produces a `validation-report.evidence.md` under `.sdlc/incidents/INC-NNN/` (NOT under the original story's evidence subtree — the incident is a separate artifact). The validator returns one of `INCIDENT_PASS`, `INCIDENT_FAIL`, or `INCIDENT_PROMOTE_VERDICT` (the latter when the target story's prior verdict was `ACCEPTED-STUB-ONLY` and this verify step produced real-traffic evidence per P21 §7.6 / P19).
+
+4. Handle validator verdict:
+   - **`INCIDENT_PASS`** → proceed to Step 5 (Close).
+   - **`INCIDENT_FAIL`** → Increment iteration counter. If still under cap (3), re-dispatch implementer with the validator's failure guidance for another fix-propose-verify pass. If at cap, escalate per **Escalation Routing**.
+   - **`INCIDENT_PROMOTE_VERDICT`** → proceed to Step 5; the close step records the promotion (see step 5 sub-rule).
+
+**Step 5 — Close.**
+
+1. Run `checkpoint.sh execution --incident-update --id INC-NNN --status resolved --verdict resolved`.
+2. **Story verdict promotion (per P21 §7.6 + P19 §3.6).** If the validator returned `INCIDENT_PROMOTE_VERDICT`, also run `checkpoint.sh execution --story <target-story-id> --acceptance-verdict ACCEPTED` (upgrade from `ACCEPTED-STUB-ONLY`). Record the upgrade in `verification.md` under `## Verdict promotion: ACCEPTED-STUB-ONLY → ACCEPTED`.
+3. Annotate the target story's `story.md` with an `## Incidents` block (or append to it if already present): `- INC-NNN — <one-line summary>; resolved <date>; evidence: .sdlc/incidents/INC-NNN/verification.md`. The annotation is the only edit to the story's directory; `completed_phases` and the original verdict remain untouched (the verdict promotion is a distinct field).
+4. Commit the fix on the target story's branch — or on `main` directly if the target story is already merged. Use commit message prefix `[INC-NNN] <subject>` for grep-ability per P21 §6 risk mitigation. Run `checkpoint.sh git --commit --story <target-story-id> --message "[INC-NNN] <subject>" --phase incident`.
+5. Return `VERDICT: incident-resolved` to the coordinator with the structured body described in **Completion Contract** below.
+
+#### Scope-growth signal (incident exceeds amendment scope)
+
+If during Step 3 or Step 4 the diff plan grows beyond the one-or-two-AC bound — the implementer returns `STATUS: BLOCKED — INCIDENT_SCOPE_EXPANSION`, the validator returns failures on ACs that were not in the original CONTRADICTED ACS list, or the fix introduces new ACs — the incident is no longer an amendment. It is a scope delta. Action:
+
+1. Run `checkpoint.sh execution --incident-update --id INC-NNN --status escalated --verdict scope-expansion`.
+2. Return `VERDICT: blocked` with `reason: PLAN_CHANGE_REQUIRED` and a body containing the original incident envelope + the implementer's / validator's scope-expansion details + the suggested new ACs. The coordinator routes to the planner under the plan-change protocol; the planner decides whether to amend the existing story or create a new story.
+
+#### Escalation Routing (incident iteration cap = 3)
+
+When the iteration counter would exceed 3 without an approved-and-verified fix, classify the dominant unresolved finding:
+
+- **External-integration / contract-shape findings** → if Oracle has not already run on this incident, dispatch `@sdlc-engineering-oracle` (this is the **explicit escalation slot** within the incident; counts as the per-task Oracle dispatch). On Oracle's verdict: `FIX` → re-run Step 3/4 with Oracle's diff (one more iteration permitted, marked as `oracle-implemented`); `ESCALATION` → return `VERDICT: escalated` with `reason: ORACLE_ESCALATION_REPORT` and the report attached.
+- **Local logic / UI / state-machine findings** → return `VERDICT: escalated` with `reason: STORY_REVIEW_CAP_HIT_NO_REMEDIATION` (taxonomy alias — incident-cap-hit; the coordinator's user-facing flow is the same as the story-review cap path). Include the iteration chain and all implementer / reviewer reports.
+
+The per-story Oracle soft cap (P14 §3.0 — 3 across the story) is **shared** between the original story execution and any incidents against it; if the original execution already consumed 3 Oracle dispatches, an incident's Oracle dispatch requires coordinator approval. Track via the dispatch log.
+
+### Defect-incident verdict enum (extends the story-mode Completion Contract)
+
+Defect-incident dispatches return one of:
+
+- `VERDICT: incident-resolved` — fix shipped, contradicted ACs verified, story annotated, commit on `main` (or target branch). Required body: `INCIDENT: INC-NNN`, `TARGET STORY: <id>`, fix summary (one paragraph), evidence path (`.sdlc/incidents/INC-NNN/verification.md`), and `VERDICT_PROMOTION: <none | ACCEPTED-STUB-ONLY → ACCEPTED>` to surface the P21 §7.6 promotion to the coordinator.
+- `VERDICT: incident-reassigned` — reassignment via Step 2.5 routed to a different completed story; sub-flavor is `incident-resolved` or `blocked` depending on outcome at the new target. Required body: `INCIDENT: INC-NNN`, `REASSIGNED FROM: <original>`, `REASSIGNED TO: <new>`, plus the `incident-resolved` or `blocked` body for the underlying outcome.
+- `VERDICT: incident-reclassified-to-B` — reclassification via Step 2.5 because the behavior depends on a not-yet-executed story. Required body: `INCIDENT: INC-NNN`, `PLANNED STORY: <id>`, one-line rationale.
+- `VERDICT: blocked` — same `reason:` taxonomy as story mode (`MISSING_CREDENTIALS`, `OPERATIONAL`, `KNOWLEDGE_GAP`, `PRODUCT_PLANNING`, `PLAN_CHANGE_REQUIRED`). For incidents, `MISSING_CREDENTIALS` typically arises in Step 1 reproduction; `PLAN_CHANGE_REQUIRED` is the scope-growth signal.
+- `VERDICT: escalated` — Oracle ESCALATION REPORT, iteration cap hit without remediation, or per-story Oracle soft cap hit. Same taxonomy as story mode; the coordinator routes to the user.
+
+### Boundaries (defect-incident specific)
+
+- **DENY** entering Phase 1a/1b/1c/2/3/3b/4/5/6 from defect-incident mode. Those phases are story-execution scope; incidents have their own 5-step lifecycle. The standard Phase 0a credential gate is **not** run upfront — credentials are checked on-demand at Step 1 (Reproduce) for external-integration incidents, because incidents that touch only local code do not need them.
+- **DENY** modifying the target story's `completed_phases` or `acceptance_verdict` outside the verdict-promotion path of Step 5 sub-rule 2. Incidents are amendments; `completed_phases` is immutable from incident mode, and `acceptance_verdict` only ever moves forward (`ACCEPTED-STUB-ONLY → ACCEPTED`), never backward.
+- **DENY** widening the incident's CONTRADICTED ACS list during execution. Adding ACs is a scope-growth signal; route via `PLAN_CHANGE_REQUIRED` (see Scope-growth signal above) rather than absorbing the new ACs into the current incident.
+- **DENY** re-running the cache-curator on incident dispatch. The incident inherits the target story's lib-cache (P21 §7.4); re-querying happens only on a per-library justification basis, identical to the implementer's standard re-query path. Cold-start curator dispatches in incident mode are wasted compute.
+- **DENY** filing a Category D as an incident. Category D dispatches arrive at the planner, not the engineering hub; if a `DISPATCH MODE: defect-incident` envelope appears for a behavior the hub determines is genuinely outside any completed story (no `target story` candidate), return `VERDICT: blocked` with `reason: PRODUCT_PLANNING` — the coordinator misclassified.
+
+---
+
 ## Review Cycle
 
 ### Per-Task Cycle
@@ -852,9 +1012,13 @@ The first line of the return summary MUST be exactly one of:
 
 - `VERDICT: escalated` — the workflow halted on a condition that requires a user decision relayed via the coordinator. The coordinator presents the `reason` and structured options to the user. Recognized escalation reasons:
   - `ORACLE_ESCALATION_REPORT` — the Oracle returned an ESCALATION verdict (typically "fix requires out-of-scope edits" or "fundamental approach blocker"). Carries the Oracle report's structured options and root cause.
-  - `STORY_REVIEW_CAP_HIT_NO_REMEDIATION` — the story-review iteration cap (3) hit and neither Oracle nor architect self-implementation produced a viable remediation. Carries the iteration chain and the planning-gotchas entry path.
+  - `STORY_REVIEW_CAP_HIT_NO_REMEDIATION` — the story-review iteration cap (3) hit and neither Oracle nor architect self-implementation produced a viable remediation. Carries the iteration chain and the planning-gotchas entry path. Reused by **defect-incident mode** as the alias for incident-iteration-cap-hit (3 iterations without an approved-and-verified fix on a local-logic / UI / state-machine defect, where Oracle is not the appropriate first-line route).
   - `SEMANTIC_REVIEW_UNRELIABLE` — the semantic reviewer flagged the local model's work as fundamentally unreliable (NEEDS WORK with escalation flag). Carries both semantic-review reports.
   - `ACCEPTANCE_CAP_REACHED` — Phase 4 acceptance returned INCOMPLETE or code-side `CHANGES_REQUIRED` three times. Carries all acceptance reports and remediation history. (Plan-side `CHANGES_REQUIRED` does not consume an acceptance slot — it routes via `PLAN_CHANGE_REQUIRED` instead.)
+
+- `VERDICT: incident-resolved` / `incident-reassigned` / `incident-reclassified-to-B` — defect-incident mode terminal verdicts (see **Defect Incident Mode** above for full bodies and required fields). These verdicts only ever appear when the dispatch envelope carried `DISPATCH MODE: defect-incident`; they never appear from a story-mode dispatch.
+
+- `VERDICT: explanation-delivered` — explanation-only mode terminal verdict. The body contains the prose explanation produced for the user, the `<story-id>` and `<ac-id>` it references, and nothing else. No code edits, no checkpoint updates, no incident artifacts.
 
 ### Required summary body (after the verdict line)
 

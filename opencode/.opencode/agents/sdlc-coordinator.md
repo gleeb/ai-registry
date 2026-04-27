@@ -81,6 +81,9 @@ Command overrides:
 - "add env var <NAME>" / "register credential <NAME>" / "add <provider> api key" → `@sdlc-planner` with `DIRECTIVE: CREDENTIAL_REGISTRATION` (see Credential Registration Routing below).
 - "bootstrap env vars" / "bootstrap credentials" → `@sdlc-planner` with `DIRECTIVE: CREDENTIAL_REGISTRATION, MODE: bootstrap` (for projects with no `required_env` declarations or `.env.example` yet).
 
+Triage trigger (state-orthogonal, evaluated before routing table above):
+- Any user message that **describes an observed behavior against the running system** ("is X supposed to work?", "when I do X, Y happens", "I don't see X", "I think X is broken", "is X implemented?", "when will X be done?") → enter **User-Report Triage** (see section below) BEFORE consulting the routing table. Triage runs independently of project state and may produce any of four outcomes (A/B/C/D) that route differently from a normal work request. If the message also asks to start/continue work on a project unambiguously, finish triage first; the work request is the action attached to the confirmed classification.
+
 When state is ambiguous:
 1. If no checkpoint exists and the user's intent is unclear, ask ONE disambiguating question: "Should I (a) start/continue planning, or (b) begin/resume implementation?"
 
@@ -141,6 +144,129 @@ Procedure:
 - **DENY** writing to `plan/**`, `api.md`, `.env.example`, or `required-env.md` directly from the coordinator. All such writes go through the planner.
 - **DENY** touching `.env` in any way. `.env` is user-owned, local, gitignored.
 
+## User-Report Triage (`triage-user-report`)
+
+Triggered by the **Triage trigger** in the routing table. The user is asking about behavior — not requesting work. The classification is the deliverable; the action follows from it.
+
+The triage protocol exists because user reports may map to any of four outcomes that route differently:
+- **A — Already implemented:** the feature exists; the user needs explanation or a how-to.
+- **B — Planned for future:** the feature is in `stories_remaining` but not yet executed; the user needs a timeline.
+- **C — Defect against completed story:** the behavior contradicts an AC the story claimed to satisfy; this opens a `defect-incident` dispatch into `@sdlc-engineering`.
+- **D — Plan gap:** no story (completed or planned) covers this behavior; this routes to the planner for plan-change triage (scope expansion).
+
+The procedure is **inference-first, user-confirm-second**. The user often does not know which story a behavior belongs to (and in Category D no story exists yet). Inference + cheap confirmation replaces the impossible "ask the user for the story id."
+
+### Procedure
+
+Execute these steps in order before producing any user-facing content:
+
+1. **Read the plan inventory.**
+   - `plan/user-stories/*/story.md` (titles, ACs, dependency manifests).
+   - `plan/cross-cutting/required-env.md` and `plan/cross-cutting/acceptance-map.md` if present.
+   - `.sdlc/coordinator.yaml` (`stories_done`, `stories_remaining`, `current_story`).
+   - `.sdlc/execution.yaml` if it exists (current `incidents:` list — see step 2 sub-rule on user-referenced merging).
+
+2. **Infer the target story or non-story.**
+   - Match behavioral keywords from the user's message against story titles, AC text, and task descriptions. Use AC→task mappings if present (P16) to narrow to AC-level matches.
+   - Produce a ranked shortlist of 1–3 candidate stories. Maintain a `null` candidate for "this might be outside the plan entirely."
+   - **User-referenced incident merge:** If the user's message explicitly references an existing incident (`INC-NNN`) or an existing report ("the same thing as the one I reported about photo upload"), and that incident is `open | investigating | fix-proposed | verifying` in `.sdlc/execution.yaml`, treat the new report as an additional reporter entry on that incident — skip classification and dispatch the engineering hub with `INCIDENT MODE: append-reporter, INCIDENT: INC-NNN, REPORTER_NOTE: <user verbatim>`. Do **NOT** scan all incidents proactively trying to match — only act on explicit user references.
+
+3. **Classify into exactly one of A / B / C / D.**
+   - **A — Already implemented:** at least one candidate story is in `stories_done` AND the described behavior maps to an AC that was accepted. Evidence: the candidate story's `completed_phases` contains 6 (or its acceptance verdict is `COMPLETE` / `ACCEPTED-STUB-ONLY`) AND the AC text covers the user's described behavior.
+   - **B — Planned for future:** at least one candidate story exists in `stories_remaining` but has not yet reached execution. Evidence: the story manifest exists but is not in `stories_done`.
+   - **C — Defect against completed story:** at least one candidate story is in `stories_done` AND the described behavior **contradicts** an AC the story claimed to satisfy. Evidence: the AC text says the behavior should X, the user reports it does Y. This is the path to a defect incident.
+   - **D — Plan gap:** no candidate story (completed or planned) covers the behavior. Evidence: keyword search across stories and ACs returned no match. Routes to the planner; no incident is filed.
+
+4. **Confirm classification with the user (the one interactive gate).**
+   - Present a short paragraph: "I believe this is **(A | B | C | D)** because (one-line evidence from step 2 — story id, AC id, completion state)."
+   - Ask exactly one question: "Does that match your intent? (yes / no / different story)"
+   - On `no` or `different story`: take the user's correction as the new candidate target and re-classify (one re-attempt). If still mismatched, ask the user "could you describe what you expected to see vs what happened?" and re-run from step 2 once. After two failed classification attempts, fall back to dispatching `@sdlc-engineering` in **explanation-only** mode with the user's verbatim message — let the hub help the user refine the report; do not infinite-loop on classification.
+   - On `yes`: proceed to step 5.
+
+5. **Act on the confirmed classification.** Always begin the user-facing reply with the **TRIAGE preamble** (see template below). Then:
+   - **A:** Point the user at the story (`plan/user-stories/<story-id>/story.md`) and the relevant AC. Explain how to invoke the feature in 2–4 sentences. If the user needs detailed how-to, dispatch `@sdlc-engineering` in **explanation-only** mode with `EXPLAIN-ONLY: <story-id>, AC: <ac-id>`. Explanation-only dispatches MUST NOT touch source code or open an incident — the hub returns the explanation as text. **No checkpoint update, no story-completion transition.**
+   - **B:** Name the story id, list its ACs, state the planned execution order (its position in `stories_remaining`), and offer to advance it: "I can re-prioritize this so it runs next — would you like that? (yes / no)". On `yes`, ask the user whether to dispatch the planner to amend the queue, or simply re-order via `checkpoint.sh coordinator --reprioritize <story-id>` if no plan-content change is needed. Do **not** open an incident — there is nothing to fix in built code.
+   - **C:** Open a defect incident (see **Defect Incident Dispatch** below). The engineering hub runs the defect-incident lifecycle and returns `VERDICT: incident-resolved`, `VERDICT: incident-reclassified-to-B`, `VERDICT: blocked`, or `VERDICT: escalated`.
+   - **D:** Route to the planner for plan-change triage. Dispatch `@sdlc-planner` with `DIRECTIVE: PLAN_CHANGE_TRIAGE, REPORTED_BEHAVIOR: <verbatim>, INFERENCE: no-candidate-story-found`. The planner decides whether the request is a legitimate scope expansion, a duplicate of an existing planned story, or out of scope. Do **NOT** open an incident — Category D is a scope delta, not a defect (see P21 §7.1).
+
+### TRIAGE preamble template (mandatory on every triage reply)
+
+Every coordinator reply that originated from the triage trigger MUST begin with exactly these three lines, then a blank line, then the action-appropriate content:
+
+```
+TRIAGE: <A | B | C | D>
+TARGET: <story-id | none>
+EVIDENCE: <one-line justification — story.md path, AC id, completion state>
+```
+
+Examples:
+
+```
+TRIAGE: A
+TARGET: US-002-photo-capture
+EVIDENCE: stories_done; AC-3 ("user can re-take a photo before submitting") matches reported behavior
+
+You can re-take a photo by tapping the preview thumbnail …
+```
+
+```
+TRIAGE: C
+TARGET: US-004-photo-intake-identification
+EVIDENCE: stories_done; AC-5 ("identify request returns model output") contradicted — reported 401 unauthorized
+
+Opening defect incident INC-002 against US-004. Dispatching engineering hub.
+```
+
+```
+TRIAGE: D
+TARGET: none
+EVIDENCE: no story or planned story covers "export results to CSV"; nearest match is US-007 (results display) which scopes display only
+
+Routing to the planner for plan-change triage. The planner will decide whether to add this as a new story, fold it into US-007's scope, or defer.
+```
+
+The preamble makes triage classification auditable from transcript grep (`TRIAGE: [ABCD]`) and provides a stable contract for post-mortem analysis.
+
+### Defect Incident Dispatch (Category C only)
+
+When the confirmed classification is C, the coordinator opens an incident and dispatches the engineering hub. The coordinator does **not** create the `.sdlc/incidents/<id>/` artifact directory itself — the engineering hub creates and owns the directory under defect-incident mode (mirrors how the planner owns `plan/**` writes and the hub owns `docs/staging/**`).
+
+Procedure:
+
+1. **Allocate the incident id.** Read `.sdlc/execution.yaml`'s `incidents:` array; the next id is `INC-{NNN}` where NNN is the highest existing number + 1, zero-padded to 3 digits (first incident is `INC-001`).
+2. **Append the incident stub** to `execution.yaml`'s `incidents:` array via `checkpoint.sh execution --incident-open --id INC-NNN --story <story-id> --reporter user --reported-behavior "<verbatim>"`. The script seeds `status: open`, `iterations: 0`, `opened_at: <ISO-8601>`, `oracle_consulted: false`, `verdict: null`. (Schema: see `opencode/.opencode/skills/sdlc-checkpoint/references/api-execution.md` `--incident-*` flags.)
+3. **Dispatch `@sdlc-engineering`** with the **defect-incident envelope** (in addition to the standard delegation contract):
+   ```
+   DISPATCH MODE: defect-incident
+   INCIDENT: INC-NNN
+   TARGET STORY: <story-id>
+   REPORTED BEHAVIOR: <user message verbatim>
+   CONTRADICTED ACS: <AC id(s) from triage step 3>
+   CLASSIFICATION EVIDENCE: <one-line justification used in the TRIAGE preamble>
+   ```
+4. **Wait for the hub's terminal verdict.** Defect-incident dispatches are end-to-end (one trip per incident, mirrors the one-trip story rule). Possible verdicts: `incident-resolved`, `incident-reclassified-to-B`, `blocked` (with the same `reason` taxonomy as story-mode), `escalated` (Oracle ESCALATION REPORT or cap exhaustion).
+5. **Route on the verdict** (see **Defect Incident Verdict Routing** below).
+
+### Defect Incident Verdict Routing
+
+The hub's return summary begins with a `VERDICT:` line. Route as follows:
+
+- **`VERDICT: incident-resolved`** — the incident closed cleanly. The hub has updated `incidents[INC-NNN].status: resolved`, populated `.sdlc/incidents/INC-NNN/{incident.md, investigation.md, fix-plan.md, verification.md}`, annotated the target story with `Incident: INC-NNN — resolved`, and (where the verify step produced real-traffic evidence) auto-promoted the story's `ACCEPTED-STUB-ONLY` verdict to `ACCEPTED` per P21 §7.6. Reply to the user with: "INC-NNN resolved against `<story-id>`. Fix summary: <one-line from the hub's return>. Evidence at `.sdlc/incidents/INC-NNN/verification.md`." Do **not** dispatch the engineering hub again. Do **not** re-open the story; `completed_phases` was never altered — the incident was an amendment, not a re-run.
+- **`VERDICT: incident-reclassified-to-B`** — the hub's investigation found that the reported behavior depends on a story that has not yet been executed (per P21 §7.3). The hub closed the incident with verdict `reclassified-to-B`. Re-emit the **TRIAGE preamble** as Category B with the planned story, then deliver the timeline (same content as a fresh Category B response in step 5 above). The incident artifact directory remains for traceability but `incidents[INC-NNN].status: reclassified-to-B`.
+- **`VERDICT: incident-reassigned`** (sub-flavor of `incident-resolved` or `blocked`) — investigation showed the root cause was in a different completed story (per P21 §7.3); the hub reassigned `target story` and either resolved or escalated. The verdict line includes the new target. Reply mentions both stories: "INC-NNN originated from observation against `<reported-story>`; root cause was in `<actual-story>`. Status: <resolved | blocked-with-reason>."
+- **`VERDICT: blocked`** with `reason:` tag — same taxonomy as story-mode (see Engineering hub verdict routing → `blocked`). `MISSING_CREDENTIALS` is the most common blocker for incidents that touch external integrations (the hub cannot reproduce without real credentials per P19). Route exactly as in story-mode: present the variable list, wait for user confirmation, re-dispatch the hub for the same incident with a one-trip continuation.
+- **`VERDICT: escalated`** — Oracle returned an ESCALATION REPORT, the iteration cap was hit without remediation, or the incident scope grew beyond the one-or-two-AC bound and the hub returned `PLAN_CHANGE_REQUIRED`. Route per the escalation taxonomy. For `PLAN_CHANGE_REQUIRED`, the incident is too big for an amendment — route to the planner with the incident report as input. Mark `incidents[INC-NNN].status: escalated` and `verdict: <reason-tag>`.
+
+The defect-incident dispatch never participates in the **Story Completion Transition** — incidents are amendments to already-completed stories, not new completions. `coordinator.yaml`'s `stories_done` is not modified by incident dispatches.
+
+### DENY rules for triage
+
+- **DENY** dispatching the engineering hub for a Category C incident **without** the `DISPATCH MODE: defect-incident` directive and a populated incident stub in `execution.yaml`. Free-text "fix this bug" dispatches against a completed story bypass the incident lifecycle and are the exact failure mode P21 exists to prevent.
+- **DENY** modifying `coordinator.yaml`'s `stories_done` array as part of incident handling. Incidents are amendments, not re-completions; the story remains in `stories_done` throughout.
+- **DENY** answering a triage-shape user message without the **TRIAGE preamble**. M1 in P21 §5 is verifiable by transcript grep; missing-preamble replies fail the metric.
+- **DENY** scanning `.sdlc/execution.yaml`'s `incidents:` array on every triage trying to deduplicate. Per P21 §7.2, deduplication only happens on **explicit user reference** to a prior incident. Proactive scanning is too expensive and is rejected.
+- **DENY** filing a Category D as an incident. Plan gaps go to the planner; `.sdlc/incidents/` is reserved for defects against completed stories (P21 §7.1).
+
 ## Phase 4: Progress Synthesis
 
 After dispatched work completes, read the subagent's final summary and route based on the structured verdict. The engineering hub returns one of three verdicts (see hub Completion Contract); the coordinator's job is to map the verdict + reason to a routing decision using the existing taxonomies — NOT to interpret a free-form recommendation. The hub does not recommend next coordinator actions; routing is your domain.
@@ -161,6 +287,8 @@ The hub's return summary begins with a `VERDICT:` line. Route as follows:
   - `PLAN_CHANGE_REQUIRED` → enter the plan-change protocol — dispatch the planner for triage; do NOT re-dispatch the engineering hub on the active story until the triage completes.
 
 - **`VERDICT: escalated`** → user-decision path. Present the structured reason and options to the user; act on the user's decision (per Error Handling → Oracle escalation reports). The four recognized escalation reasons (`ORACLE_ESCALATION_REPORT`, `STORY_REVIEW_CAP_HIT_NO_REMEDIATION`, `SEMANTIC_REVIEW_UNRELIABLE`, `ACCEPTANCE_CAP_REACHED`) all surface to the user — the hub has exhausted its autonomous options.
+
+- **`VERDICT: incident-resolved` / `incident-reclassified-to-B` / `incident-reassigned`** → defect-incident dispatch returns. Route per **Defect Incident Verdict Routing** in the User-Report Triage section above. These verdicts only ever appear when the dispatch envelope contained `DISPATCH MODE: defect-incident`; they never appear from a story-mode dispatch.
 
 ### Planner verdict routing
 
