@@ -50,6 +50,7 @@ Plan artifacts (story.md, hld.md, api.md, data.md, security.md) remain the autho
   - design/[file] (lines N-M or full file): [what design artifact is relevant]
 - **Files:** CREATE/MODIFY path/to/file.ext
 - **External libraries:** [list, for hub to populate EXTERNAL LIBRARIES in dispatch]
+- **ACs satisfied:** [AC-1, AC-2] | [] (refactor-only)  ← quick reference; full bindings live in the context doc's `## AC Traceability` section
 - **Status:** pending | Review: 0 | QA: 0
 - **Context doc size:** [N lines — logged by hub for threshold monitoring]
 
@@ -59,6 +60,7 @@ Plan artifacts (story.md, hld.md, api.md, data.md, security.md) remain the autho
   - hld.md [DU/IU reference] (lines N-M): [what to read for spec]
 - **Files:** CREATE/MODIFY path/to/file.ext
 - **External libraries:** [list]
+- **ACs satisfied:** [AC-3]
 - **Status:** pending | Review: 0 | QA: 0
 - **Context doc size:** [N lines]
 
@@ -115,7 +117,8 @@ When the architect creates this document:
    - Which DU/IU/API/security/design sections to extract (with line ranges) — these guide hub extraction.
    - Files to create or modify.
    - External libraries required.
-7. After completing the staging doc, create per-task context documents for each task using `references/task-context-template.md`. Apply the **task-size gate** (see that template's Hub Instructions).
+   - **ACs satisfied:** the list of `ac_id` values from `story.md` that this task is contractually responsible for. Use `[]` for tasks that satisfy no AC (refactor-only, infra-only). The full per-AC binding (rationale, evidence_path, evidence_class) goes in the context doc, not here — this field is the quick-reference summary.
+7. After completing the staging doc, create per-task context documents for each task using `references/task-context-template.md`. Apply the **task-size gate** (see that template's Hub Instructions). Author the `## AC Traceability` section — see the task-context template's Hub Instructions for the full schema.
 8. Create the skill gotchas sibling file `docs/staging/US-NNN-name.skill-gotchas.md` using `references/skill-gotchas-template.md`. Add a link to it at the top of the staging doc (already included in the template header).
 9. Leave the **Execution Log** sections empty — they are filled during the dev loop.
 10. Record the context doc line count in each task's `Context doc size` field after creation.

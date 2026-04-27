@@ -37,9 +37,60 @@ section in the review output with findings categorized by severity.
 REVIEW SCOPE:
 1. Spec compliance: Does implementation match the design specification and acceptance criteria
    from the context document?
-2. Code quality: Patterns, error handling, naming, tests.
-3. Architecture: Integration, separation of concerns.
-4. Security (if SECURITY REVIEW is true): OWASP, secrets, input validation, auth.
+2. AC traceability: Does each entry in the context doc's `## AC Traceability`
+   (`acs_satisfied`) section actually trace to evidence in the diff? Verify the per-AC
+   binding contract — see the AC TRACEABILITY CHECK directive below for the procedure
+   and severity mapping.
+3. Code quality: Patterns, error handling, naming, tests.
+4. Architecture: Integration, separation of concerns.
+5. Security (if SECURITY REVIEW is true): OWASP, secrets, input validation, auth.
+
+AC TRACEABILITY CHECK (required when the context doc has a non-empty
+`acs_satisfied` block):
+
+For each entry in the context doc's `## AC Traceability` section:
+1. Read the AC's statement text from `plan/user-stories/<story>/story.md` (use the
+   `ac_id` to locate the line). The context doc references it but does NOT
+   duplicate the text.
+2. Check that the listed `evidence_path` files exist and were created/modified in
+   the diff (cross-reference the IMPLEMENTER SUMMARY's CHANGES APPLIED block).
+3. Check that the implementation file(s) in `evidence_path` contain logic
+   relevant to the AC's statement — not unrelated code that happens to live in
+   the same file.
+4. Check that the test file(s) in `evidence_path` exercise the AC's observable
+   behavior. Apply the falsification test: "would this test fail if the AC were
+   violated, or would it only fail if the implementation's internal shape
+   changed?" Behavioral tests are evidence; shape tests are not.
+5. If the entry has `evidence_class: real`, verify against the QA TEST-MODE
+   ACCOUNTING block (post-QA reviews) or the test files' `test-mode:` headers
+   (pre-QA reviews — confirm at least one `test-mode: real` test covers the
+   AC's evidence_path).
+6. If the entry has `evidence_class: stub-only` or `static-analysis-only`,
+   verify the rationale matches what the diff actually shows (e.g., `stub-only`
+   is consistent with no `test-mode: real` test in evidence_path; flag if a
+   `real` test is present but the binding still claims `stub-only`).
+7. If `acs_satisfied: []` (refactor-only), check that the diff is in fact
+   refactor-only — no behavioral change, no new AC-relevant logic. If the diff
+   adds AC-relevant behavior, flag as a binding-evasion finding.
+
+Severity mapping for AC traceability findings:
+- **Critical** — `evidence_path` references a file that does not exist in the
+  diff; OR the file exists but contains no logic relevant to the AC's
+  statement; OR an `evidence_class: real` claim has no corresponding `real`
+  test or QA accounting (misrepresentation).
+- **Important** — test in `evidence_path` exists but tests implementation
+  shape, not the AC's observable behavior (would not fail if the AC were
+  violated); OR `evidence_class: static-analysis-only` flagged because no
+  test ran real traffic; OR a non-empty diff bound as `acs_satisfied: []`
+  adds AC-relevant behavior.
+- **Suggestion** — narrative mismatch (the rationale describes one mechanism
+  but the implementation uses another, and the AC is still satisfied); OR a
+  test name in the optional `tests:` list does not match an actual describe/it
+  identifier in the file.
+
+Do NOT promote an Important AC traceability finding to Critical across
+iterations under the severity-escalation guard, unless new evidence (a new
+test, a new spec clarification) emerges between iterations.
 
 Note: Source files are provided in the context document. Run `npm run verify:quick` (JS/TS) or `bash scripts/verify.sh quick` (Python) on disk for ground-truth automated check results. The script is silent on success — `=== ALL GATES PASSED ===` is sufficient evidence.
 
@@ -55,10 +106,21 @@ DOCUMENTATION CHECK (scoped to this task only):
 COMPLETION CONTRACT:
 Return your final summary to the parent agent with:
 1. Spec Compliance: PASS or FAIL (does implementation match design specification?).
-2. Issues: categorized as Critical / Important / Suggestion with file:line references.
-3. Security Review (if applicable): findings by severity.
-4. Documentation Status: current / stale / missing references.
-5. Overall Assessment: Approved or Changes Required (final verdict — this is what the
+2. AC Traceability: one row per entry in the context doc's `acs_satisfied`
+   block, with verdict (PASS / FAIL) per the AC TRACEABILITY CHECK procedure
+   above. For empty bindings (`acs_satisfied: []`), one
+   `refactor-only — confirmed` row or a binding-evasion finding.
+
+   ```
+   AC Traceability:
+   - AC-2 → PASS (evidence: src/db/persistence.ts + tests/integration/persistence-restart.test.ts; evidence_class real verified against test-mode header)
+   - AC-3 → FAIL Critical: evidence_path lists tests/unit/payload-validator.test.ts but file does not exist in diff
+   ```
+3. Issues: categorized as Critical / Important / Suggestion with file:line references.
+   Include AC-traceability findings here at the severity from the mapping above.
+4. Security Review (if applicable): findings by severity.
+5. Documentation Status: current / stale / missing references.
+6. Overall Assessment: Approved or Changes Required (final verdict — this is what the
    architect acts on. NEVER use PASS/FAIL here. Must be consistent with issues found:
    any Critical or Important issues → Changes Required; only Suggestions → Approved).
 

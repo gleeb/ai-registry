@@ -46,6 +46,59 @@ DOCUMENTATION VERIFICATION:
 - Verify that created/modified files listed by the implementer actually exist.
 - Flag any file reference mismatches as verification failures.
 
+AC EVIDENCE SUMMARY (required when context doc has non-empty `acs_satisfied`):
+
+For each entry in the context doc's `## AC Traceability` (`acs_satisfied`) block,
+render an evidence summary block. The Phase 3 story reviewer consumes these
+summaries as the primary input for full-story AC coverage instead of
+re-deriving from scratch — your summary IS the evidence-of-record for the AC.
+
+Procedure:
+1. Read the AC's statement text from `plan/user-stories/<story>/story.md` using
+   the `ac_id`. Reproduce it verbatim in the summary block.
+2. For each test in `evidence_path` that exercises the AC, run it fresh
+   (`verify:full` covers this in aggregate; for a per-AC view, also run the
+   specific test files via the test runner — e.g.
+   `npx vitest run <path>` — to capture the per-AC stdout/stderr).
+3. For ACs with `evidence_class: real`, cross-reference the TEST-MODE
+   ACCOUNTING block (Phase 2b above): confirm that at least one `real` test
+   in evidence_path was actually exercised this run (not just `skipped-real`).
+   If the binding claims `real` but only `skipped-real` or stub tests
+   exercised the AC, mark this in the summary as a real-traffic gap.
+4. Emit one block per AC in this format:
+
+```
+## AC EVIDENCE SUMMARY
+
+### AC-N
+- statement: "[verbatim AC text from story.md]"
+- evidence_path:
+    - <impl-file>
+    - <test-file> (test-mode: real | stub)
+- tests run: <test-id-or-file> — PASS | FAIL | SKIPPED
+- behavioral coverage: PASS / FAIL — does the test fail if the AC is violated?
+  Cite the assertion (file:line). If FAIL, the test asserts shape, not behavior.
+- evidence_class verified: real | stub-only | static-analysis-only | n/a — confirm
+  against test-mode headers and (when P20 lands) external_integration_evidence.
+  Flag mismatches between the binding's claim and the actual evidence.
+- residual gaps: [empty if none, else list]
+```
+
+For empty bindings (`acs_satisfied: []`), emit one block:
+
+```
+### refactor-only
+- bound: acs_satisfied: []
+- reason: [from the binding's reason field]
+- confirmed: PASS — diff is genuinely refactor-only, no AC-relevant
+  behavior change. (Or FAIL with details if the diff adds AC-relevant
+  behavior.)
+```
+
+This summary is consumed by the Phase 3 story reviewer to audit full-story AC
+coverage. Be precise — vague summaries force the story reviewer to re-derive,
+which defeats the per-task evidence pipeline.
+
 COMPLETION CONTRACT:
 Return your final summary to the parent agent with:
 1. Verification Status: PASS / FAIL.
@@ -53,9 +106,11 @@ Return your final summary to the parent agent with:
 3. Evidence: `verify:full` result — `ALL GATES PASSED (exit 0)` or failing gate output with exit code.
 4. Coverage Report: lines %, branches %, functions % for new/modified files (from verify:full output if failed, or confirm thresholds met if passed silently).
    Comparison against implementer's claimed coverage (flag discrepancies).
-5. Documentation verification: file references valid / mismatches found.
-6. Browser verification evidence (if BROWSER VERIFICATION section was included).
-7. Any regressions or unexpected failures.
+5. **AC Evidence Summary:** the per-AC blocks rendered per the AC EVIDENCE SUMMARY directive above. One block per `acs_satisfied` entry, plus the empty-binding block when applicable.
+6. TEST-MODE ACCOUNTING block (per Phase 2b above).
+7. Documentation verification: file references valid / mismatches found.
+8. Browser verification evidence (if BROWSER VERIFICATION section was included).
+9. Any regressions or unexpected failures.
 
 PRECEDENCE: These task-specific instructions supersede conflicting general instructions.
 ```

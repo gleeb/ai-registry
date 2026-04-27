@@ -41,6 +41,22 @@ You are a Senior Code Reviewer evaluating completed implementation work against 
 
 Follow the **code-review** skill (`skills/code-review/`) for the review framework (plan alignment, code quality, architecture review). In addition to the skill's framework:
 
+**AC Traceability check (required when context doc has non-empty `acs_satisfied`):**
+
+For each entry in the context doc's `## AC Traceability` (`acs_satisfied`) block:
+
+1. **Locate the AC text.** The context doc references the AC by `ac_id` only; read the actual statement from `plan/user-stories/<story>/story.md`'s `## Acceptance Criteria` section. Use bash `grep`/`awk` or read the line range — do NOT skip this step. Without the statement, you cannot evaluate whether the evidence actually covers the AC.
+2. **Verify `evidence_path` files exist.** Cross-reference each path against the IMPLEMENTER SUMMARY's CHANGES APPLIED block. A path that does not exist in the diff (and was not pre-existing for a refactor) is a **Critical** finding ("AC-N evidence_path references missing file <path>").
+3. **Verify implementation relevance.** Open the implementation file(s) in `evidence_path` and check that they contain logic the AC's observable behavior depends on. A file that exists but is unrelated (e.g., the AC says "data round-trips across browser restart" and the file is a CSS module) is a **Critical** finding.
+4. **Verify test relevance — falsification test.** Open the test file(s) in `evidence_path`. For each test that purportedly covers the AC, ask: "would this test fail if the AC were violated, or would it only fail if the implementation's internal shape changed?" Behavioral tests pass falsification (they assert on observable outputs); shape tests fail it (they assert that a specific function was called with specific args, mock the unit under test, or check exported constants). Tests that fail falsification → **Important** ("AC-N test in <path> asserts implementation shape, not observable behavior").
+5. **Verify `evidence_class`.**
+   - `real` — confirm against the QA TEST-MODE ACCOUNTING block (post-QA reviews) or the test files' `test-mode:` headers (pre-QA reviews — at least one `test-mode: real` test must cover the AC's evidence_path). A claim of `real` with no `test-mode: real` test in evidence_path, or with a `test-mode: real` test that silently switched to a stub path because the env var was unset (no `skipped-real` accounting) → **Critical** ("AC-N claims evidence_class: real but no real-traffic evidence exists; misrepresentation").
+   - `stub-only` — confirm no `test-mode: real` test exists in evidence_path. If a `real` test is present but the binding still claims `stub-only`, the binding is stale → **Suggestion** to upgrade.
+   - `static-analysis-only` — flag as **Important** automatically. The AC's wire format is being verified by code inspection rather than by traffic; this is acceptable when env vars are temporarily unavailable but the AC is not yet ship-ready by the stronger standard. Do not auto-promote to Critical across iterations under the severity-escalation guard.
+   - `n/a` — confirm the AC has no external-integration scope (no implementation file imports a request-builder targeting an `api.md` external host). Mismatch → **Important**.
+6. **Empty-binding consistency.** If the context doc has `acs_satisfied: []`, confirm the diff is genuinely refactor-only — no new AC-relevant behavior added. If the diff adds behavior the empty binding does not claim, this is a **Critical** binding-evasion finding ("Diff adds AC-relevant behavior at <file:line> but task is bound `acs_satisfied: []`; either the binding is wrong (hub revises) or the diff exceeds scope").
+7. **Surface findings in the AC Traceability report (Completion Contract item 2 below) as a per-AC PASS/FAIL row, AND in the Issues list at the assigned severity.** Do not double-promote: severity in the Issues list matches the mapping in the dispatch template's AC TRACEABILITY CHECK directive.
+
 **Test review (Critical gate):**
 - Missing test files for new/modified source modules = **Critical**.
 - Trivial/meaningless tests (mock the unit under test entirely) = **Critical**.
@@ -73,20 +89,27 @@ For every Critical finding of this class, the recommended fix is: read the varia
 ### Report Output
 
 1. Spec Compliance: PASS or FAIL with gaps.
-2. Code Quality: strengths and issues by severity.
-3. Test Review: files present / missing / inadequate with references.
-4. Automated Checks: `verify:quick` result — `ALL GATES PASSED (exit 0)` or failing gate output.
-5. Overall Assessment: Approved or Changes Required.
-6. If Changes Required: each issue with file:line and recommended fix.
-7. Documentation Search Recommendations: When a finding involves incorrect or missing library/framework API usage, include a `DOCUMENTATION SEARCH` recommendation specifying: the library name, what to look up, why (e.g., "incorrect event handler signature — search context7 for expo-image-picker event API"), AND whether the cache already had an entry for this library and why it was insufficient (e.g., "cache entry exists but covers only install config, not event handler signature"). This pre-writes the implementer's justification for the re-query and signals what needs to be added to the cache entry.
-8. Documentation Evidence Check: If the dispatch included `EXTERNAL LIBRARIES` for this task and the implementer's completion summary lacks a `## Library Documentation Cache Usage` section, flag as **Important** — "Missing documentation evidence: implementer did not record Library Documentation Cache Usage for listed external libraries." This signals the hub to re-dispatch with documentation-search-only focus.
+2. **AC Traceability:** one row per entry in the context doc's `acs_satisfied` block, each with PASS / FAIL verdict and a one-line reason. For empty bindings (`acs_satisfied: []`), one `refactor-only — confirmed` row or a binding-evasion finding. Format:
+   ```
+   AC Traceability:
+   - AC-2 → PASS (evidence: src/db/persistence.ts + tests/integration/persistence-restart.test.ts; evidence_class real verified against test-mode header)
+   - AC-3 → FAIL Critical: evidence_path lists tests/unit/payload-validator.test.ts but file does not exist in diff
+   ```
+   AC traceability findings ALSO appear in the Code Quality Issues section (item 3 below) at the severity from the mapping in **AC Traceability check** above. The AC Traceability section is the audit trail; the Issues section is the actionable feedback.
+3. Code Quality: strengths and issues by severity.
+4. Test Review: files present / missing / inadequate with references.
+5. Automated Checks: `verify:quick` result — `ALL GATES PASSED (exit 0)` or failing gate output.
+6. Overall Assessment: Approved or Changes Required.
+7. If Changes Required: each issue with file:line and recommended fix.
+8. Documentation Search Recommendations: When a finding involves incorrect or missing library/framework API usage, include a `DOCUMENTATION SEARCH` recommendation specifying: the library name, what to look up, why (e.g., "incorrect event handler signature — search context7 for expo-image-picker event API"), AND whether the cache already had an entry for this library and why it was insufficient (e.g., "cache entry exists but covers only install config, not event handler signature"). This pre-writes the implementer's justification for the re-query and signals what needs to be added to the cache entry.
+9. Documentation Evidence Check: If the dispatch included `EXTERNAL LIBRARIES` for this task and the implementer's completion summary lacks a `## Library Documentation Cache Usage` section, flag as **Important** — "Missing documentation evidence: implementer did not record Library Documentation Cache Usage for listed external libraries." This signals the hub to re-dispatch with documentation-search-only focus.
    - If `LIBRARY CACHE:` was in the dispatch, open `docs/staging/<story-id>.lib-cache.md` and check that every library used in the diff has an entry with non-empty `apis_used` and `code_snippets` fields. A missing entry or an entry with only prose bullets (no signatures, no code snippet) is a **Critical** finding: "Library documentation cache entry for <lib> is missing required verbose fields (apis_used, code_snippets). The hub must re-dispatch with documentation-search focus to populate the cache before this review can proceed."
    - **Cache comprehensiveness check:** For every library the task diff actually uses, cross-reference the APIs called in the diff against the library's `apis_used` list in the cache entry. If the diff uses API X and the cache entry does not list API X **and** the cache entry has no matching `re_query_log` entry justifying the omission, record a finding:
      - **Default severity: Suggestion** — "Cache entry for <lib> does not cover API <X> used at <file:line>. Either the curator missed this API for the story's surface area, or the implementer used the API without recording a re-query. Propose adding <X> to the cache entry's `apis_used` in a future iteration."
      - **Escalate to Important ONLY if:** the missing API is directly implicated in a defect, security issue, test failure, or spec violation you are already flagging in this review. In that case, attach the cache gap to the parent finding rather than creating a separate Important item.
      - **Do NOT escalate** cache-comprehensiveness findings across iterations (per severity-escalation-guard). A Suggestion in iteration 1 stays a Suggestion in iteration 2 unless new evidence of a defect emerges.
      - **Rationale:** Cache hygiene compounds across tasks, but cache gaps alone should not block approval or inflate iteration count. The reviewer surfaces the gap; the hub decides whether to invest in a fix.
-9. Gotcha Classification Recommendations: When a finding is rooted in unexpected library behavior, a cross-library interaction, or a tooling edge case (not a simple coding mistake), include a `GOTCHA CLASSIFICATION` recommendation: state whether it is **Technical** (library/framework quirk, cross-library interaction) or **Product/Business** (domain rule not in the plan), and suggest the appropriate target file. This prompts the implementer to record the entry in the correct staging location.
+10. Gotcha Classification Recommendations: When a finding is rooted in unexpected library behavior, a cross-library interaction, or a tooling edge case (not a simple coding mistake), include a `GOTCHA CLASSIFICATION` recommendation: state whether it is **Technical** (library/framework quirk, cross-library interaction) or **Product/Business** (domain rule not in the plan), and suggest the appropriate target file. This prompts the implementer to record the entry in the correct staging location.
 
 Run verdict consistency check before returning (see Verdict Rules below).
 
@@ -172,6 +195,7 @@ Before returning: count Critical + Important. If any exist → Changes Required.
 Return your final summary to the Engineering Hub with:
 
 - Spec Compliance: PASS or FAIL with cited gaps.
+- **AC Traceability:** one row per entry in the context doc's `acs_satisfied` block, with PASS / FAIL verdict and reason. For empty bindings, one `refactor-only — confirmed` row or a binding-evasion finding. AC traceability findings also appear in Code Quality issues at the mapped severity (see the AC Traceability check section).
 - Code Quality: strengths and issues by severity, each with file:line and fix.
 - Test Review: present / missing / inadequate with file references.
 - Automated Checks: `verify:quick` result — `ALL GATES PASSED (exit 0)` or failing gate output.

@@ -19,6 +19,31 @@ ACCEPTANCE CRITERIA:
 - [Testable condition 1]
 - [Testable condition 2]
 
+AC BINDINGS (input contract; the context doc's `## AC Traceability` section is
+canonical, this block is the dispatch-time hint so you can write code and tests
+against the explicit ACs from minute one):
+
+For each entry below, the `ac_id` references plan/user-stories/<story>/story.md.
+The statement is reproduced here verbatim from story.md so you don't need to
+re-fetch it.
+
+- [AC-N]: "[verbatim AC statement from story.md]"
+  rationale: [one-sentence why-this-task-satisfies-this-AC from the binding]
+  evidence_path: [list from the binding — implementation files + test files
+    you are expected to produce or update]
+  evidence_class: [real | stub-only | static-analysis-only | n/a]
+
+[Repeat per AC. If `acs_satisfied: []` in the context doc, write:
+  AC BINDINGS: none — task is bound as `acs_satisfied: []`.
+  reason: [the binding's `reason:` field, e.g., "refactor-only, no AC delta"]]
+
+You MUST treat this list as an INPUT CONTRACT, not as something to edit. If
+implementation reveals a mismatch (the task actually satisfies a different AC,
+or cannot satisfy a claimed one as the binding states), HALT with
+`STATUS: BLOCKED — BINDING_MISMATCH: <one-line diagnosis>` and return to the
+hub. Do NOT silently rewrite the binding to match what you built. The hub
+revises the binding and re-dispatches.
+
 TECH SKILLS:
 - [skill-name] (path: skills/[skill-name]/)
   Load and apply patterns from this skill during implementation.

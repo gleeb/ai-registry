@@ -4,11 +4,11 @@ Use this template when the engineering hub creates per-task context documents du
 
 **Purpose:** Eliminate redundant plan-artifact reads across subagent dispatches. Subagents read this document instead of chasing references through story.md, hld.md, api.md, security.md, and testing-strategy.md.
 
-**Who writes it:** The engineering hub during Phase 1b (one-time extraction) and before each Phase 2 dispatch (source file updates).
+**Who writes it:** The engineering hub during Phase 1b (one-time extraction), Phase 1c (AC Traceability authoring), and before each Phase 2 dispatch (source file updates).
 
-**Who reads it:** Implementer, Code Reviewer (for plan context + source files). QA reads plan context sections only — QA always reads source files fresh from disk.
+**Who reads it:** Implementer, Code Reviewer (for plan context + source files + AC bindings). QA reads plan context sections + AC Traceability — QA always reads source files fresh from disk.
 
-**Who must NOT edit it:** Any subagent. This is a hub-managed artifact updated only by the engineering hub between dispatches.
+**Who must NOT edit it:** Any subagent. This is a hub-managed artifact updated only by the engineering hub between dispatches. The `## AC Traceability` (`acs_satisfied`) section is a particularly sensitive contract — see the implementer-binding-mismatch HALT path in `sdlc-engineering-implementer.md` rather than editing the binding from a subagent.
 
 ---
 
@@ -32,6 +32,82 @@ Use this template when the engineering hub creates per-task context documents du
 
 [Verbatim copy of the acceptance criteria relevant to this task from story.md.
 Copy exact text — no paraphrasing, no summarization.]
+
+---
+
+## AC Traceability (`acs_satisfied`)
+
+> Hub-authored during Phase 1c task decomposition. This field is the
+> contract between the task and the ACs it claims to satisfy.
+>
+> **Subagents MUST NOT edit this section.** The implementer treats it as an
+> input contract; if implementation reveals the binding is wrong, HALT with
+> `BLOCKED — BINDING_MISMATCH: <details>` and the hub revises the binding
+> before re-dispatch.
+>
+> Tasks that satisfy no AC (refactor-only, infra-only, etc.) MUST set
+> `acs_satisfied: []` with a `reason:` field explaining why.
+
+```yaml
+acs_satisfied:
+  - ac_id: AC-2
+    # The ac_id MUST resolve to a numbered AC in
+    # plan/user-stories/US-NNN-name/story.md (## Acceptance Criteria).
+    # Do NOT duplicate AC statement text here — story.md is canonical.
+    rationale: >
+      One-sentence explanation of why this task satisfies this AC.
+      What does the task implement that the AC's observable behavior
+      depends on?
+    evidence_path:
+      # Files this task produces that demonstrate the AC. Two kinds:
+      # implementation files (where the AC's logic lives) and test files
+      # (where the AC's observable behavior is asserted). At least one of
+      # each is expected for ACs that satisfy a behavioral criterion.
+      - src/db/persistence.ts                        # implementation
+      - tests/integration/persistence-restart.test.ts # evidence
+    # Optional: name specific test identifiers ONLY when a single test
+    # file covers multiple ACs and the reviewer needs disambiguation.
+    # For files dedicated to one AC, the file path alone is sufficient.
+    # Default to omitting `tests:` to avoid brittleness from describe/it
+    # renames.
+    tests:
+      - "persistence > survives full browser restart"
+    # Required for ACs whose statement describes behavior that crosses an
+    # external-provider boundary (the implementation imports a
+    # request-builder targeting a host declared in api.md's wire_format).
+    # For ACs with no external-integration scope, omit this field or set
+    # to `n/a`.
+    evidence_class: real
+    # Values:
+    #   real                  — at least one test with `test-mode: real`
+    #                           has been observed against the real
+    #                           provider (or skip-logged with env-unset),
+    #                           AND QA's TEST-MODE ACCOUNTING block
+    #                           records a `real` test for this AC.
+    #   stub-only             — only mocked-fetch tests exist. Drives
+    #                           story verdict toward ACCEPTED-STUB-ONLY.
+    #   static-analysis-only  — neither test ran real traffic; reviewer
+    #                           is relying on code inspection to verify
+    #                           the wire format matches api.md. Flagged
+    #                           Important by the code reviewer.
+    #   n/a                   — AC has no external-integration scope.
+  - ac_id: AC-3
+    rationale: >
+      Adds the validation layer used by AC-3's "rejects invalid input"
+      scenario.
+    evidence_path:
+      - src/validators/payload.ts
+      - tests/unit/payload-validator.test.ts
+    evidence_class: n/a
+```
+
+**Empty-binding form (refactor-only / infra-only tasks):**
+
+```yaml
+acs_satisfied: []
+# reason: required when the list is empty.
+reason: "Refactor of internal helper — no AC delta. Tests in tests/unit/helpers.test.ts continue to pass; no observable behavior change."
+```
 
 ---
 
@@ -154,6 +230,11 @@ During **Phase 1b**, after creating the staging document:
    - Extract the relevant sections verbatim (not summarized) into `docs/staging/US-NNN-name.task-N.context.md`.
    - Use the plan refs with line ranges from the staging doc task entry to identify which sections to extract.
    - Include the provenance comment (`> Source: path lines X–Y`) for every verbatim section so the original can be found if needed.
+   - **Author the `## AC Traceability` (`acs_satisfied`) section:**
+     - Read the staging doc task entry's `ACs satisfied:` field (set during Phase 1c).
+     - For each `ac_id`, write an entry with `rationale` (one-sentence justification anchored in the AC's statement text), `evidence_path` (implementation files + test files this task produces), optional `tests:` identifiers ONLY when a single test file covers multiple ACs and disambiguation is needed, and `evidence_class` (set to `n/a` for ACs with no external-integration scope; set to `real` / `stub-only` / `static-analysis-only` per the schema for externally-bound ACs — identification of "externally bound" is mechanical: the task's implementation files import a fetch/request-builder module that targets an `api.md` external host).
+     - For tasks that satisfy no AC, write `acs_satisfied: []` with a `reason:` field. NEVER omit the section — empty with reason is the explicit form.
+     - Do NOT duplicate AC statement text in the context doc; `ac_id` references story.md, which is canonical.
 
 3. **Task-size gate:** After extracting plan content, estimate the projected total context doc size:
    - Plan sections (already extracted) + source files (current size from task's Files list) + design references + testing requirements.
@@ -303,3 +384,19 @@ Track the per-library query count (count `re_query_log` entries + 1 for the firs
 - Append the reviewer's COMPLETE issues section verbatim to the Prior Review Feedback section.
 - Update `Last updated` timestamp.
 - Do NOT re-read source files unless the reviewer flagged file contents that differ from Source Files.
+
+## Hub Instructions: Binding-Mismatch HALT
+
+When the implementer returns `STATUS: BLOCKED — BINDING_MISMATCH: <details>`, the implementer has discovered while writing code that the `acs_satisfied` binding the hub authored cannot be satisfied as stated (e.g., the task actually satisfies a different AC, or the AC's observable behavior depends on a file outside the task's scope, or the AC requires a wire-format the task is not implementing). Handle as follows:
+
+1. Do **NOT** re-dispatch the implementer with the same binding. The implementer is correctly reporting that the contract is wrong; another pass will produce the same HALT.
+2. Read the implementer's reported diagnosis (the `<details>` after `BINDING_MISMATCH:`). Common patterns:
+   - **Wrong AC** — the task implements logic for AC-K, not AC-J as the binding claims. Action: revise `acs_satisfied[].ac_id` in the context doc.
+   - **Missing AC** — the task satisfies AC-J + AC-K, but the binding only lists AC-J. Action: append AC-K to `acs_satisfied`.
+   - **Out-of-scope AC** — the AC's observable behavior depends on files outside this task's `Files` list. Action: split the task or move the AC to the task that owns the relevant files.
+   - **Empty → non-empty** — task was bound as `acs_satisfied: []` but actually satisfies an AC. Action: replace with the correct entry.
+   - **Non-empty → empty** — task was bound to an AC but the binding's `evidence_path` was wrong; the task is genuinely refactor-only. Action: replace with `acs_satisfied: []` and a `reason:` field.
+3. Edit the context doc's `## AC Traceability` section to reflect the corrected binding. Update the `Last updated` timestamp. If the staging doc's Task Decomposition row also lists `ACs satisfied:`, update it to match.
+4. Record the binding revision in the staging doc's Issues & Resolutions table with root cause "binding-mismatch".
+5. Re-dispatch the implementer with the revised context doc. The re-dispatch is NOT counted as a code-review iteration; it is a binding-revision dispatch, not a code-quality remediation.
+6. If the implementer returns BINDING_MISMATCH a second time on the same task with the same diagnosis after revision, the binding logic itself is suspect — escalate to coordinator with the implementer's two reports and the revision history.

@@ -93,6 +93,25 @@ If dispatch includes `BROWSER VERIFICATION`, load PinchTab skill from `skills/pi
 
 Match each criterion's verification output to expected behavior. Mark PASS (with evidence) or FAIL (with failure output). Check for regressions.
 
+### Phase 5: AC Evidence Summary Rendering
+
+Read the context doc's `## AC Traceability` (`acs_satisfied`) section. For each entry, render an `AC EVIDENCE SUMMARY` block — the Phase 3 story reviewer uses this as the primary input for full-story AC coverage instead of re-deriving from code and tests. **Your summary IS the evidence-of-record for the AC**; producing a vague summary forces the story reviewer to re-derive from scratch, raising Phase 3 cost and putting the story-review iteration cap at risk.
+
+Procedure:
+
+1. **Resolve the AC text.** Read the AC's statement verbatim from `plan/user-stories/<story>/story.md`'s `## Acceptance Criteria` section using the `ac_id`. Reproduce it in the summary so the story reviewer doesn't have to re-fetch.
+2. **Run the per-AC tests.** `verify:full` covers tests in aggregate; for the per-AC summary, also run the specific test files in `evidence_path` (e.g. `npx vitest run <path>` or the project's equivalent) and capture per-test PASS/FAIL/SKIPPED status. Test files declared `test-mode: real` whose env vars were unset show as SKIPPED — that is a real-traffic gap signal for the AC.
+3. **Apply the falsification check.** For each test that purportedly proves the AC, identify the key assertion (file:line) and judge: would this test fail if the AC were violated, or only if the implementation's internal shape changed? Behavioral assertions on observable outputs pass falsification; tests that mock the unit under test or assert on exported constants fail it. Record the verdict in `behavioral coverage: PASS / FAIL` with the assertion citation.
+4. **Verify `evidence_class` against accounting.** Cross-reference the binding's `evidence_class` with your TEST-MODE ACCOUNTING block (Phase 2b):
+   - `real` claim must have at least one `real` test (not `skipped-real`, not stub) covering evidence_path. A `real` claim with only `skipped-real` is a real-traffic gap; flag in `residual gaps`.
+   - `stub-only` claim must match — if a `real` test is actually present, the binding is stale; flag for binding refresh.
+   - `static-analysis-only` claim — flag in `residual gaps` so the story reviewer surfaces this as an Important AC-level finding (the AC is not yet ship-ready by the stronger standard).
+   - `n/a` claim — confirm the AC has no external-integration scope.
+5. **Empty-binding handling.** If `acs_satisfied: []`, render one block confirming the diff is genuinely refactor-only (no AC-relevant behavioral delta). If the diff adds AC-relevant behavior, that is a binding-evasion signal — render as FAIL with details.
+6. **Emit the block format from the dispatch template's AC EVIDENCE SUMMARY directive verbatim.** Each block under a `### AC-N` header (or `### refactor-only`) inside a top-level `## AC EVIDENCE SUMMARY` section in your return message.
+
+Surface real-traffic gaps and `static-analysis-only` flags in `residual gaps` — do NOT downgrade the AC's behavioral coverage verdict because evidence_class is weak. Coverage and class are orthogonal: a behaviorally-PASS AC with `static-analysis-only` evidence is recorded as `behavioral coverage: PASS, residual gaps: [no real-traffic evidence]`.
+
 ## Verdict Rules
 
 - ALL criteria PASS with evidence → Verification Status = PASS.
@@ -122,6 +141,8 @@ Return your final summary to the Engineering Hub with:
 - Test Adequacy: present / missing / inadequate with file references.
 - Quality Gate Evidence: `verify:full` result — `ALL GATES PASSED (exit 0)` or failing gate output with exit code.
 - Coverage Report: lines %, branches %, functions % for new/modified files. Files below threshold listed individually.
+- **AC EVIDENCE SUMMARY** (required when context doc has non-empty `acs_satisfied`): one `### AC-N` block per binding entry under a top-level `## AC EVIDENCE SUMMARY` section, per Phase 5 above. For empty bindings, one `### refactor-only` block confirming refactor-only status (or a binding-evasion finding).
+- TEST-MODE ACCOUNTING block (per Phase 2b above).
 - Browser Verification Evidence (if applicable): PinchTab health, per-route results, console errors.
 - Per-criterion breakdown: criterion text, command, output excerpt, exit code, PASS/FAIL.
 - Regression notes if unrelated tests failed.
