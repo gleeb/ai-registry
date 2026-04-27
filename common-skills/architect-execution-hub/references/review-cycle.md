@@ -32,12 +32,12 @@ The security review is part of the code review step, not a separate dispatch. Wh
 
 | Gate | Max Iterations | On Limit Reached |
 |------|---------------|------------------|
-| Code Review (incl. security) | Adaptive (see below) | Adaptive Recovery Protocol — architect self-implements after diagnostic analysis. Never blocks. P14 triggers may dispatch Oracle earlier than Tier 4 (see below). |
+| Code Review (incl. security) | Adaptive (see below) | Adaptive Recovery Protocol — architect self-implements after diagnostic analysis. Never blocks. Oracle Escalation Policy triggers may dispatch Oracle earlier than Tier 4 (see below). |
 | QA Verification | 2 failures | Mark task BLOCKED. Return to coordinator with QA failure evidence. |
 | Story Review (Phase 3) | 3 Changes Required | Escalate per "Story-Review Cap" below. Write planning-gotchas entry. Never user-escalate. Never dispatch a standard 4th iteration. |
 | Semantic Review (Phase 3b) | 2 NEEDS WORK | Escalate to coordinator. Include both review reports and all guidance packages. |
 
-## P14 Oracle Escalation Limits (per task and per story)
+## Oracle Escalation Limits (per task and per story)
 
 These limits apply to dispatches of `@sdlc-engineering-oracle`. They are evaluated by the hub before every Oracle dispatch — see `adaptive-recovery.md` for the trigger evaluation flow and `oracle-dispatch-template.md` for the dispatch contract.
 
@@ -49,9 +49,9 @@ These limits apply to dispatches of `@sdlc-engineering-oracle`. They are evaluat
 | Per-story Oracle dispatch soft cap | 3 dispatches across all tasks in the story | The 4th dispatch in a story pauses for coordinator review before proceeding. |
 | Query-budget trigger threshold (trigger 1) | `doc_queries > 8` on a task post-default-cycle | Hub MUST consider Oracle. Decline must be logged with a reason via `dispatch-log --decline-reason`. |
 | Retry-budget trigger threshold (trigger 2) | 3rd+ implementer attempt on the same task post-default-cycle | Oracle MUST be offered as an alternative to another implementer pass. |
-| Task-shape preauthorize (trigger 3) | Planner sets `oracle_preauthorize: true` on the task entry (per P15) | After the first default cycle completes without satisfying the AC, Oracle is dispatched on attempt 2 — do not wait for trigger 1 or 2 thresholds. |
+| Task-shape preauthorize (trigger 3) | Planner sets `oracle_preauthorize: true` on the task entry (currently dormant — flag not produced by the current planner contract) | After the first default cycle completes without satisfying the AC, Oracle is dispatched on attempt 2 — do not wait for trigger 1 or 2 thresholds. |
 
-**Worker-prompt invariant (P14 §2.5):** Implementer and code-reviewer prompts MUST NOT contain Oracle awareness, counter framing, or any "should this go to Oracle?" decision question. Routing is hub-internal. Reviewer findings (e.g., "implementer repeatedly misuses API X") feed the hub's routing decision; the reviewer never names Oracle.
+**Worker-prompt invariant ("workers do not route"):** Implementer and code-reviewer prompts MUST NOT contain Oracle awareness, counter framing, or any "should this go to Oracle?" decision question. Routing is hub-internal. Reviewer findings (e.g., "implementer repeatedly misuses API X") feed the hub's routing decision; the reviewer never names Oracle.
 
 ## Story-Review Cap (Phase 3)
 

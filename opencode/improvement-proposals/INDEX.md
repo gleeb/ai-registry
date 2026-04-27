@@ -13,7 +13,6 @@ Drafted from analysis of `ses_26105317cffeCAev1W8UP3BtK1` (P13–P18) and `ses_2
 | ID | Title | Theme | Expected Primary Impact |
 |----|-------|-------|-------------------------|
 | [P13](./P13-lib-cache-breadth-incentive.md) | Incentivize Comprehensive `lib-cache` Entries | Context / Cache | Raise cache quality bar; add cross-story cache promotion; cut doc queries 30–40% |
-| [P15](./P15-planner-task-risk-annotations.md) | Planner-Level Task Risk and Complexity Annotations | Planning Signal | Planner annotates task shapes (browser-automation, CDP, service-worker, etc.); feeds P14 proactive routing |
 | [P16](./P16-per-task-ac-traceability.md) | Per-Task Reviewer AC Traceability and Evidence Binding (amended: `evidence_class: real/stub-only/static-analysis-only` per P20) | Review Quality | Bind tasks to ACs; per-task review verifies evidence; externally-bound ACs require real-provider evidence |
 | [P17](./P17-ceremony-scaling-feature-stories.md) | Ceremony Scaling Beyond Scaffolding — Task-Class Dispatch | Dispatch Efficiency | Three-tier (A/B/C) dispatch policy; skip redundant review on trivial tasks; expand review on high-risk tasks |
 | [P18](./P18-hub-coordinator-reset-boundary.md) | Principled Hub ↔ Coordinator Reset Boundary | Dispatch Contract | End-to-end vs phase-boundary hub dispatch mode driven by P15 annotations; cut within-story round-trips from 4+ to 1–3; cap worst-case sub-session context |
@@ -28,14 +27,12 @@ Suggested dependency order (see each proposal's §9 for details):
 
 1. **Foundational / tooling first** — done (P9 landed 2026-04-19; P10, P11, P12 landed 2026-04-21). Low-risk, high-unblock; landed before anything else.
 2. **Review discipline cluster** — P16. Shifts catch-work earlier into Phase 2, reinforcing the Phase 3 cap P10 already established.
-3. **Planning signals** — P15. Produces inputs for P14, P17, P18.
-4. **Dispatch contracts** — P18 (and P17) strictly after P15 is in place. P15 is a prerequisite for P18; without P15 annotations the P18 selection rule has no input and the proposal collapses into "always end-to-end".
-5. **Model-routing cluster** — P14 after P15. P15 produces the signals P14 consumes.
-6. **Efficiency refinements** — P13, P17. Compound with the rest; lower individual urgency.
-7. **Credentials foundation (P19)** — lands before P20/P21/P22 because their verification steps reference P19's env-var mechanism. Zero ongoing cost; unlocks the rest of the 2026-04-22 batch.
-8. **External-integration verification (P20)** — strictly after P19 (real traffic needs credentials). Also depends on P16's amended `evidence_class` clause being in place.
-9. **User-report triage (P21)** — after P19 (for defect reproduction against real endpoints) and after P16 (for AC→story inference during classification). Activates P14's trigger 5 and feeds P22 Category D.
-10. **Plan-change protocol (P22)** — after P21 (consumes P21 Category D) and logically paired with P19/P20 (plan changes that touch integrations go through P19's `required_env` update and P20's `wire_format` re-verification).
+3. **Dispatch contracts** — P17 and P18. (Earlier sequencing assumed P15's task-shape annotations as input; P15 was archived 2026-04-27. P17 and P18 must therefore stand on their own input signal or be revisited.)
+4. **Efficiency refinements** — P13. Compounds with the rest; lower individual urgency.
+5. **Credentials foundation (P19)** — lands before P20/P21/P22 because their verification steps reference P19's env-var mechanism. Zero ongoing cost; unlocks the rest of the 2026-04-22 batch.
+6. **External-integration verification (P20)** — strictly after P19 (real traffic needs credentials). Also depends on P16's amended `evidence_class` clause being in place.
+7. **User-report triage (P21)** — after P19 (for defect reproduction against real endpoints) and after P16 (for AC→story inference during classification). Activates P14's trigger 5 and feeds P22 Category D.
+8. **Plan-change protocol (P22)** — after P21 (consumes P21 Category D) and logically paired with P19/P20 (plan changes that touch integrations go through P19's `required_env` update and P20's `wire_format` re-verification).
 
 ---
 
@@ -58,6 +55,7 @@ Resolved proposals are kept as a permanent decision record. They explain why the
 | [P11](./archive/P11-acceptance-validator-readonly.md) | Acceptance Validator Scope Boundary — Path-Scoped Write Allowlist | Resolved | Path-scoped `edit:` allowlist (catch-all deny first, then allow for evidence, validation report, skill-gotchas); explicit bash-write prohibition in the validator spec; agent-side Pre-Completion Self-Check that runs `git status --porcelain` and reverts any off-allowlist writes before returning. Engineering hub is untouched to keep it compact; hub-side audit is a deferred follow-up if observability warrants it. |
 | [P12](./archive/P12-verify-staging-drift-fix.md) | Fix `verify.sh` Staging-Doc Drift Heuristic | Resolved | Replaced the broken `- [x]` regex with a convention-aware awk parser that walks `### Task` sections and recognises `✓`/`✅`/`complete`/`done` markers on headings and `**Status:**` lines (legacy `- [x]` still honoured). Drift warning is now three-way directional — silent on agreement, "staging ahead ... trusting staging doc" when staging is further, "checkpoint ahead ... inspect manually" otherwise. Added `tests/test-verify.sh` smoke suite with four fixture scenarios. Eliminates false "staging doc is more current" warnings that previously fired on every verify.sh invocation. |
 | [P14](./archive/P14-oracle-escalation-threshold.md) | Count-Based Oracle Escalation on Complex Browser/Integration Work | Resolved (Implemented 2026-04-26) | Cost-arithmetic framing replaced with count-based triggers (doc queries, implementer attempts, reviewer iterations); cross-cutting governors (default-cycle precondition, per-task cap of 1/2/3-with-coordinator-approval, per-story soft cap of 3); hub-internal trigger evaluation with explicit decline logging; full Oracle dispatch envelope (failing AC/test, error symptoms, prior attempts verbatim, scope block); SCOPE COMPLIANCE check on Oracle output reverts out-of-scope edits; `dispatch-log.jsonl` schema extended with `counters`, `scope`, `decline_reason`. **Worker invariant (P14 §2.5):** implementer and code-reviewer agents are deliberately not modified — routing is hub-internal. Triggers 3 and 5 reference P15 / P21 and remain dormant until those land. |
+| [P15](./archive/P15-planner-task-risk-annotations.md) | Planner-Level Task Risk and Complexity Annotations | Archived (Not Implemented, 2026-04-27) | Drafted, refined, and fully implemented; reverted on the same day after review. Pre-emptive task-shape labeling overlapped with three reactive systems already in place (Oracle Escalation Policy triggers 1+2 for runtime difficulty; planning-gotchas + skill iteration for category-level learning; library cache for per-task knowledge). Implementer-side `risk_upgrade_suggestion` also conflicted with P14's "workers do not route" governor. Token cost (~275-line taxonomy file read by planner + hub + validator on every story) for hypothesis-based content was not justified by measurable payoff. See archived proposal's "Why Archived" section for the full reasoning. Revisit only if multiple cycles produce evidence that the reactive stack is too slow. |
 
 ---
 
@@ -91,7 +89,7 @@ flowchart LR
     P12["P12: verify.sh Drift Fix"]
     P13["P13: lib-cache Breadth"]
     P14["P14: Oracle Escalation"]
-    P15["P15: Planner Risk Annotations"]
+    P15["P15: Planner Risk Annotations<br/>(archived 2026-04-27)"]
     P16["P16: AC Traceability"]
     P17["P17: Ceremony Scaling v2"]
     P18["P18: Hub-Coordinator Reset Boundary"]
@@ -121,14 +119,13 @@ flowchart LR
     P8 --> P13
     P6 --> P14
     P10 --> P14
-    P15 --> P14
     P1 --> P17
-    P15 --> P17
 
-    P15 --> P18
     P11 --> P18
     P17 --> P18
     P9 --> P18
+
+    style P15 stroke-dasharray: 5 5,opacity:0.5
 
     P19 --> P20
     P19 --> P21
@@ -162,10 +159,10 @@ flowchart LR
 - **P8 → P13:** P13 follows up P8's cache schema with a breadth incentive and cross-story cache promotion.
 - **P6 → P14:** P6 introduced Oracle as an escalation pattern; P14 specifies quantitative thresholds that trigger it.
 - **P10 → P14:** P10's iteration cap is the trigger that routes story-level escalations to Oracle in P14.
-- **P15 → P14:** P15 produces the task-shape / risk annotations that P14 consumes for proactive Oracle routing.
+- **P15 → P14 (severed):** P15 was archived 2026-04-27 without implementation. P14's trigger 3 (`oracle_preauthorize` flag) is dormant in practice — the planner contract does not produce the flag and the hub treats every task as `oracle_preauthorize: false`. P14's other triggers (1, 2, 4, 5) are unaffected.
 - **P1 → P17:** P17 extends P1's ceremony scaling from scaffolding-only to general task classes (A/B/C).
-- **P15 → P17:** P17's task-class inference consumes P15's shape/risk annotations.
-- **P15 → P18:** P18's end-to-end vs phase-boundary mode selection consumes P15's story-level risk annotations (≤2 tasks and no risk shapes → end-to-end; otherwise phase-boundary).
+- **P15 → P17 (severed):** P17 was originally specified to consume P15's shape/risk annotations for task-class inference. With P15 archived, P17 must either define its own task-class signal or be revisited.
+- **P15 → P18 (severed):** P18 was originally specified to use P15's story-level risk roll-up for end-to-end vs phase-boundary mode selection. With P15 archived, P18 must define its own selection input or be revisited.
 - **P11 → P18:** P11 bounds the acceptance validator directly; P18 narrows the ambient context that validator inherits by resetting at the Phase 3→4 boundary. Defense in depth.
 - **P17 → P18:** P17 scales task-level ceremony; P18 scales story-level dispatch mode. They share the same planner annotation input and should be designed together.
 - **P9 → P18:** P9 handles the between-story boundary; P18 handles the within-story boundary. Neither subsumes the other; P9 lands first because it's foundational.

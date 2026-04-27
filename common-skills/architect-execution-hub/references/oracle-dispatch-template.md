@@ -1,6 +1,6 @@
 # Oracle Dispatch Template
 
-Use this template when dispatching `@sdlc-engineering-oracle` via the Task tool. This implements the dispatch contract from **P14 §3.2**.
+Use this template when dispatching `@sdlc-engineering-oracle` via the Task tool. This implements the Oracle Escalation Policy's dispatch contract.
 
 **Architect:** Before sending this dispatch, log it via `checkpoint.sh dispatch-log --event dispatch --agent sdlc-engineering-oracle --counters '...' --scope '[...]'`. After Oracle returns, log the response with verdict (`FIX` or `ESCALATION`).
 
@@ -89,7 +89,7 @@ INSTRUCTIONS:
 
 ## Dispatch Logging
 
-Log the Oracle dispatch event with the new P14 fields:
+Log the Oracle dispatch event with the escalation metadata fields:
 
 ```bash
 checkpoint.sh dispatch-log \
@@ -118,7 +118,7 @@ checkpoint.sh dispatch-log \
   --decline-reason "Trigger {1|2|3}: {one-line reason the hub declined to dispatch}"
 ```
 
-The decline event makes M1 (P14 §5) auditable.
+The decline event keeps the Oracle-decline metric auditable from `.sdlc/dispatch-log.jsonl`.
 
 ## Response Logging
 
@@ -143,7 +143,7 @@ checkpoint.sh dispatch-log \
 
 Oracle's NOTES section (out-of-scope observations) is the hub's responsibility to triage. For each NOTE:
 
-- If the observation is a defect against a separate AC: open a `defect-incident` per P21.
+- If the observation is a defect against a separate AC: open a `defect-incident` (when the defect-incident protocol is in effect).
 - If the observation is a refactor or improvement opportunity: defer to a follow-up story; do NOT add it to the current story scope unless the user approves.
 - If the observation is a planning gap: append to the story's `planning-gotchas.md` if relevant.
 

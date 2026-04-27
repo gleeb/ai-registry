@@ -1,10 +1,10 @@
 # Adaptive Recovery Protocol (Code Review)
 
-This protocol governs the Phase 2 implement-review-QA loop on a single task. It implements the **P14 Oracle escalation framework**: count-based triggers, default-cycle precondition, per-task and per-story dispatch caps, and a strict "workers do not route" separation of concerns.
+This protocol governs the Phase 2 implement-review-QA loop on a single task. It implements the **Oracle Escalation Policy**: count-based triggers, default-cycle precondition, per-task and per-story dispatch caps, and a strict "workers do not route" separation of concerns.
 
-> **Where Oracle fits.** Per P14, Oracle is **not** the last-resort agent it once was. It is a high-leverage escalation route the hub may dispatch as early as the second attempt on a task, governed by triggers and caps. The standard implement-review-QA cycle is still the default; Oracle replaces some retries, not all of them.
+> **Where Oracle fits.** Oracle is **not** the last-resort agent it once was. It is a high-leverage escalation route the hub may dispatch as early as the second attempt on a task, governed by triggers and caps. The standard implement-review-QA cycle is still the default; Oracle replaces some retries, not all of them.
 
-## P14 Cross-Cutting Governors (always apply)
+## Cross-Cutting Governors (always apply)
 
 The hub MUST verify all of these before dispatching `@sdlc-engineering-oracle`:
 
@@ -27,7 +27,7 @@ For every task in the current story, the hub maintains:
 
 These counters are read from the dispatch log; they are NOT surfaced into worker prompts.
 
-## P14 Triggers (hub-internal evaluation before every re-dispatch on a task post-default-cycle)
+## Triggers (hub-internal evaluation before every re-dispatch on a task post-default-cycle)
 
 Before authorizing **any** implementer or code-reviewer re-dispatch on a task that has completed at least one default cycle, the hub evaluates triggers 1–3 against the per-task counters and the most recent reviewer findings:
 
@@ -40,7 +40,7 @@ Before authorizing **any** implementer or code-reviewer re-dispatch on a task th
 **Action:** Oracle MUST be offered as an alternative. The hub's delegation contract treats Oracle selection as a first-class option at attempt 3.
 
 ### Trigger 3 — Task-shape preauthorize (accelerator, not bypass)
-**Condition:** The planner-produced task entry sets `oracle_preauthorize: true` (per P15) AND the default cycle has just completed without satisfying the AC.
+**Condition:** The planner-produced task entry sets `oracle_preauthorize: true` AND the default cycle has just completed without satisfying the AC. (This flag is currently dormant — the current planner contract does not produce it; treat every task as `oracle_preauthorize: false` until that changes.)
 **Action:** Oracle is dispatched on attempt 2 (immediately after the first cycle), instead of waiting for trigger 1 or 2 thresholds. The flag accelerates Oracle entry; it does NOT bypass the default cycle.
 
 ### Trigger 4 — Hub-internal escalation evaluation (governing rule)
@@ -53,17 +53,17 @@ This is the **rule that makes triggers 1–3 actionable**. Before every re-dispa
 
 The evaluation is hub-internal: it does NOT prompt the implementer or reviewer with counters or with an "Oracle?" question. Worker prompts are unchanged.
 
-### Trigger 5 — Defect-incident (per P21)
+### Trigger 5 — Defect-incident
 When the hub opens a `defect-incident` against a completed story, Oracle is dispatched as the **first-line investigator** when:
-- The contradicted AC involves an external integration (story's `api.md` declares a `wire_format` block per P20), OR
+- The contradicted AC involves an external integration (story's `api.md` declares a `wire_format` block), OR
 - The reproduced behavior indicates a cross-cutting contract mismatch (wrong auth, envelope, serialization), OR
 - The story's original execution consumed ≥ 8 doc queries or ≥ 3 implementer retries on the now-contradicted AC.
 
 The default-cycle precondition is considered satisfied for defect incidents because the original story execution already ran a complete cycle.
 
-## Tiered Recovery (existing structure, now governed by P14 triggers)
+## Tiered Recovery (governed by escalation triggers)
 
-The original Tier 1 → Tier 4 progression is preserved as the **default sequence when no P14 trigger fires earlier**. P14 inserts Oracle dispatch points earlier in the progression when triggers warrant.
+The Tier 1 → Tier 4 progression is preserved as the **default sequence when no escalation trigger fires earlier**. Triggers insert Oracle dispatch points earlier in the progression when they warrant it.
 
 ### Tier 1: Standard re-dispatch (iterations 1–2 of the default cycle)
 - Re-dispatch to implementer with the reviewer's COMPLETE feedback verbatim (all Critical, Important, and Suggestion items with original file:line references and code snippets).
@@ -85,13 +85,13 @@ The original Tier 1 → Tier 4 progression is preserved as the **default sequenc
 
 When the architect's self-implemented code is also rejected by review or QA (total pipeline exhaustion for this task), and Oracle has not yet been dispatched on this task earlier via triggers 1–3:
 
-1. Verify P14 cross-cutting governors permit dispatch (default-cycle precondition is trivially met by Tier 4; check per-task and per-story caps).
+1. Verify cross-cutting governors permit dispatch (default-cycle precondition is trivially met by Tier 4; check per-task and per-story caps).
 2. Compose the dispatch envelope per `oracle-dispatch-template.md` — include all implementer attempts, all reviewer feedback, the architect's self-implementation diff and rejection reasons, plan artifacts, staging doc, the `scope` block, the failing AC/test, and error symptoms.
 3. Dispatch `@sdlc-engineering-oracle`.
 4. If Oracle returns **FIX**: verify SCOPE COMPLIANCE (no edits outside the dispatched `scope`); mark as `oracle-implemented` in staging doc and dispatch log. Continue pipeline normally (review + QA on Oracle's code). The next default-cycle pass is the verification mechanism — do NOT auto-retry Oracle if the code fails review/QA; consider re-dispatch only under §3.0 per-task cap rules.
 5. If Oracle returns **ESCALATION REPORT**: return to coordinator for user decision.
 
-> **Note on early Oracle dispatch.** If a P14 trigger (1, 2, or 3) dispatched Oracle earlier than Tier 4, then Tier 4 may not be reachable on this task — Oracle has already had its single default dispatch. A second Oracle dispatch under Tier 4 would consume the per-task cap's "2nd dispatch with justification" allowance and requires the hub to log what changed and why a different output is expected.
+> **Note on early Oracle dispatch.** If an escalation trigger (1, 2, or 3) dispatched Oracle earlier than Tier 4, then Tier 4 may not be reachable on this task — Oracle has already had its single default dispatch. A second Oracle dispatch under Tier 4 would consume the per-task cap's "2nd dispatch with justification" allowance and requires the hub to log what changed and why a different output is expected.
 
 ## Audit Trail
 
@@ -101,7 +101,7 @@ When the architect's self-implemented code is also rejected by review or QA (tot
 - The self-implemented code still goes through review and QA like any other implementation.
 
 ### Oracle dispatch
-- Log dispatch with full P14 metadata:
+- Log dispatch with full escalation metadata:
   ```bash
   checkpoint.sh dispatch-log --event dispatch \
     --agent sdlc-engineering-oracle \
@@ -122,4 +122,4 @@ When the architect's self-implemented code is also rejected by review or QA (tot
     --counters '{"doc_queries":M,"implementer_attempts":K,"reviewer_iterations":L}' \
     --decline-reason "Trigger {1|2|3}: {one-line reason}"
   ```
-- This makes the M1 metric in P14 §5 auditable.
+- This keeps the Oracle-decline metric auditable from `.sdlc/dispatch-log.jsonl`.
