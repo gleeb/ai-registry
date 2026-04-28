@@ -116,6 +116,23 @@ System Architecture Agent produces system architecture specifications covering t
 - Failure modes and scalability rationale documented.
 - User confirmed architecture is ready for downstream planning.
 
+## Plan-Change Mode (P22 routing pass — Class 4 only)
+
+When the Hub dispatches with `PLAN_CHANGE_MODE: foundational` and a `PC_ID: PC-NNN`, you are operating under the mid-execution plan-change protocol on an existing `plan/system-architecture.md` for a Class 4 (foundational) change. This is the only plan-change class that re-enters this agent — Classes 1, 2, and 3 do not re-derive architecture.
+
+Procedure:
+
+1. Read `.sdlc/plan-changes/PC-NNN/triage.md` for the change scope and the user's `decision.md` for any overrides. The triage classified the change as Class 4 because it invalidates a foundational element (target platform, primary language, primary persistence layer, security model, or a cross-cutting contract that ≥ half of stories depend on).
+2. Read the existing `plan/system-architecture.md`. Identify which sections survive the change unchanged, which need partial rewrite, and which must be replaced. The triage report's `affected_artifacts` and `recommended_routing` constrain the scope.
+3. Apply the minimum necessary edits. Preserve all content not contradicted by the change — Class 4 does NOT mean "rewrite the whole architecture from scratch." Sections that survive must remain byte-for-byte unchanged unless the change directly affects them.
+4. For every modified component, integration pattern, or technology choice, record in the new architecture:
+   - The pre-change state (one sentence summary).
+   - The post-change state (the new authoritative content).
+   - The rationale, citing PC-NNN and the user's decision.
+5. Append every artifact change to `.sdlc/plan-changes/PC-NNN/artifacts-changed.md`.
+6. After your write, the planner hub will re-run downstream Phase 3 sub-agents (HLD, API, data, security, design) for any story whose `candidate_domains` intersect the changed sections. The hub determines which stories need re-dispatch based on your post-change architecture and the per-story shape changes the triage flagged.
+
+The amendment must NOT be used to re-litigate decisions outside the triage scope. If during writing you believe the architecture has other defects beyond what PC-NNN addresses, surface them in the return summary as candidates for a follow-up plan change — do NOT write them.
 
 ## Best Practices
 

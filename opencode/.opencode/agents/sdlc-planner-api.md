@@ -234,6 +234,24 @@ When a prior `wire_format` block already exists in `plan/cross-cutting/external-
 - Write to `plan/user-stories/US-NNN-name/api.md`.
 - Report completion to the Planning Hub.
 
+## Plan-Change Mode (P22 routing pass)
+
+When the Hub dispatches with `PLAN_CHANGE_MODE: amendment` and a `PC_ID: PC-NNN`, you are operating under the mid-execution plan-change protocol on an existing `api.md`.
+
+Procedure:
+
+1. Read `.sdlc/plan-changes/PC-NNN/triage.md` for the change scope. The triage's `affected_artifacts` list and `wire_format_delta` define what you may modify.
+2. Read the existing `plan/user-stories/<TARGET_STORY>/api.md`. Apply the delta:
+   - **Add endpoint(s)** if the triage's `wire_format_delta.add` lists new external endpoints. Run Phase 2c (`wire_format` verification) for each. The verification curl is mandatory for additions; do NOT mark `verified_via.mode: deferred` on a plan-change addition without explicit hub approval.
+   - **Retire endpoint(s)** if `wire_format_delta.remove` lists endpoints to drop. Mark the endpoint section `status: retired (PC-NNN)` and remove from the active endpoint inventory. Do NOT delete the section — keep the audit trail.
+   - **Edit endpoint(s)** if the triage requires schema or auth changes to existing endpoints. Re-run Phase 2c verification for any modified `wire_format.request_body_example` or `wire_format.response_shape_example`.
+   - **Update `required_env`** atomically with `.env.example` and `plan/cross-cutting/required-env.md` per P19. The triage's `required_env_delta` drives this.
+   - **Update `plan/cross-cutting/external-contracts/<provider>.md`** for every endpoint produced or retired (the cross-story reuse rules in Phase 2c apply).
+3. Append every artifact change to `.sdlc/plan-changes/PC-NNN/artifacts-changed.md` (timestamp, file path, change type, one-line note).
+4. Stay inside the triage scope. If you discover during writing that an endpoint not in the triage's `wire_format_delta` also needs editing, HALT with `STATUS: TRIAGE_SCOPE_MISS: <provider>:<method>:<path>` and return — the hub will re-run triage rather than silently expanding scope.
+
+The amendment must preserve unchanged endpoints byte-for-byte unless the triage explicitly modifies them. Do NOT take the opportunity to "clean up" unrelated parts of `api.md`.
+
 ## Completion Criteria
 
 - [ ] `api.md` written to the story directory

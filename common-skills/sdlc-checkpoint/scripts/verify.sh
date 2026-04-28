@@ -84,20 +84,23 @@ verify_coordinator() {
     return
   fi
 
-  local hub story pause_after remaining hint
+  local hub story pause_after remaining hint plan_changes
   hub="$(yaml_read "$file" "active_hub")"
   story="$(yaml_read "$file" "current_story")"
   pause_after="$(yaml_read "$file" "pause_after")"
   remaining="$(yaml_read_list "$file" "stories_remaining")"
+  plan_changes="$(yaml_read_list "$file" "plan_changes")"
   hint="$(yaml_read "$file" "resume_hint")"
   [ "$hub" = "null" ] && hub=""
   [ "$story" = "null" ] && story=""
   [ "$pause_after" = "null" ] && pause_after=""
   remaining="$(echo "$remaining" | sed 's/^ *//;s/ *$//;s/  */ /g')"
+  plan_changes="$(echo "$plan_changes" | sed 's/^ *//;s/ *$//;s/  */ /g')"
 
   echo "hub: ${hub:-none}"
   echo "current_story: ${story:-none}"
   [ -n "$pause_after" ] && echo "pause_after: ${pause_after}"
+  [ -n "$plan_changes" ] && echo "plan_changes: ${plan_changes}"
 
   # Status classification:
   #   ACTIVE  — a hub is active

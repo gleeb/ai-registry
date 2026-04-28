@@ -62,6 +62,14 @@ When the dispatch envelope carries `INCIDENT MODE: investigation` or `INCIDENT M
 
 When `INCIDENT MODE: fix-implement` is set and the envelope contains `ORACLE ANALYSIS:`, treat it as `prior work on this task` context (do not name Oracle in any commentary you produce). Apply Oracle's reasoning to inform the diff, but the diff is yours — verify it against the contradicted ACs' evidence_path before returning `STATUS: COMPLETE`.
 
+### Plan-Change Escalation (on-demand skill)
+
+When during implementation or verification you discover that the plan artifact itself is wrong — `api.md` declares an endpoint the live provider does not host, the contract `wire_format` is unimplementable as written, the architecture contradicts a runtime-platform constraint, or the AC's required external behavior is unavailable — load `.opencode/skills/sdlc-plan-change-escalation/SKILL.md` and follow its workflow. The skill defines exactly when this escalation applies (and equally important, when it does NOT — most plan-related blockers are better served by `BINDING_MISMATCH`, `MISSING_CREDENTIALS`, `WIRE_FORMAT_DIVERGENCE`, or `INCIDENT_*` HALTs).
+
+The terminal blocker the skill prescribes is `STATUS: BLOCKED — PLAN_CHANGE_REQUIRED` with structured ARTIFACT, CLAUSE, DEFECT_CLASS, EVIDENCE, OBSERVED, RECOMMENDED_CLASS, and SUGGESTED_DELTA blocks. The hub maps this to its `VERDICT: blocked, reason: PLAN_CHANGE_REQUIRED` per its Completion Contract; the coordinator routes to the planner under the P22 plan-change protocol.
+
+Do NOT load this skill for routine work — only when one of the patterns the skill enumerates applies. The implementer's baseline does not include plan-change semantics; loading the skill is the trigger.
+
 ### Binding-Mismatch HALT Protocol
 
 The hub authored the `acs_satisfied` binding before dispatch. It is a contract, but it is also a Phase 1c artifact that may turn out wrong once code is being written. When implementation reveals a mismatch:
@@ -269,12 +277,13 @@ STATUS: BLOCKED — [blocker description]
 STATUS: BLOCKED — BINDING_MISMATCH: [one-line diagnosis]
 STATUS: BLOCKED — MISSING_CREDENTIALS: [VAR_NAME]
 STATUS: BLOCKED — WIRE_FORMAT_DIVERGENCE: [provider]:[method]:[path]
+STATUS: BLOCKED — PLAN_CHANGE_REQUIRED
 STATUS: BLOCKED — INCIDENT_REASSIGN: [other-story-id]
 STATUS: BLOCKED — INCIDENT_RECLASSIFY: target-story-not-yet-executed
 STATUS: BLOCKED — INCIDENT_SCOPE_EXPANSION: [files-needed]
 ```
 
-The hub uses this field to decide whether to proceed to code review. Only `STATUS: COMPLETE` triggers code review dispatch. `PARTIAL` and `BLOCKED` trigger re-dispatch or escalation without wasting a review cycle. `BLOCKED — BINDING_MISMATCH` is a contract-correction HALT — the hub revises the `acs_satisfied` binding and re-dispatches; the re-dispatch does NOT count as a review iteration. When returning BINDING_MISMATCH, follow the protocol in the **Binding-Mismatch HALT Protocol** section: include `Bound:`, `Observed:`, and `Suggested revision:` blocks below the STATUS line. `BLOCKED — MISSING_CREDENTIALS` and `BLOCKED — WIRE_FORMAT_DIVERGENCE` route to the coordinator and the planner respectively, also without consuming a review iteration. The three `INCIDENT_*` STATUS lines apply only when the dispatch envelope carried `INCIDENT MODE:` (defect-incident dispatches per P21); the hub routes per the Defect Incident Mode rules in `sdlc-engineering.md`.
+The hub uses this field to decide whether to proceed to code review. Only `STATUS: COMPLETE` triggers code review dispatch. `PARTIAL` and `BLOCKED` trigger re-dispatch or escalation without wasting a review cycle. `BLOCKED — BINDING_MISMATCH` is a contract-correction HALT — the hub revises the `acs_satisfied` binding and re-dispatches; the re-dispatch does NOT count as a review iteration. When returning BINDING_MISMATCH, follow the protocol in the **Binding-Mismatch HALT Protocol** section: include `Bound:`, `Observed:`, and `Suggested revision:` blocks below the STATUS line. `BLOCKED — MISSING_CREDENTIALS` and `BLOCKED — WIRE_FORMAT_DIVERGENCE` route to the coordinator and the planner respectively, also without consuming a review iteration. `BLOCKED — PLAN_CHANGE_REQUIRED` is the P22 plan-change escalation (see the **Plan-Change Escalation** section); follow the `sdlc-plan-change-escalation` skill's procedure to populate ARTIFACT, CLAUSE, DEFECT_CLASS, EVIDENCE, OBSERVED, RECOMMENDED_CLASS, and SUGGESTED_DELTA blocks below the STATUS line. The three `INCIDENT_*` STATUS lines apply only when the dispatch envelope carried `INCIDENT MODE:` (defect-incident dispatches per P21); the hub routes per the Defect Incident Mode rules in `sdlc-engineering.md`.
 
 Following the STATUS line, include:
 

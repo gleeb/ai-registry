@@ -146,6 +146,27 @@ When the Hub dispatches incremental decomposition (brownfield changes):
 6. Update contracts registry if shared interfaces changed.
 7. Re-assign execution order if dependencies changed.
 
+## Plan-Change Mode (P22 routing pass)
+
+When the Hub dispatches with `PLAN_CHANGE_MODE: <amendment | new-story | retire-story>` and a `PC_ID: PC-NNN`, you are operating under the mid-execution plan-change protocol. Behavior differs from Incremental Mode in three ways:
+
+1. **Source of truth is the triage report.** Read `.sdlc/plan-changes/PC-NNN/triage.md` first — its `recommended_routing` and `affected_stories` lists define your scope. Do NOT re-derive blast radius; the planner-hub's triage already did that.
+2. **Stay inside the triage scope.** Do NOT modify stories outside the triage's `affected_stories` list. If you discover during writing that a story not in the triage list also needs updating, HALT with `STATUS: TRIAGE_SCOPE_MISS: <story-id>` and return — the hub will re-run triage rather than silently expanding scope.
+3. **Append to the audit trail.** After every artifact write (`story.md` create, edit, retire), append a row to `.sdlc/plan-changes/PC-NNN/artifacts-changed.md` with timestamp, file path, change type, and one-line note.
+
+### Sub-modes
+
+- **`PLAN_CHANGE_MODE: amendment`** (Class 1 / Class 3 amend). The dispatch envelope includes `TARGET_STORY: US-NNN-name` and a `triage.md` reference. Read the existing `story.md`, apply the amendment delta from the triage's `recommended_routing` (typically: add/edit ACs, refine scope, update Files Affected, update Review Milestones if the user requested), preserving prior content not contradicted by the change. Re-write `story.md` in place. Update the dependency manifest if the amendment changes `required_env`, `candidate_domains`, or `Consumed contracts`.
+
+- **`PLAN_CHANGE_MODE: new-story`** (Class 2 / Class 3 add). The dispatch envelope includes `INSERTION_HINT: before US-NNN | after US-NNN | execution_order: K` and a `triage.md` reference. Allocate the next `US-NNN-name` per the existing numbering convention. Create `plan/user-stories/US-NNN-name/`. Write `story.md` using the STORY-OUTLINE template, scoped per the triage's recommended routing for this new story. Re-assign `execution_order` for stories displaced by the insertion (the hint constrains where; you compute the new orderings).
+
+- **`PLAN_CHANGE_MODE: retire-story`** (Class 3 / Class 4 retire). The dispatch envelope includes `TARGET_STORY: US-NNN-name`. Mark the story `status: retired` in `story.md`'s dependency manifest with a one-line rationale citing PC-NNN. Do NOT delete the story folder. Remove the story from `execution_order` calculations (the next `--sync` run picks this up). If the retired story was a contract owner in `plan/contracts/`, mark the contract `status: retired-with-US-NNN` so Phase 4 cross-story validation catches consumer drift.
+
+### Strict Prohibitions in Plan-Change Mode
+
+- **Never delete a story folder.** Retire it with `status: retired`. Audit trail (git history + the PC's `artifacts-changed.md`) is the deletion record.
+- **Never edit a story not listed in the triage's `affected_stories`.** Halt with `TRIAGE_SCOPE_MISS` instead.
+- **Never modify `acceptance-map.md` or other cross-cutting artifacts here.** Those are Phase 4 / cross-cutting agent territory; if the plan change implies cross-cutting updates, the planner hub dispatches the appropriate sub-agent (security rollup, testing strategy, etc.) as a separate routing-pass step.
 
 ## Best Practices
 

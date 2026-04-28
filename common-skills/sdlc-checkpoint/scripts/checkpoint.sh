@@ -94,6 +94,7 @@ cmd_coordinator() {
 
   local hub="" story="" story_done="" sync_flag=""
   local pause_after_flag="" clear_pause_after_flag=""
+  local plan_change_open="" plan_change_close=""
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -103,17 +104,20 @@ cmd_coordinator() {
       --sync) sync_flag="true"; shift ;;
       --pause-after) pause_after_flag="$2"; shift 2 ;;
       --clear-pause-after) clear_pause_after_flag="true"; shift ;;
+      --plan-change-open) plan_change_open="$2"; shift 2 ;;
+      --plan-change-close) plan_change_close="$2"; shift 2 ;;
       *) echo "Unknown coordinator flag: $1" >&2; exit 1 ;;
     esac
   done
 
   # Read existing values (normalize "null" scalars to empty string for downstream checks)
-  local cur_hub cur_story cur_done cur_remaining cur_pause_after
+  local cur_hub cur_story cur_done cur_remaining cur_pause_after cur_plan_changes
   cur_hub="$(yaml_read "$file" "active_hub")"
   cur_story="$(yaml_read "$file" "current_story")"
   cur_done="$(yaml_read_list "$file" "stories_done")"
   cur_remaining="$(yaml_read_list "$file" "stories_remaining")"
   cur_pause_after="$(yaml_read "$file" "pause_after")"
+  cur_plan_changes="$(yaml_read_list "$file" "plan_changes")"
   [ "$cur_hub" = "null" ] && cur_hub=""
   [ "$cur_story" = "null" ] && cur_story=""
   [ "$cur_pause_after" = "null" ] && cur_pause_after=""
@@ -123,6 +127,17 @@ cmd_coordinator() {
   [ -n "$story" ] && cur_story="$story"
   [ -n "$pause_after_flag" ] && cur_pause_after="$pause_after_flag"
   [ "$clear_pause_after_flag" = "true" ] && cur_pause_after=""
+
+  # Plan-change index (P22 dispatch lock): flat list of open PC-NNN ids.
+  if [ -n "$plan_change_open" ]; then
+    if ! echo " $cur_plan_changes " | grep -q " $plan_change_open "; then
+      cur_plan_changes="$cur_plan_changes $plan_change_open"
+    fi
+  fi
+  if [ -n "$plan_change_close" ]; then
+    cur_plan_changes="$({ echo "$cur_plan_changes" | tr ' ' '\n' | grep -v "^${plan_change_close}$" || true; } | tr '\n' ' ')"
+  fi
+  cur_plan_changes="$(echo "$cur_plan_changes" | sed 's/^ *//;s/ *$//;s/  */ /g')"
 
   # --sync: rebuild stories_remaining from disk (plan/user-stories/*/story.md)
   # sorted by execution_order, filtering out anything already in stories_done.
@@ -222,6 +237,10 @@ cmd_coordinator() {
   if [ -n "$cur_remaining" ]; then
     remaining_yaml="[$(echo "$cur_remaining" | tr ' ' '\n' | sed 's/.*/"&"/' | paste -sd, -)]"
   fi
+  local plan_changes_yaml="[]"
+  if [ -n "$cur_plan_changes" ]; then
+    plan_changes_yaml="[$(echo "$cur_plan_changes" | tr ' ' '\n' | sed 's/.*/"&"/' | paste -sd, -)]"
+  fi
 
   cat > "$file" <<EOF
 last_updated: "${TIMESTAMP}"
@@ -230,6 +249,7 @@ current_story: ${cur_story:-null}
 stories_done: ${done_yaml}
 stories_remaining: ${remaining_yaml}
 pause_after: ${cur_pause_after:-null}
+plan_changes: ${plan_changes_yaml}
 resume_hint: "${hint}"
 EOF
 
@@ -238,6 +258,8 @@ EOF
   [ "$sync_flag" = "true" ] && detail="${detail}|sync"
   [ -n "$pause_after_flag" ] && detail="${detail}|pause-after:${pause_after_flag}"
   [ "$clear_pause_after_flag" = "true" ] && detail="${detail}|clear-pause-after"
+  [ -n "$plan_change_open" ] && detail="${detail}|plan-change-open:${plan_change_open}"
+  [ -n "$plan_change_close" ] && detail="${detail}|plan-change-close:${plan_change_close}"
   append_history "coordinator" "$detail"
 }
 

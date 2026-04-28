@@ -212,6 +212,81 @@ Load `.opencode/skills/credential-registration/SKILL.md` and follow its workflow
 
 The credential-registration skill is the ONLY skill the planner hub uses to respond to a `CREDENTIAL_REGISTRATION` directive. Do not dispatch the full phase-3 pipeline for this directive.
 
+## Plan-Change Protocol Directive
+
+When the coordinator dispatches with `DIRECTIVE: PLAN_CHANGE_TRIAGE` or `DIRECTIVE: PLAN_CHANGE_APPLY`, you are operating under the mid-execution plan-change protocol (P22). This is distinct from greenfield planning, the brownfield protocol, and credential registration.
+
+### Mode A — `PLAN_CHANGE_TRIAGE` (analysis only)
+
+The coordinator dispatch envelope contains:
+```
+DIRECTIVE: PLAN_CHANGE_TRIAGE
+PC_ID: PC-NNN
+SOURCE: user | category-D | hub-blocker
+REQUEST: <verbatim trigger payload>
+TARGET_STORY: <current_story or null>
+RECOMMENDED_CLASS: <hub's guess — only when source = hub-blocker>
+EVIDENCE: <hub's evidence block — only when source = hub-blocker>
+```
+
+Procedure:
+1. Load `.opencode/skills/sdlc-plan-change-triage/SKILL.md` and follow its workflow end-to-end. The skill performs blast-radius analysis, the forward-impact scan, and four-class classification.
+2. Load `.opencode/skills/sdlc-plan-change-recordkeeping/SKILL.md` for the `triage.md` and `pc.yaml` schemas. The triage skill writes `triage.md`; this hub updates `pc.yaml: status: triaged, class: N, triaged_at: <ISO>, affected_planned_stories: [...]` after the triage skill returns.
+3. Triage mode is **analysis only** — do NOT write to `plan/`, `architecture.md`, `story.md`, `api.md`, `hld.md`, `data.md`, `security.md`, `design/`, or `plan/cross-cutting/*`. The only writes permitted are within `.sdlc/plan-changes/<PC-NNN>/`.
+4. Return the triage verdict to the coordinator with:
+   ```
+   DIRECTIVE: PLAN_CHANGE_TRIAGE — VERDICT
+   PC_ID: PC-NNN
+   CLASSIFICATION: 1 | 2 | 3 | 4
+   TRIAGE_REPORT: .sdlc/plan-changes/PC-NNN/triage.md
+   DISPATCH_LOCK: <comma-separated story ids or "none">
+   RECOMMENDED_ROUTING: <one-line summary>
+   NEW_STORIES_REQUIRED: <count>
+   P21_INCIDENTS_REQUIRED: <count>
+   SUMMARY: <2–3 sentence plain-English summary>
+   ```
+   If classification fails (the request defies all four classes), return `STATUS: TRIAGE_BLOCKED` with a one-paragraph diagnosis. The coordinator surfaces to user; do not proceed to apply.
+
+### Mode B — `PLAN_CHANGE_APPLY` (routing pass, post-approval)
+
+The coordinator dispatch envelope contains:
+```
+DIRECTIVE: PLAN_CHANGE_APPLY
+PC_ID: PC-NNN
+CLASS: 1 | 2 | 3 | 4
+APPROVED_ROUTING: <verbatim list from decision.md>
+```
+
+Procedure:
+1. Read `.sdlc/plan-changes/PC-NNN/triage.md`, `decision.md`, and `pc.yaml`.
+2. Update `pc.yaml: status: applying`.
+3. Execute the routing pass per the **Routing Pass** section of the triage skill:
+   - **Class 1:** dispatch `sdlc-planner-stories` for amendment, then `sdlc-planner-api` and/or `sdlc-planner-hld` if those artifacts are touched. Each sub-dispatch carries `PLAN_CHANGE_MODE: amendment, PC_ID: PC-NNN, TARGET_STORY: US-NNN-name`.
+   - **Class 2:** dispatch `sdlc-planner-stories` for new story, then standard Phase 3 sub-agents per the new story's `candidate_domains`. Each sub-dispatch carries `PLAN_CHANGE_MODE: new-story, PC_ID: PC-NNN`.
+   - **Class 3:** for each story in the affected slice, dispatch the appropriate amendment, retirement, or rescope. Sub-dispatches carry `PLAN_CHANGE_MODE: amendment | retire-story | new-story, PC_ID: PC-NNN`. Run plan-validator in cross-story mode over the slice when the slice resolves.
+   - **Class 4:** re-dispatch from `sdlc-planner-architecture` and re-run subsequent phases for the affected scope. Sub-dispatches carry `PLAN_CHANGE_MODE: foundational, PC_ID: PC-NNN`. Run plan-validator in full-chain mode.
+4. After each sub-agent returns, append the artifact change to `.sdlc/plan-changes/PC-NNN/artifacts-changed.md`. Apply P19 atomicity (`.env.example` + `required-env.md` + story `api.md` written together when `required_env_delta` is non-empty), P20 wire_format verification (re-run curl per `wire_format_delta.add`), and P15 risk refresh (per `risk_shapes_affected`) per triage flags.
+5. For each story in `pc.yaml: p21_incidents_opened` (populated from triage's `cross_protocol.p21_incidents_required`), open a P21 Category C incident referencing this PC by writing to `.sdlc/incidents/INC-NNN/incident.md` with the contradicted ACs, the source PC pointer, and the routing pass artifact list. The coordinator does not re-route to engineering for these — the next time the engineering hub is dispatched for the affected story, it will pick up the open incident from `execution.yaml`.
+6. Update `pc.yaml: status: closed, closed_at: <ISO>, outcome: applied`.
+7. Return to coordinator:
+   ```
+   DIRECTIVE: PLAN_CHANGE_APPLY — DONE
+   PC_ID: PC-NNN
+   CLASS: N
+   ARTIFACTS_CHANGED: .sdlc/plan-changes/PC-NNN/artifacts-changed.md
+   RELEASED_LOCK: <comma-separated story ids — same as triage's affected_planned_stories>
+   NEW_STORIES_EMITTED: [US-NNN, ...]
+   RETIRED_STORIES: [US-NNN, ...]
+   P21_INCIDENTS_OPENED: [INC-NNN, ...]
+   SUMMARY: <2–3 sentence summary of what was applied>
+   ```
+
+### Boundary
+
+The plan-change protocol replaces the brownfield protocol when execution has started (`stories_done` non-empty OR `current_story` non-null). For pre-execution changes (`stories_done: []` and `current_story: null`), continue to use the brownfield protocol — the coordinator will not enter plan-change triage in that state.
+
+The plan-change-triage skill is the ONLY skill that produces the four-class classification; the planner does not invent classes or run partial heuristics outside the skill's procedure.
+
 ## Best Practices
 
 # Best Practices for Planning Hub

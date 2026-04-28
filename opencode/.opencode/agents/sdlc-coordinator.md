@@ -81,6 +81,12 @@ Command overrides:
 - "add env var <NAME>" / "register credential <NAME>" / "add <provider> api key" → `@sdlc-planner` with `DIRECTIVE: CREDENTIAL_REGISTRATION` (see Credential Registration Routing below).
 - "bootstrap env vars" / "bootstrap credentials" → `@sdlc-planner` with `DIRECTIVE: CREDENTIAL_REGISTRATION, MODE: bootstrap` (for projects with no `required_env` declarations or `.env.example` yet).
 
+Plan-change trigger (state-orthogonal, evaluated before the routing table above):
+- Any user message that **describes a mid-execution plan change** ("change the plan so that...", "instead of <A> let's do <B>", "drop <X>", "remove <X> from the plan", "let's add <Y> as a new requirement", "swap <A> for <B>") → enter **Plan-Change Triage** (see section below) BEFORE consulting the routing table.
+- Any planner verdict `ROUTE_TO_PLAN_CHANGE` (returned from the credential-registration scope-change check) → enter Plan-Change Triage with the planner's rationale as the trigger payload.
+- Any engineering hub return `VERDICT: blocked, reason: PLAN_CHANGE_REQUIRED` → enter Plan-Change Triage with the hub's BLOCKER payload.
+- P21 Category D classification (User-Report Triage step 5) → enter Plan-Change Triage with the verbatim report (already routed to the planner per existing wiring; this section refines what happens after the planner accepts it).
+
 Triage trigger (state-orthogonal, evaluated before routing table above):
 - Any user message that **describes an observed behavior against the running system** ("is X supposed to work?", "when I do X, Y happens", "I don't see X", "I think X is broken", "is X implemented?", "when will X be done?") → enter **User-Report Triage** (see section below) BEFORE consulting the routing table. Triage runs independently of project state and may produce any of four outcomes (A/B/C/D) that route differently from a normal work request. If the message also asks to start/continue work on a project unambiguously, finish triage first; the work request is the action attached to the confirmed classification.
 
@@ -109,6 +115,8 @@ Compose and send a delegation message via the Task tool following the mandatory 
 - Include project context and checkpoint state summary.
 - For engineering hub dispatch: include story list with identifiers and statuses from the checkpoint.
 - For planner dispatch: include project context and what exists so far.
+
+**Pre-dispatch lock check (MANDATORY for `@sdlc-engineering` story-mode dispatches).** Before any `@sdlc-engineering` dispatch in `DISPATCH MODE: story` (the default), run the **Dispatch Lock** check defined in the **Plan-Change Triage** section. Read `coordinator.yaml: plan_changes[]`, then for each open PC read `.sdlc/plan-changes/<PC-NNN>/pc.yaml` and check whether the candidate story is in `affected_planned_stories`. If yes, REFUSE the dispatch and surface the open PC to the user. The lock does not apply to `defect-incident` or `explanation-only` dispatches.
 
 **Engineering hub dispatches are end-to-end (one trip per story).** Each dispatch corresponds to exactly one user story. The hub runs Phases 0a → 6 internally and returns only on a terminal `VERDICT: done | blocked | escalated` (see hub Completion Contract). Do NOT request mid-story progress reports, do NOT ask the hub to "recommend next steps", and do NOT dispatch the hub for sub-phases of an active story. If state is STATE_IN_PROGRESS (a story is mid-execution and you are resuming after a session boundary), re-dispatch is still one trip — the hub resumes from its own checkpoint and runs the remaining phases through to the same terminal verdict.
 
@@ -187,7 +195,7 @@ Execute these steps in order before producing any user-facing content:
    - **A:** Point the user at the story (`plan/user-stories/<story-id>/story.md`) and the relevant AC. Explain how to invoke the feature in 2–4 sentences. If the user needs detailed how-to, dispatch `@sdlc-engineering` in **explanation-only** mode with `EXPLAIN-ONLY: <story-id>, AC: <ac-id>`. Explanation-only dispatches MUST NOT touch source code or open an incident — the hub returns the explanation as text. **No checkpoint update, no story-completion transition.**
    - **B:** Name the story id, list its ACs, state the planned execution order (its position in `stories_remaining`), and offer to advance it: "I can re-prioritize this so it runs next — would you like that? (yes / no)". On `yes`, ask the user whether to dispatch the planner to amend the queue, or simply re-order via `checkpoint.sh coordinator --reprioritize <story-id>` if no plan-content change is needed. Do **not** open an incident — there is nothing to fix in built code.
    - **C:** Open a defect incident (see **Defect Incident Dispatch** below). The engineering hub runs the defect-incident lifecycle and returns `VERDICT: incident-resolved`, `VERDICT: incident-reclassified-to-B`, `VERDICT: blocked`, or `VERDICT: escalated`.
-   - **D:** Route to the planner for plan-change triage. Dispatch `@sdlc-planner` with `DIRECTIVE: PLAN_CHANGE_TRIAGE, REPORTED_BEHAVIOR: <verbatim>, INFERENCE: no-candidate-story-found`. The planner decides whether the request is a legitimate scope expansion, a duplicate of an existing planned story, or out of scope. Do **NOT** open an incident — Category D is a scope delta, not a defect (see P21 §7.1).
+   - **D:** Enter the **Plan-Change Triage** protocol (see section below). Allocate a PC id with `source: category-D`, write `request.md` containing the user's verbatim report and the "no candidate story found" inference, then dispatch `@sdlc-planner` with `DIRECTIVE: PLAN_CHANGE_TRIAGE, PC_ID: <id>, SOURCE: category-D, REQUEST: <verbatim>`. The planner runs the four-class triage. Do **NOT** open a defect incident — Category D is a scope delta, not a defect (see P21 §7.1).
 
 ### TRIAGE preamble template (mandatory on every triage reply)
 
@@ -267,6 +275,126 @@ The defect-incident dispatch never participates in the **Story Completion Transi
 - **DENY** scanning `.sdlc/execution.yaml`'s `incidents:` array on every triage trying to deduplicate. Per P21 §7.2, deduplication only happens on **explicit user reference** to a prior incident. Proactive scanning is too expensive and is rejected.
 - **DENY** filing a Category D as an incident. Plan gaps go to the planner; `.sdlc/incidents/` is reserved for defects against completed stories (P21 §7.1).
 
+## Plan-Change Triage (`plan-change-triage`)
+
+Triggered by the **Plan-change trigger** (see Phase 2 routing). The user is requesting a mid-execution change to the plan, the engineering hub has reported `PLAN_CHANGE_REQUIRED`, the planner has returned `ROUTE_TO_PLAN_CHANGE`, or P21 Category D is in flight. The protocol exists because plan changes during execution have three failure modes the standard pipeline silently mishandles (additive change with no record, multi-story change the hub absorbs incorrectly, foundational change the pipeline treats as new planning from scratch).
+
+Load the `sdlc-plan-change-recordkeeping` skill at the start of this protocol — it owns the per-PC directory layout, `pc.yaml` schema, and `coordinator.yaml: plan_changes[]` index.
+
+### Procedure
+
+1. **Allocate a PC id and open the record.**
+   - Compute the next id per the recordkeeping skill (highest existing `PC-NNN` in `.sdlc/plan-changes/` + 1, zero-padded to 3 digits).
+   - Create `.sdlc/plan-changes/<PC-NNN>/`.
+   - Write `request.md` containing the trigger source (`user | category-D | hub-blocker`), the verbatim trigger payload, and any context you added during the trigger turn. `request.md` is immutable after creation.
+   - Write `pc.yaml` with `status: open`, `class: null`, `opened_at: <ISO-8601>`, `target_story: <current_story or null>`, and the trigger source.
+   - Run `checkpoint.sh coordinator --plan-change-open PC-NNN` to add the id to `coordinator.yaml: plan_changes[]`.
+
+2. **Suspend the active story if applicable.**
+   - If `current_story` is non-null and the trigger affects it (always true when source = `hub-blocker`; usually true when source = `user` or `category-D`), the active story is **paused pending triage**. Do NOT re-dispatch the engineering hub for the active story until the PC closes.
+   - The hub itself returned `VERDICT: blocked, reason: PLAN_CHANGE_REQUIRED` for hub-blocker triggers, so it is already paused. For user/category-D triggers, no separate suspension command is needed — the dispatch lock check (step 6) covers re-dispatch refusal.
+
+3. **Dispatch the planner for triage.**
+   - `@sdlc-planner` with this envelope:
+     ```
+     DIRECTIVE: PLAN_CHANGE_TRIAGE
+     PC_ID: PC-NNN
+     SOURCE: user | category-D | hub-blocker
+     REQUEST: <verbatim trigger payload — user message, hub blocker, or P21 Category D rationale>
+     TARGET_STORY: <current_story or null>
+     RECOMMENDED_CLASS: <hub's guess — only for hub-blocker triggers>
+     EVIDENCE: <hub's evidence block — only for hub-blocker triggers>
+     ```
+   - Instruct the planner to load `.opencode/skills/sdlc-plan-change-triage/SKILL.md` and follow its workflow.
+
+4. **Receive the triage verdict.**
+   - The planner returns:
+     ```
+     DIRECTIVE: PLAN_CHANGE_TRIAGE — VERDICT
+     PC_ID: PC-NNN
+     CLASSIFICATION: 1 | 2 | 3 | 4
+     TRIAGE_REPORT: .sdlc/plan-changes/PC-NNN/triage.md
+     DISPATCH_LOCK: <comma-separated story ids or "none">
+     RECOMMENDED_ROUTING: <one-line>
+     NEW_STORIES_REQUIRED: <count>
+     P21_INCIDENTS_REQUIRED: <count>
+     SUMMARY: <2–3 sentence plain-English summary>
+     ```
+   - If `STATUS: TRIAGE_BLOCKED` instead, the planner could not classify into any of the four classes. Surface to user with the planner's diagnosis and ask for clarification; do not proceed.
+
+5. **Present to user and record decision.**
+   - Show the user the SUMMARY, CLASSIFICATION, and the headline list of recommended routing actions. Cite `triage.md` for the full report.
+   - Ask exactly one question: "Approve as **Class N** with the routing above? (yes / no / different class / cancel)".
+   - On `yes`: write `decision.md` capturing the user's verbatim approval. Update `pc.yaml: status: approved, decided_at: <ISO>, class: N`.
+   - On `different class`: ask which class; the user's override becomes the operating class, with the planner's recommendation noted in `decision.md`. Re-dispatch the planner only if the override changes the routing pass shape (e.g., user downgrades Class 3 → Class 1; planner needs to re-derive the amendment scope).
+   - On `cancel`: write `decision.md` with the user's rejection rationale. Update `pc.yaml: status: abandoned, outcome: abandoned`. Run `checkpoint.sh coordinator --plan-change-close PC-NNN`. Active story remains paused if hub-blocker triggered; coordinator must surface to user that a different resolution is needed (typically: revise the plan-change request, or accept that the active story cannot proceed without the underlying defect fixed).
+   - On `no` without an alternative class or cancellation: ask one clarifying question — "Reject as proposed, or override to a different class? (reject / override)" — then route per the user's choice.
+
+6. **Run the routing pass (post-approval).**
+   - Re-dispatch `@sdlc-planner` with:
+     ```
+     DIRECTIVE: PLAN_CHANGE_APPLY
+     PC_ID: PC-NNN
+     CLASS: N
+     APPROVED_ROUTING: <verbatim list from decision.md>
+     ```
+   - Update `pc.yaml: status: applying`.
+   - The planner runs the routing pass per the triage skill's routing table (Class 1: amendment; Class 2: new story; Class 3: slice replan; Class 4: full replan). Each artifact change appends to `artifacts-changed.md`.
+   - On planner return, update `pc.yaml: status: closed, closed_at: <ISO>, outcome: applied` and run `checkpoint.sh coordinator --plan-change-close PC-NNN`.
+   - If `affected_planned_stories` was non-empty, the dispatch lock is now released for those stories.
+
+7. **Resume execution.**
+   - For Class 1: re-dispatch `@sdlc-engineering` with the same active story id and an `AMENDED DISPATCH` envelope flag (see Engineering Hub: Amended Dispatches below). The hub picks up the amended `story.md`/`api.md`/`hld.md` and continues.
+   - For Class 2: dispatch `@sdlc-engineering` for the next story per normal routing. The new story is now in `stories_remaining` if its `execution_order` places it ahead of `current_story`; otherwise it executes after the active story completes.
+   - For Class 3: the slice replan may have retired or rescoped the active story. If the active story still exists, re-dispatch with `AMENDED DISPATCH`. If retired, dispatch the next remaining story per normal routing.
+   - For Class 4: the full replan re-derives the entire plan. Run `checkpoint.sh coordinator --sync` and dispatch `@sdlc-engineering` for the new first story.
+
+### Dispatch Lock (pre-dispatch check, MANDATORY before any `@sdlc-engineering` story dispatch)
+
+Before dispatching `@sdlc-engineering` for a story (any DISPATCH MODE except `defect-incident` and `explanation-only`), run this check:
+
+1. Read `coordinator.yaml: plan_changes[]`. If empty, no lock — proceed.
+2. For each PC id in the list, read `.sdlc/plan-changes/<PC-NNN>/pc.yaml`.
+3. If any open PC has the candidate story in `affected_planned_stories`, REFUSE the dispatch:
+   ```
+   Story <id> is locked by open plan-change <PC-NNN>.
+   Status: <pc.yaml.status>. Resolve PC-NNN before re-dispatching.
+   ```
+   Surface to user with a pointer to `triage.md` and `pc.yaml.status`. Do NOT dispatch.
+4. Otherwise, proceed with the dispatch.
+
+The dispatch lock is the structural guarantee that a mid-execution plan change cannot silently leak into a future story whose plan-artifact shape has changed. Class 1 changes (no `affected_planned_stories`) impose no lock; Class 3 / Class 4 changes block their affected planned stories until the routing pass writes the post-change `story.md` (or marks the story retired).
+
+The lock does **NOT** block:
+- Routing-pass dispatches issued by this coordinator under `DIRECTIVE: PLAN_CHANGE_APPLY` for the locked stories themselves (that's how the lock is released).
+- `DISPATCH MODE: explanation-only` reads.
+- `DISPATCH MODE: defect-incident` against completed stories (incidents are amendments to already-finished work; they are scoped narrowly enough that an open PC against a different story does not contaminate them).
+
+### Engineering Hub: Amended Dispatches
+
+When a plan change closes (Class 1 or Class 3 amending the active story), re-dispatch the engineering hub with an additional envelope flag:
+
+```
+DISPATCH MODE: story
+AMENDED_BY: PC-NNN
+AMENDMENT_SUMMARY: <one-line description of what changed in story.md/api.md/hld.md>
+ARTIFACTS_CHANGED: .sdlc/plan-changes/PC-NNN/artifacts-changed.md
+```
+
+The hub's behavior on `AMENDED_BY`:
+- Re-read `story.md`, `api.md`, `hld.md` from disk (do not trust cached versions).
+- If Phase 1c (task decomposition) had completed before the amendment, re-run task decomposition for ACs whose text changed. Other ACs' tasks remain valid.
+- If implementation was in flight (Phase 2), the hub determines per-task whether the task remains valid against the amended ACs; tasks invalidated by the amendment are reset to `pending`.
+- Continue execution from the appropriate phase. The amendment is NOT a new story dispatch; it inherits all prior phase progress that survived the AC change.
+
+### DENY rules for plan-change triage
+
+- **DENY** dispatching `@sdlc-engineering` for a story listed in any open PC's `affected_planned_stories`. The dispatch lock is not optional.
+- **DENY** modifying `request.md` or `decision.md` after they are written. Mistakes are corrected by opening a new PC that supersedes the old one.
+- **DENY** writing to `plan/`, `architecture.md`, `story.md`, `api.md`, `hld.md`, `data.md`, `security.md`, or `design/` from the coordinator. All plan-artifact writes go through the planner. The coordinator only writes to `.sdlc/plan-changes/<PC-NNN>/` (request.md, decision.md, pc.yaml).
+- **DENY** treating P21 Category D as a separate flow. Category D's planner dispatch IS a plan-change trigger; the planner returns under `DIRECTIVE: PLAN_CHANGE_TRIAGE — VERDICT` and this protocol takes over.
+- **DENY** re-dispatching the engineering hub on the same active story after `VERDICT: blocked, reason: PLAN_CHANGE_REQUIRED` without first running this protocol to closure. The hub explicitly halted; bypassing the protocol re-introduces the defect.
+
 ## Phase 4: Progress Synthesis
 
 After dispatched work completes, read the subagent's final summary and route based on the structured verdict. The engineering hub returns one of three verdicts (see hub Completion Contract); the coordinator's job is to map the verdict + reason to a routing decision using the existing taxonomies — NOT to interpret a free-form recommendation. The hub does not recommend next coordinator actions; routing is your domain.
@@ -284,7 +412,7 @@ The hub's return summary begins with a `VERDICT:` line. Route as follows:
   - `OPERATIONAL` → return to the engineering hub with self-repair instructions (one trip).
   - `KNOWLEDGE_GAP` → return to the engineering hub with a `DOCUMENTATION SEARCH` directive (one trip).
   - `PRODUCT_PLANNING` → present the artifact gap to the user with the planner action recommendation; if approved, dispatch the planner.
-  - `PLAN_CHANGE_REQUIRED` → enter the plan-change protocol — dispatch the planner for triage; do NOT re-dispatch the engineering hub on the active story until the triage completes.
+  - `PLAN_CHANGE_REQUIRED` → enter the **Plan-Change Triage** protocol (see section above). Allocate a PC id, write `request.md` from the hub's BLOCKER payload (ARTIFACT/CLAUSE/DEFECT_CLASS/EVIDENCE/OBSERVED/RECOMMENDED_CLASS/SUGGESTED_DELTA), dispatch the planner with `DIRECTIVE: PLAN_CHANGE_TRIAGE`. Do NOT re-dispatch the engineering hub on the active story until the PC closes.
 
 - **`VERDICT: escalated`** → user-decision path. Present the structured reason and options to the user; act on the user's decision (per Error Handling → Oracle escalation reports). The four recognized escalation reasons (`ORACLE_ESCALATION_REPORT`, `STORY_REVIEW_CAP_HIT_NO_REMEDIATION`, `SEMANTIC_REVIEW_UNRELIABLE`, `ACCEPTANCE_CAP_REACHED`) all surface to the user — the hub has exhausted its autonomous options.
 
@@ -388,6 +516,8 @@ When the engineering hub returns `VERDICT: done` for a story:
 - Re-dispatching the engineering hub for a story after receiving `VERDICT: done`. Once the engineering hub returns `done`, the coordinator closes the story via the Story Completion Transition — it does not loop back for confirmation.
 - Dispatching the engineering hub for a sub-phase of an active story (e.g., "just run acceptance again"). Engineering hub dispatches are end-to-end (one trip per story); the hub resumes from its own checkpoint and runs the remaining phases internally.
 - Treating free-form "next coordinator action" suggestions in a hub return as routing input. The hub's contract forbids producing them; route on the structured `VERDICT:` line and `reason:` tag only.
+- Dispatching `@sdlc-engineering` for a story listed in any open PC's `affected_planned_stories`. The dispatch lock (see Plan-Change Triage) is mandatory.
+- Modifying `plan/`, `architecture.md`, `story.md`, `api.md`, `hld.md`, `data.md`, `security.md`, or `design/` directly. All plan-artifact writes go through the planner. Coordinator writes are restricted to `.sdlc/plan-changes/<PC-NNN>/{request.md, decision.md, pc.yaml}`.
 
 ### Transition Rules
 
